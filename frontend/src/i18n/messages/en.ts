@@ -254,6 +254,8 @@ export const en: Messages = {
     submit: "Register for the event",
   },
   validation: {
+    engagementRequired: "Select at least one way to get involved",
+    polesRequired: "Choose at least one division to volunteer in",
     passwordRequired: "Password required",
     firstNameMin: "First name required (min. 2 characters)",
     lastNameMin: "Last name required (min. 2 characters)",
@@ -347,7 +349,23 @@ export const en: Messages = {
     goToSpace: "Go to your space",
   },
   candidature: {
-    steps: ["Identity", "Profile & Motivation"],
+    engagementLabel: "How would you like to get involved?",
+    engagementHint: "Select all that apply — you can change this later.",
+    engagements: {
+      volunteer: { label: "Volunteer in one of our divisions", desc: "Actively help organise and run projects in one or more DAH divisions." },
+      training: { label: "Learn and grow my skills", desc: "Access the community's training, workshops, bootcamps and mentoring." },
+      expertise: { label: "Share my expertise", desc: "Speak at events, run workshops or mentor other members." },
+      news: { label: "Stay up to date with the community", desc: "Receive news, events and opportunities (jobs, calls for projects)." },
+    },
+    polesLabel: "Which division(s) would you like to volunteer in?",
+    polesHint: "Choose one or more divisions.",
+    poles: {
+      data_tour: { name: "Data Tour", desc: "Annual challenge for tech talents tackling African challenges." },
+      academy: { name: "DAH Academy", desc: "Degree and certification training programmes." },
+      media: { name: "DAH Média", desc: "Media outlet dedicated to AI, Data Science and Cybersecurity." },
+      labs: { name: "DAH Labs", desc: "Innovation and incubation of high-impact projects." },
+    },
+    steps: ["Identity", "Profile & Motivation", "Involvement"],
     cvMustBePdf: "The file must be a PDF.",
     cvTooLarge: "The file must not exceed 5 MB.",
     successTitle: "Application sent!",
@@ -479,6 +497,9 @@ export const en: Messages = {
     noCertification: "No certification added",
   },
   applications: {
+    engagementTitle: "Involvement wishes",
+    volunteerPoles: "Divisions (volunteering)",
+    notProvided: "Not provided (earlier application)",
     status: { pending: "Pending", accepted: "Accepted", rejected: "Rejected" },
     restricted: "Restricted to administrators and the president.",
     pendingPlural: "Pending",

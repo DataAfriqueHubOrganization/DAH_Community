@@ -9,11 +9,24 @@ MAX_CV_SIZE = 5 * 1024 * 1024  # 5 Mo
 
 
 class CandidatureCreateSerializer(serializers.ModelSerializer):
+    # ListField lit aussi les clés répétées d'un envoi multipart (avec CV).
+    engagements = serializers.ListField(
+        child=serializers.ChoiceField(choices=Candidature.ENGAGEMENT_CHOICES),
+        allow_empty=False,
+        error_messages={"empty": "Indiquez au moins une façon de vous impliquer."},
+    )
+    volunteer_poles = serializers.ListField(
+        child=serializers.ChoiceField(choices=Candidature.POLE_CHOICES),
+        required=False,
+        default=list,
+    )
+
     class Meta:
         model = Candidature
         fields = [
             "first_name", "last_name", "email", "phone",
             "country", "profession", "linkedin_url", "motivation", "cv",
+            "engagements", "volunteer_poles",
         ]
         # Le champ email est unique en base ; on désactive le UniqueValidator
         # automatique de DRF pour appliquer notre propre règle métier ci-dessous
@@ -24,6 +37,21 @@ class CandidatureCreateSerializer(serializers.ModelSerializer):
         if value and value.size > MAX_CV_SIZE:
             raise serializers.ValidationError("Le CV ne doit pas dépasser 5 Mo.")
         return value
+
+    def validate(self, attrs):
+        # Dédoublonnage en conservant l'ordre d'affichage des choix.
+        engagements = [k for k, _ in Candidature.ENGAGEMENT_CHOICES if k in attrs.get("engagements", [])]
+        poles = [k for k, _ in Candidature.POLE_CHOICES if k in attrs.get("volunteer_poles", [])]
+        if Candidature.ENGAGEMENT_VOLUNTEER in engagements:
+            if not poles:
+                raise serializers.ValidationError(
+                    {"volunteer_poles": "Choisissez au moins un pôle pour le bénévolat."}
+                )
+        else:
+            poles = []  # pôles ignorés si le bénévolat n'est pas coché
+        attrs["engagements"] = engagements
+        attrs["volunteer_poles"] = poles
+        return attrs
 
     def validate_email(self, value):
         # Un compte utilisateur peut exister sans que la personne soit membre : le rôle
@@ -68,7 +96,8 @@ class CandidatureListSerializer(serializers.ModelSerializer):
         model = Candidature
         fields = [
             "id", "first_name", "last_name", "email", "country",
-            "profession", "status", "created_at", "reviewed_at", "reviewed_by_name",
+            "profession", "engagements", "volunteer_poles",
+            "status", "created_at", "reviewed_at", "reviewed_by_name",
         ]
 
 
@@ -80,7 +109,8 @@ class CandidatureDetailSerializer(serializers.ModelSerializer):
         model = Candidature
         fields = [
             "id", "first_name", "last_name", "email", "phone", "country",
-            "profession", "linkedin_url", "motivation", "cv", "status",
+            "profession", "linkedin_url", "motivation", "cv",
+            "engagements", "volunteer_poles", "status",
             "rejection_reason", "reviewed_at", "reviewed_by_name", "created_at",
         ]
 

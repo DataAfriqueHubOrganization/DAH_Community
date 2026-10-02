@@ -1,7 +1,30 @@
 from celery import shared_task
 from django.conf import settings
 
-from apps.common.email import send_transactional_email as _send_email
+from apps.common.email import send_branded_email
+
+
+def _engagement_details(c) -> list[tuple[str, str]]:
+    """Lignes « souhaits d'engagement » d'une candidature, pour les encadrés."""
+    rows = [("Engagement", "\n".join(c.get_engagements_display()))]
+    if c.volunteer_poles:
+        rows.append(("Pôles (bénévolat)", ", ".join(c.get_volunteer_poles_display())))
+    return rows
+
+
+def _credentials_email(user, temp_password: str, *, subject: str, title: str, intro: str):
+    send_branded_email(
+        subject=subject,
+        recipient_list=[user.email],
+        preheader="Vos identifiants de connexion à l'espace membre.",
+        title=title,
+        greeting=f"Bonjour {user.first_name},",
+        paragraphs=[intro],
+        details=[("Email", user.email), ("Mot de passe temporaire", temp_password)],
+        details_title="Vos identifiants",
+        cta=("Me connecter à mon espace", f"{settings.FRONTEND_URL}/login"),
+        notice="Pour votre sécurité, changez ce mot de passe après votre première connexion (Mon profil → Changer le mot de passe).",
+    )
 
 
 @shared_task(bind=True, max_retries=3)
@@ -23,18 +46,21 @@ def send_candidature_received_notification(self, candidature_pk: int):
     if not recipients:
         return
 
-    review_url = f"{settings.FRONTEND_URL}/manage/candidatures/{c.pk}/"
-    _send_email(
+    send_branded_email(
         subject=f"Nouvelle candidature — {c.full_name}",
-        message=(
-            f"Une nouvelle candidature a été reçue.\n\n"
-            f"Candidat : {c.full_name}\n"
-            f"Email    : {c.email}\n"
-            f"Pays     : {c.country}\n"
-            f"Métier   : {c.profession}\n\n"
-            f"Examiner la candidature : {review_url}"
-        ),
         recipient_list=recipients,
+        preheader=f"{c.full_name} souhaite rejoindre la communauté.",
+        title="Nouvelle candidature reçue",
+        paragraphs=[f"{c.full_name} souhaite rejoindre la communauté Data Afrique Hub."],
+        details=[
+            ("Candidat", c.full_name),
+            ("Email", c.email),
+            ("Pays", c.country),
+            ("Profession", c.profession),
+            *_engagement_details(c),
+        ],
+        cta=("Examiner la candidature", f"{settings.FRONTEND_URL}/memberships/{c.pk}"),
+        closing="L'équipe Data Afrique Hub",
     )
 
 
@@ -47,20 +73,24 @@ def send_candidature_confirmation_email(self, candidature_pk: int):
     except Candidature.DoesNotExist:
         return
 
-    _send_email(
+    send_branded_email(
         subject="Votre candidature a bien été reçue — Data Afrique Hub",
-        message=(
-            f"Bonjour {c.first_name},\n\n"
-            f"Nous avons bien reçu votre candidature pour rejoindre la communauté "
-            f"Data Afrique Hub. Notre équipe va l'examiner et reviendra vers vous "
-            f"par email dès qu'une décision sera prise.\n\n"
-            f"Récapitulatif de votre candidature :\n"
-            f"  Pays     : {c.country}\n"
-            f"  Profession : {c.profession}\n\n"
-            f"Merci pour votre intérêt et à bientôt,\n"
-            f"L'équipe Data Afrique Hub"
-        ),
         recipient_list=[c.email],
+        preheader="Notre équipe examine votre candidature.",
+        title="Merci pour votre candidature !",
+        greeting=f"Bonjour {c.first_name},",
+        paragraphs=[
+            "Nous avons bien reçu votre candidature pour rejoindre la communauté "
+            "Data Afrique Hub. Notre équipe va l'examiner et reviendra vers vous "
+            "par email dès qu'une décision sera prise.",
+        ],
+        details=[
+            ("Pays", c.country),
+            ("Profession", c.profession),
+            *_engagement_details(c),
+        ],
+        details_title="Récapitulatif",
+        closing="Merci pour votre intérêt et à bientôt,\nL'équipe Data Afrique Hub",
     )
 
 
@@ -74,23 +104,11 @@ def send_welcome_email(self, user_pk: int, temp_password: str):
     except User.DoesNotExist:
         return
 
-    login_url = f"{settings.FRONTEND_URL}/login"
-    _send_email(
+    _credentials_email(
+        user, temp_password,
         subject="Bienvenue dans la communauté Data Afrique Hub !",
-        message=(
-            f"Bonjour {user.first_name},\n\n"
-            f"Votre candidature a été acceptée. Vous faites maintenant partie de la communauté "
-            f"Data Afrique Hub !\n\n"
-            f"Voici vos identifiants de connexion :\n"
-            f"  Email          : {user.email}\n"
-            f"  Mot de passe   : {temp_password}\n\n"
-            f"Connectez-vous ici : {login_url}\n\n"
-            f"Nous vous recommandons de changer votre mot de passe après la première connexion "
-            f"(Profil → Sécurité).\n\n"
-            f"À bientôt,\n"
-            f"L'équipe Data Afrique Hub"
-        ),
-        recipient_list=[user.email],
+        title="Bienvenue dans la communauté !",
+        intro="Votre candidature a été acceptée. Vous faites maintenant partie de la communauté Data Afrique Hub !",
     )
 
 
@@ -107,38 +125,27 @@ def send_membership_restored_email(self, user_pk: int, temp_password: str):
     except User.DoesNotExist:
         return
 
-    login_url = f"{settings.FRONTEND_URL}/login"
-    _send_email(
+    _credentials_email(
+        user, temp_password,
         subject="Votre candidature a été acceptée — Data Afrique Hub",
-        message=(
-            f"Bonjour {user.first_name},\n\n"
-            f"Votre candidature a été acceptée. Vous faites de nouveau partie de la "
-            f"communauté Data Afrique Hub !\n\n"
-            f"Voici vos identifiants de connexion :\n"
-            f"  Email          : {user.email}\n"
-            f"  Mot de passe   : {temp_password}\n\n"
-            f"Connectez-vous ici : {login_url}\n\n"
-            f"Nous vous recommandons de changer votre mot de passe après la première connexion "
-            f"(Profil → Sécurité).\n\n"
-            f"À bientôt,\n"
-            f"L'équipe Data Afrique Hub"
-        ),
-        recipient_list=[user.email],
+        title="Votre candidature a été acceptée",
+        intro="Votre candidature a été acceptée. Vous faites de nouveau partie de la communauté Data Afrique Hub !",
     )
 
 
 @shared_task(bind=True, max_retries=3)
 def send_rejection_email(self, email: str, first_name: str, reason: str):
-    _send_email(
+    send_branded_email(
         subject="Votre candidature — Data Afrique Hub",
-        message=(
-            f"Bonjour {first_name},\n\n"
-            f"Nous avons examiné votre candidature pour rejoindre la communauté Data Afrique Hub "
-            f"et nous avons le regret de vous informer qu'elle n'a pas été retenue.\n\n"
-            f"Motif : {reason}\n\n"
-            f"Nous vous encourageons à postuler de nouveau dans le futur.\n\n"
-            f"Cordialement,\n"
-            f"L'équipe Data Afrique Hub"
-        ),
         recipient_list=[email],
+        title="Réponse à votre candidature",
+        greeting=f"Bonjour {first_name},",
+        paragraphs=[
+            "Nous avons examiné votre candidature pour rejoindre la communauté Data Afrique Hub "
+            "et nous avons le regret de vous informer qu'elle n'a pas été retenue.",
+        ],
+        details=[("Motif", reason)],
+        after=["Nous vous encourageons à postuler de nouveau dans le futur."],
+        cta=("Suivre nos événements publics", f"{settings.FRONTEND_URL}/events"),
+        closing="Cordialement,\nL'équipe Data Afrique Hub",
     )

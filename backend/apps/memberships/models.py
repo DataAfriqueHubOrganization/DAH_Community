@@ -27,6 +27,22 @@ class Candidature(TimestampMixin):
         (STATUS_REJECTED, "Rejetée"),
     ]
 
+    # Ce que la personne attend de la communauté (plusieurs choix possibles).
+    ENGAGEMENT_VOLUNTEER = "volunteer"
+    ENGAGEMENT_CHOICES = [
+        (ENGAGEMENT_VOLUNTEER, "M'engager comme bénévole dans un pôle"),
+        ("training", "Me former et monter en compétences"),
+        ("expertise", "Partager mon expertise (intervention, mentorat)"),
+        ("news", "Rester informé·e de la vie de la communauté"),
+    ]
+    # Pôles de DAH (sous-entités de la charte graphique) — pour le bénévolat.
+    POLE_CHOICES = [
+        ("data_tour", "Data Tour"),
+        ("academy", "DAH Academy"),
+        ("media", "DAH Média"),
+        ("labs", "DAH Labs"),
+    ]
+
     first_name = models.CharField(max_length=100, verbose_name="Prénom")
     last_name = models.CharField(max_length=100, verbose_name="Nom")
     email = models.EmailField(unique=True, verbose_name="Email")
@@ -35,6 +51,11 @@ class Candidature(TimestampMixin):
     profession = models.CharField(max_length=150, verbose_name="Profession")
     linkedin_url = models.URLField(blank=True, verbose_name="LinkedIn")
     motivation = models.TextField(verbose_name="Motivation")
+    # Listes de clés de ENGAGEMENT_CHOICES / POLE_CHOICES. JSONField plutôt
+    # qu'ArrayField : portable et suffisant pour quelques valeurs. Vides pour les
+    # candidatures antérieures à ces champs.
+    engagements = models.JSONField(default=list, blank=True, verbose_name="Souhaits d'engagement")
+    volunteer_poles = models.JSONField(default=list, blank=True, verbose_name="Pôles (bénévolat)")
     cv = models.FileField(
         upload_to="candidatures_cv/", null=True, blank=True,
         storage=_cv_storage,
@@ -68,3 +89,11 @@ class Candidature(TimestampMixin):
     @property
     def full_name(self):
         return f"{self.first_name} {self.last_name}".strip()
+
+    def get_engagements_display(self) -> list[str]:
+        labels = dict(self.ENGAGEMENT_CHOICES)
+        return [labels.get(key, key) for key in self.engagements]
+
+    def get_volunteer_poles_display(self) -> list[str]:
+        labels = dict(self.POLE_CHOICES)
+        return [labels.get(key, key) for key in self.volunteer_poles]

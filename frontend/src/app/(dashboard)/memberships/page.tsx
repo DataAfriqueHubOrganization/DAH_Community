@@ -257,6 +257,20 @@ function CandidatureCard({
               <Clock size={10} /> {fmt.date(c.created_at)}
             </span>
           </div>
+          {c.engagements?.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-1.5">
+              {c.engagements.map((key) => (
+                <span key={key} className="text-[11px] px-2 py-0.5 rounded-full bg-brand-blue/10 text-brand-deep">
+                  {t.candidature.engagements[key]?.label ?? key}
+                </span>
+              ))}
+              {c.volunteer_poles?.map((key) => (
+                <span key={key} className="text-[11px] px-2 py-0.5 rounded-full bg-brand-orange/15 text-orange-800">
+                  {t.candidature.poles[key]?.name ?? key}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
         <Link
           href={`/memberships/${c.id}`}

@@ -165,6 +165,37 @@ export default function CandidatureDetailPage({
         </div>
       </div>
 
+      {/* Souhaits d'engagement */}
+      <div className="bg-surface rounded-2xl border border-line-soft p-6">
+        <h3 className="text-xs font-semibold text-fg-subtle uppercase tracking-widest mb-3">
+          {a.engagementTitle}
+        </h3>
+        {candidature.engagements?.length ? (
+          <ul className="space-y-2">
+            {candidature.engagements.map((key) => (
+              <li key={key} className="flex items-start gap-2 text-sm text-fg">
+                <span className="mt-1.5 w-2 h-2 rounded-[2px] bg-brand-blue shrink-0" />
+                {t.candidature.engagements[key]?.label ?? key}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-fg-subtle italic">{a.notProvided}</p>
+        )}
+        {candidature.volunteer_poles?.length > 0 && (
+          <div className="mt-4">
+            <p className="text-xs text-fg-muted mb-2">{a.volunteerPoles}</p>
+            <div className="flex flex-wrap gap-2">
+              {candidature.volunteer_poles.map((key) => (
+                <span key={key} className="px-3 py-1 rounded-full text-xs font-semibold bg-brand-orange/15 text-orange-800">
+                  {t.candidature.poles[key]?.name ?? key}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Motivation */}
       <div className="bg-surface rounded-2xl border border-line-soft p-6">
         <h3 className="text-xs font-semibold text-fg-subtle uppercase tracking-widest mb-3">

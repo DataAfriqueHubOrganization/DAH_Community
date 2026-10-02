@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import { membershipsService } from "@/services/memberships.service";
-import { makeCandidatureSchema, type CandidatureInput } from "@/features/auth/schemas";
+import { makeCandidatureSchema, ENGAGEMENTS, POLES, type CandidatureInput } from "@/features/auth/schemas";
 import { AFRICAN_COUNTRIES, OTHER_COUNTRIES, sortedCountries } from "@/lib/countries";
 import { useI18n } from "@/i18n/I18nProvider";
 import { CheckCircle2, FileText, X } from "lucide-react";
@@ -60,7 +60,10 @@ export function CandidatureForm() {
       if (!cvFile) return membershipsService.submitCandidature(data);
       const formData = new FormData();
       Object.entries(data).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) formData.append(key, value);
+        if (value === undefined || value === null) return;
+        // Listes (engagements, pôles) : une entrée par valeur, lue côté API comme une liste.
+        if (Array.isArray(value)) value.forEach((v) => formData.append(key, v));
+        else formData.append(key, value);
       });
       formData.append("cv", cvFile);
       return membershipsService.submitCandidature(formData);
@@ -94,16 +97,25 @@ export function CandidatureForm() {
     trigger,
     watch,
     formState: { errors },
-  } = useForm<CandidatureInput>({ resolver: zodResolver(schema) });
+  } = useForm<CandidatureInput>({
+    resolver: zodResolver(schema),
+    defaultValues: { engagements: [], volunteer_poles: [] },
+  });
 
   const motivation = watch("motivation") ?? "";
+  const engagements = watch("engagements") ?? [];
+  const wantsToVolunteer = engagements.includes("volunteer");
+
+  // Champs validés avant de passer à l'étape suivante
+  const STEP_FIELDS: (keyof CandidatureInput)[][] = [
+    ["first_name", "last_name", "email", "phone"],
+    ["country", "profession", "linkedin_url", "motivation"],
+  ];
+  const lastStep = STEPS.length - 1;
 
   async function nextStep() {
-    const step1Fields: (keyof CandidatureInput)[] = [
-      "first_name", "last_name", "email", "phone",
-    ];
-    const valid = await trigger(step1Fields);
-    if (valid) setStep(1);
+    const valid = await trigger(STEP_FIELDS[step]);
+    if (valid) setStep((s) => s + 1);
   }
 
   if (mutation.isSuccess) {
@@ -238,6 +250,62 @@ export function CandidatureForm() {
         </>
       )}
 
+      {/* Étape 3 — Engagement */}
+      {step === 2 && (
+        <>
+          <fieldset className="space-y-3">
+            <legend className="text-sm font-medium text-fg mb-1">{c.engagementLabel} *</legend>
+            <p className="text-fg-subtle text-xs -mt-1 mb-2">{c.engagementHint}</p>
+            {ENGAGEMENTS.map((key) => (
+              <label
+                key={key}
+                className="flex items-start gap-3 rounded-xl border border-border px-4 py-3 cursor-pointer transition-colors hover:bg-surface-muted has-[:checked]:border-brand-blue has-[:checked]:bg-brand-blue/5"
+              >
+                <input
+                  type="checkbox"
+                  value={key}
+                  {...register("engagements")}
+                  className="mt-1 h-4 w-4 shrink-0 accent-[#2F6FE0]"
+                />
+                <span>
+                  <span className="block text-sm font-semibold text-fg">{c.engagements[key].label}</span>
+                  <span className="block text-xs text-fg-muted mt-0.5">{c.engagements[key].desc}</span>
+                </span>
+              </label>
+            ))}
+            {errors.engagements && <p className="text-red-500 text-xs">{errors.engagements.message}</p>}
+          </fieldset>
+
+          {wantsToVolunteer && (
+            <fieldset className="space-y-2 rounded-xl bg-brand-blue/5 border border-brand-blue/20 p-4">
+              <legend className="sr-only">{c.polesLabel}</legend>
+              <p className="text-sm font-medium text-fg">{c.polesLabel} *</p>
+              <p className="text-fg-subtle text-xs">{c.polesHint}</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                {POLES.map((key) => (
+                  <label
+                    key={key}
+                    className="flex items-start gap-2.5 rounded-lg border border-border bg-surface px-3 py-2.5 cursor-pointer transition-colors has-[:checked]:border-brand-orange has-[:checked]:bg-brand-orange/10"
+                  >
+                    <input
+                      type="checkbox"
+                      value={key}
+                      {...register("volunteer_poles")}
+                      className="mt-0.5 h-4 w-4 shrink-0 accent-[#FB7C2C]"
+                    />
+                    <span>
+                      <span className="block text-sm font-semibold text-fg">{c.poles[key].name}</span>
+                      <span className="block text-xs text-fg-muted mt-0.5">{c.poles[key].desc}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+              {errors.volunteer_poles && <p className="text-red-500 text-xs">{errors.volunteer_poles.message}</p>}
+            </fieldset>
+          )}
+        </>
+      )}
+
       {mutation.isError && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
           {extractErrorMessage(mutation.error, t.eventForm.genericError)}
@@ -249,13 +317,13 @@ export function CandidatureForm() {
         {step > 0 && (
           <button
             type="button"
-            onClick={() => setStep(0)}
+            onClick={() => setStep((s) => s - 1)}
             className="flex-1 border border-border rounded-lg py-2.5 text-sm font-medium hover:bg-muted transition-colors"
           >
             ← {t.common.back}
           </button>
         )}
-        {step === 0 ? (
+        {step < lastStep ? (
           <button
             type="button"
             onClick={nextStep}

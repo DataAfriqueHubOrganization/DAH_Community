@@ -5,6 +5,12 @@ import type { Messages } from "@/i18n/messages";
 // Dans un composant : const schema = useMemo(() => makeLoginSchema(t.validation), [t]);
 type V = Messages["validation"];
 
+// Clés partagées avec l'API (Candidature.ENGAGEMENT_CHOICES / POLE_CHOICES)
+export const ENGAGEMENTS = ["volunteer", "training", "expertise", "news"] as const;
+export const POLES = ["data_tour", "academy", "media", "labs"] as const;
+export type Engagement = (typeof ENGAGEMENTS)[number];
+export type Pole = (typeof POLES)[number];
+
 export const makeLoginSchema = (v: V) =>
   z.object({
     email: z.string().email(v.emailInvalid),
@@ -56,6 +62,13 @@ export const makeCandidatureSchema = (v: V) =>
       .optional()
       .or(z.literal("")),
     motivation: z.string().min(50, v.motivationMin),
+    engagements: z.array(z.enum(ENGAGEMENTS)).min(1, v.engagementRequired),
+    volunteer_poles: z.array(z.enum(POLES)),
+  })
+  // Bénévolat coché → au moins un pôle (même règle que l'API)
+  .refine((d) => !d.engagements.includes("volunteer") || d.volunteer_poles.length > 0, {
+    message: v.polesRequired,
+    path: ["volunteer_poles"],
   });
 
 export type LoginInput = z.infer<ReturnType<typeof makeLoginSchema>>;

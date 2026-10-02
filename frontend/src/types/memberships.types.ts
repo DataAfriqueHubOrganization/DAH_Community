@@ -1,4 +1,7 @@
+import type { Engagement, Pole } from "@/features/auth/schemas";
+
 export type CandidatureStatus = "pending" | "accepted" | "rejected";
+export type { Engagement, Pole };
 
 export interface CandidaturePayload {
   first_name: string;
@@ -9,6 +12,8 @@ export interface CandidaturePayload {
   profession: string;
   linkedin_url?: string;
   motivation: string;
+  engagements: Engagement[];
+  volunteer_poles: Pole[];
 }
 
 export interface CandidatureList {
@@ -18,6 +23,8 @@ export interface CandidatureList {
   email: string;
   country: string;
   profession: string;
+  engagements: Engagement[];
+  volunteer_poles: Pole[];
   status: CandidatureStatus;
   created_at: string;
   reviewed_at: string | null;

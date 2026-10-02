@@ -255,6 +255,8 @@ export const fr = {
     submit: "S'inscrire à l'événement",
   },
   validation: {
+    engagementRequired: "Indiquez au moins une façon de vous impliquer",
+    polesRequired: "Choisissez au moins un pôle pour le bénévolat",
     passwordRequired: "Mot de passe requis",
     firstNameMin: "Prénom requis (min. 2 caractères)",
     lastNameMin: "Nom requis (min. 2 caractères)",
@@ -348,7 +350,23 @@ export const fr = {
     goToSpace: "Accédez à votre espace",
   },
   candidature: {
-    steps: ["Identité", "Profil & Motivation"],
+    engagementLabel: "Comment souhaitez-vous vous impliquer ?",
+    engagementHint: "Plusieurs choix possibles — vous pourrez évoluer par la suite.",
+    engagements: {
+      volunteer: { label: "M'engager comme bénévole dans un pôle", desc: "Contribuer activement à l'organisation et aux projets d'un ou plusieurs pôles de DAH." },
+      training: { label: "Me former et monter en compétences", desc: "Accéder aux formations, ateliers, bootcamps et au mentorat de la communauté." },
+      expertise: { label: "Partager mon expertise", desc: "Intervenir lors d'événements, animer des ateliers ou mentorer d'autres membres." },
+      news: { label: "Rester informé·e de la vie de la communauté", desc: "Recevoir les actualités, événements et opportunités (emplois, appels à projets)." },
+    },
+    polesLabel: "Dans quel(s) pôle(s) souhaitez-vous vous engager ?",
+    polesHint: "Choisissez un ou plusieurs pôles.",
+    poles: {
+      data_tour: { name: "Data Tour", desc: "Challenge annuel des talents tech face aux défis africains." },
+      academy: { name: "DAH Academy", desc: "Parcours de formation diplômants et certifiants." },
+      media: { name: "DAH Média", desc: "Média dédié à l'IA, la Data Science et la Cybersécurité." },
+      labs: { name: "DAH Labs", desc: "Innovation et incubation de projets à fort impact." },
+    },
+    steps: ["Identité", "Profil & Motivation", "Engagement"],
     cvMustBePdf: "Le fichier doit être un PDF.",
     cvTooLarge: "Le fichier ne doit pas dépasser 5 Mo.",
     successTitle: "Candidature envoyée !",
@@ -480,6 +498,9 @@ export const fr = {
     noCertification: "Aucune certification ajoutée",
   },
   applications: {
+    engagementTitle: "Souhaits d'engagement",
+    volunteerPoles: "Pôles (bénévolat)",
+    notProvided: "Non renseigné (candidature antérieure)",
     status: { pending: "En attente", accepted: "Acceptée", rejected: "Rejetée" },
     restricted: "Accès réservé aux administrateurs et au président.",
     pendingPlural: "En attente",
