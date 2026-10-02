@@ -1,9 +1,13 @@
 from celery import shared_task
 from django.conf import settings
 
-from apps.common.email import send_transactional_email as _send_email
+from apps.common.email import send_branded_email
 
 ROLE_LABELS = {"lead": "responsable", "co_lead": "co-responsable"}
+
+
+def _department_url(department) -> str:
+    return f"{settings.FRONTEND_URL}/manage/departments/{department.pk}"
 
 
 @shared_task(bind=True, max_retries=3)
@@ -15,16 +19,16 @@ def send_member_added_email(self, membership_pk: int):
     except DepartmentMembership.DoesNotExist:
         return
 
-    _send_email(
-        subject=f"Vous rejoignez le département {membership.department.name} — Data Afrique Hub",
-        message=(
-            f"Bonjour {membership.user.first_name},\n\n"
-            f"Vous avez été ajouté(e) au département « {membership.department.name} » "
-            f"depuis le {membership.start_date:%d/%m/%Y}.\n\n"
-            f"À bientôt,\n"
-            f"L'équipe Data Afrique Hub"
-        ),
+    department = membership.department
+    send_branded_email(
+        subject=f"Vous rejoignez le département {department.name} — Data Afrique Hub",
         recipient_list=[membership.user.email],
+        preheader=f"Bienvenue dans le département {department.name}.",
+        title=f"Bienvenue dans le département {department.name}",
+        greeting=f"Bonjour {membership.user.first_name},",
+        paragraphs=[f"Vous avez été ajouté(e) au département « {department.name} »."],
+        details=[("Depuis le", f"{membership.start_date:%d/%m/%Y}")],
+        cta=("Voir mon département", _department_url(department)),
     )
 
 
@@ -37,16 +41,17 @@ def send_membership_ended_email(self, membership_pk: int):
     except DepartmentMembership.DoesNotExist:
         return
 
-    _send_email(
+    send_branded_email(
         subject=f"Fin de votre adhésion au département {membership.department.name} — Data Afrique Hub",
-        message=(
-            f"Bonjour {membership.user.first_name},\n\n"
-            f"Votre adhésion au département « {membership.department.name} » a pris fin "
-            f"le {membership.end_date:%d/%m/%Y}.\n\n"
-            f"Merci pour votre contribution,\n"
-            f"L'équipe Data Afrique Hub"
-        ),
         recipient_list=[membership.user.email],
+        title="Fin de votre adhésion au département",
+        greeting=f"Bonjour {membership.user.first_name},",
+        paragraphs=[
+            f"Votre adhésion au département « {membership.department.name} » a pris fin "
+            f"le {membership.end_date:%d/%m/%Y}.",
+            "Vous restez membre de la communauté Data Afrique Hub.",
+        ],
+        closing="Merci pour votre contribution,\nL'équipe Data Afrique Hub",
     )
 
 
@@ -63,17 +68,18 @@ def send_lead_appointed_email(self, department_pk: int, user_pk: int, role: str)
         return
 
     role_label = ROLE_LABELS.get(role, role)
-    _send_email(
+    send_branded_email(
         subject=f"Vous êtes {role_label} du département {department.name} — Data Afrique Hub",
-        message=(
-            f"Bonjour {user.first_name},\n\n"
-            f"Vous avez été nommé(e) {role_label} du département « {department.name} ».\n\n"
-            f"Vous pouvez désormais gérer ses membres, publier des annonces, organiser "
-            f"les séances et suivre les tâches de l'équipe.\n\n"
-            f"À bientôt,\n"
-            f"L'équipe Data Afrique Hub"
-        ),
         recipient_list=[user.email],
+        preheader=f"Vous avez été nommé(e) {role_label} du département {department.name}.",
+        title=f"Vous êtes {role_label} du département {department.name}",
+        greeting=f"Bonjour {user.first_name},",
+        paragraphs=[
+            f"Vous avez été nommé(e) {role_label} du département « {department.name} ».",
+            "Vous pouvez désormais gérer ses membres, publier des annonces, organiser "
+            "les séances et suivre les tâches de l'équipe.",
+        ],
+        cta=("Gérer le département", _department_url(department)),
     )
 
 
@@ -97,14 +103,17 @@ def send_announcement_email(self, announcement_pk: int):
     if not recipients:
         return
 
-    _send_email(
+    send_branded_email(
         subject=f"[{announcement.department.name}] {announcement.title}",
-        message=(
-            f"Nouvelle annonce dans le département « {announcement.department.name} » :\n\n"
-            f"{announcement.title}\n\n{announcement.content}\n\n"
-            f"L'équipe Data Afrique Hub"
-        ),
         recipient_list=recipients,
+        preheader=f"Nouvelle annonce du département {announcement.department.name}.",
+        title=announcement.title,
+        paragraphs=[
+            f"Nouvelle annonce dans le département « {announcement.department.name} » :",
+            announcement.content,
+        ],
+        cta=("Voir le département", _department_url(announcement.department)),
+        closing="L'équipe Data Afrique Hub",
     )
 
 
@@ -128,18 +137,17 @@ def send_session_reminder_email(self, session_pk: int):
     if not recipients:
         return
 
-    theme_line = f"Thème : {session.theme}\n" if session.theme else ""
-    meet_line = f"Lien de la réunion : {session.meet_link}\n" if session.meet_link else ""
-    _send_email(
+    send_branded_email(
         subject=f"Rappel — Séance du département {session.department.name}",
-        message=(
-            f"Rappel : une séance du département « {session.department.name} » est prévue "
-            f"le {session.date:%d/%m/%Y}.\n\n"
-            f"{theme_line}{meet_line}\n"
-            f"À bientôt,\n"
-            f"L'équipe Data Afrique Hub"
-        ),
         recipient_list=recipients,
+        preheader=f"Séance prévue le {session.date:%d/%m/%Y}.",
+        title=f"Rappel : séance du département {session.department.name}",
+        paragraphs=[f"Une séance du département « {session.department.name} » est prévue prochainement."],
+        details=[
+            ("Date", f"{session.date:%d/%m/%Y}"),
+            ("Thème", session.theme),
+        ],
+        cta=("Rejoindre la réunion", session.meet_link) if session.meet_link else None,
     )
 
 
@@ -154,17 +162,17 @@ def send_task_assigned_email(self, task_pk: int):
     if not task.assigned_to:
         return
 
-    due_line = f"Échéance : {task.due_date:%d/%m/%Y}\n" if task.due_date else ""
-    task_url = f"{settings.FRONTEND_URL}/my-department"
-    _send_email(
+    send_branded_email(
         subject=f"Nouvelle tâche assignée — {task.department.name}",
-        message=(
-            f"Bonjour {task.assigned_to.first_name},\n\n"
-            f"Une nouvelle tâche vous a été assignée dans le département « {task.department.name} » :\n\n"
-            f"{task.title}\n{task.description}\n\n{due_line}\n"
-            f"Voir mes tâches : {task_url}\n\n"
-            f"À bientôt,\n"
-            f"L'équipe Data Afrique Hub"
-        ),
         recipient_list=[task.assigned_to.email],
+        preheader=task.title,
+        title="Une nouvelle tâche vous a été assignée",
+        greeting=f"Bonjour {task.assigned_to.first_name},",
+        paragraphs=[f"Une nouvelle tâche vous a été assignée dans le département « {task.department.name} »."],
+        details=[
+            ("Tâche", task.title),
+            ("Description", task.description),
+            ("Échéance", f"{task.due_date:%d/%m/%Y}" if task.due_date else ""),
+        ],
+        cta=("Voir mes tâches", f"{settings.FRONTEND_URL}/my-department"),
     )

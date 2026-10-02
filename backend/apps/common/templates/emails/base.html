@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>{{ subject }}</title>
+</head>
+{% comment %}
+  Gabarit des emails Data Afrique Hub (charte graphique 2026).
+  Mise en page en tableaux + styles en ligne : seule approche fiable sur
+  Gmail / Outlook / Apple Mail. Polices : Open Sans / Inter si installées,
+  sinon Arial (les clients mail ne chargent pas les polices web).
+{% endcomment %}
+<body style="margin:0;padding:0;background-color:#F7F8FA;-webkit-text-size-adjust:100%;">
+  {% if preheader %}
+  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:#F7F8FA;">{{ preheader }}</div>
+  {% endif %}
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F7F8FA;">
+    <tr>
+      <td align="center" style="padding:32px 16px;">
+
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background-color:#FFFFFF;border-radius:14px;overflow:hidden;border:1px solid #E4E4E7;">
+          {# Filet de marque : bleu + accent orange #}
+          <tr>
+            <td style="padding:0;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td height="5" style="height:5px;line-height:5px;font-size:0;background-color:#2F6FE0;width:78%;">&nbsp;</td>
+                  <td height="5" style="height:5px;line-height:5px;font-size:0;background-color:#FB7C2C;width:22%;">&nbsp;</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          {# Logo : version complète couleur sur fond blanc, ≥ 160 px (charte) #}
+          <tr>
+            <td align="left" style="padding:28px 36px 8px 36px;">
+              <a href="{{ site_url }}" style="text-decoration:none;">
+                <img src="{{ logo_url }}" width="180" alt="Data Afrique Hub" style="display:block;width:180px;max-width:180px;height:auto;border:0;outline:none;font-family:Arial,sans-serif;font-size:20px;font-weight:bold;color:#2F6FE0;">
+              </a>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:16px 36px 8px 36px;font-family:'Inter',Arial,Helvetica,sans-serif;color:#3F3F46;font-size:16px;line-height:1.6;">
+              {% if title %}
+              <h1 style="margin:0 0 16px 0;font-family:'Open Sans',Arial,Helvetica,sans-serif;font-size:24px;line-height:1.3;font-weight:700;color:#111114;">{{ title }}</h1>
+              {% endif %}
+
+              {% if greeting %}
+              <p style="margin:0 0 16px 0;color:#111114;">{{ greeting }}</p>
+              {% endif %}
+
+              {% for paragraph in paragraphs %}
+              <p style="margin:0 0 16px 0;">{{ paragraph|linebreaksbr }}</p>
+              {% endfor %}
+
+              {% if details %}
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 20px 0;background-color:#EFF5FE;border-radius:10px;">
+                {% if details_title %}
+                <tr>
+                  <td colspan="2" style="padding:14px 18px 4px 18px;font-family:'Open Sans',Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#1E4FAF;">{{ details_title }}</td>
+                </tr>
+                {% endif %}
+                {% for label, value in details %}
+                <tr>
+                  <td valign="top" style="padding:{% if forloop.first and not details_title %}14px{% else %}6px{% endif %} 12px {% if forloop.last %}14px{% else %}6px{% endif %} 18px;width:38%;font-size:14px;color:#71717A;">{{ label }}</td>
+                  <td valign="top" style="padding:{% if forloop.first and not details_title %}14px{% else %}6px{% endif %} 18px {% if forloop.last %}14px{% else %}6px{% endif %} 0;font-size:14px;font-weight:600;color:#111114;">{{ value|linebreaksbr }}</td>
+                </tr>
+                {% endfor %}
+              </table>
+              {% endif %}
+
+              {% if notice %}
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 20px 0;">
+                <tr>
+                  <td style="padding:12px 16px;border-left:4px solid #FB7C2C;background-color:#FFF4EC;border-radius:0 8px 8px 0;font-size:14px;line-height:1.55;color:#3F3F46;">{{ notice|linebreaksbr }}</td>
+                </tr>
+              </table>
+              {% endif %}
+
+              {% if cta_url %}
+              {# Bouton « bulletproof » : un lien dans une cellule colorée #}
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 24px 0;">
+                <tr>
+                  <td align="center" bgcolor="#2F6FE0" style="border-radius:10px;background-color:#2F6FE0;">
+                    <a href="{{ cta_url }}" target="_blank" style="display:inline-block;padding:14px 28px;font-family:'Open Sans',Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:#FFFFFF;text-decoration:none;border-radius:10px;">{{ cta_label }}</a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:0 0 16px 0;font-size:13px;line-height:1.5;color:#71717A;">Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :<br><a href="{{ cta_url }}" style="color:#2F6FE0;word-break:break-all;">{{ cta_url }}</a></p>
+              {% endif %}
+
+              {% for paragraph in after %}
+              <p style="margin:0 0 16px 0;">{{ paragraph|linebreaksbr }}</p>
+              {% endfor %}
+
+              <p style="margin:8px 0 28px 0;color:#111114;">{{ closing|linebreaksbr }}</p>
+            </td>
+          </tr>
+
+          {# Pied : bleu profond de la charte #}
+          <tr>
+            <td style="background-color:#1E4FAF;padding:22px 36px;font-family:'Inter',Arial,Helvetica,sans-serif;">
+              <p style="margin:0 0 6px 0;font-family:'Open Sans',Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#FFFFFF;">Former · Innover · Transformer</p>
+              <p style="margin:0;font-size:12px;line-height:1.6;color:#DEE9FC;">
+                Data Afrique Hub — la communauté Data &amp; IA qui connecte l'Afrique.<br>
+                <a href="{{ site_url }}" style="color:#FFFFFF;text-decoration:underline;">{{ site_host }}</a>
+              </p>
+            </td>
+          </tr>
+        </table>
+
+        <p style="margin:16px 0 0 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:1.5;color:#9CA0A8;text-align:center;">
+          Vous recevez cet email car vous êtes en relation avec la communauté Data Afrique Hub.
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
