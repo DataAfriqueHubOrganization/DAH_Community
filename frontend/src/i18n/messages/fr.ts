@@ -636,6 +636,7 @@ export const fr = {
     view: "Voir",
   },
   deptDetail: {
+    projectsMembersOnly: "Les projets de ce département sont réservés à ses membres.",
     changeSort: "Changer le sens du tri",
     sortNearest: "Échéance la plus proche d'abord",
     sortFurthest: "Échéance la plus lointaine d'abord",

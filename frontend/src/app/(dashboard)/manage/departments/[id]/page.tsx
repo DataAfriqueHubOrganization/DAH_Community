@@ -138,7 +138,9 @@ export default function DepartmentWorkspacePage({ params }: { params: Promise<{ 
   const { data: projectsData, isLoading: isLoadingProjects } = useQuery({
     queryKey: ["projects", "by-department", departmentId],
     queryFn: () => projectsService.list(departmentId).then((r) => r.data),
-    enabled: !!department,
+    // Projets réservés aux membres du département (et au bureau, via can_manage) :
+    // l'API ne les renvoie de toute façon pas aux autres.
+    enabled: !!department && (department.can_manage || department.is_member),
   });
 
   const { data: myTasks } = useQuery({
@@ -331,7 +333,13 @@ export default function DepartmentWorkspacePage({ params }: { params: Promise<{ 
         </section>
       )}
 
-      {/* Projets */}
+      {/* Projets — visibles uniquement par les membres du département et le bureau */}
+      {viewerMode === "visiteur" ? (
+        <section className="bg-surface rounded-2xl border border-line-soft p-5 flex items-center gap-3 text-sm text-fg-muted">
+          <FolderKanban size={18} className="text-fg-subtle shrink-0" />
+          {d.projectsMembersOnly}
+        </section>
+      ) : (
       <section>
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-fg-muted">{d.projects} · {projects.length}</h2>
@@ -375,8 +383,9 @@ export default function DepartmentWorkspacePage({ params }: { params: Promise<{ 
           </div>
         )}
       </section>
+      )}
 
-      {selectedProject && (
+      {selectedProject && viewerMode !== "visiteur" && (
         <ProjectDetailPanel
           project={selectedProject}
           assignees={assignees}

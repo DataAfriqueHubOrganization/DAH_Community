@@ -635,6 +635,7 @@ export const en: Messages = {
     view: "View",
   },
   deptDetail: {
+    projectsMembersOnly: "This department's projects are only visible to its members.",
     changeSort: "Change sort order",
     sortNearest: "Nearest deadline first",
     sortFurthest: "Furthest deadline first",

@@ -33,6 +33,21 @@ def is_current_department_member(user, department) -> bool:
     ).exists()
 
 
+def get_user_department_ids(user) -> set:
+    """Départements « à soi » : adhésion en cours, ou lead/co-lead. Sert à limiter
+    ce qu'un membre voit des départements (ex. projets) à son propre département."""
+    from .models import Department
+
+    today = timezone.now().date()
+    ids = set(
+        user.department_memberships.filter(
+            Q(end_date__isnull=True) | Q(end_date__gte=today)
+        ).values_list("department_id", flat=True)
+    )
+    ids |= set(Department.objects.filter(Q(lead=user) | Q(co_lead=user)).values_list("id", flat=True))
+    return ids
+
+
 def get_department_member_ids(department) -> set:
     """Lead, co-lead et adhérents actuels d'un département — utilisé pour
     restreindre à qui un responsable peut assigner une tâche de projet."""

@@ -1,3 +1,4 @@
+from django.db.models import Q
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
@@ -6,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
 from apps.common.permissions import IsOwnerOrAdmin, is_bureau
+from apps.departments.services import get_user_department_ids
 from .models import Project, ProjectTask
 from .serializers import (
     ProjectSerializer, ProjectWriteSerializer,
@@ -14,14 +16,24 @@ from .serializers import (
 
 
 class ProjectViewSet(ModelViewSet):
-    """Projets communautaires — lecture ouverte à tout membre connecté. Création
-    réservée par ProjectWriteSerializer.validate() (responsable/adjoint du
-    département visé, ou bureau/admin) ; édition/suppression réservées au
-    propriétaire, à l'admin ou au bureau."""
+    """Projets des départements. Lecture : bureau/admin voient tout ; les autres
+    uniquement les projets de leur(s) département(s) (adhésion en cours ou
+    lead/co-lead), plus ceux qu'ils portent ou auxquels ils sont rattachés — un
+    projet d'un autre département répond 404, tâches comprises. Création réservée
+    par ProjectWriteSerializer.validate() (responsable/adjoint du département
+    visé, ou bureau/admin) ; édition/suppression réservées au propriétaire, à
+    l'admin ou au bureau."""
     queryset = Project.objects.select_related("owner", "department").prefetch_related("members")
 
     def get_queryset(self):
         qs = super().get_queryset()
+        user = self.request.user
+        if not is_bureau(user):
+            qs = qs.filter(
+                Q(department_id__in=get_user_department_ids(user))
+                | Q(owner=user)
+                | Q(members=user)
+            ).distinct()
         department_id = self.request.query_params.get("department")
         if department_id:
             qs = qs.filter(department_id=department_id)
