@@ -1,57 +1,65 @@
 import { z } from "zod";
+import type { Messages } from "@/i18n/messages";
 
-export const loginSchema = z.object({
-  email: z.string().email("Email invalide"),
-  password: z.string().min(1, "Mot de passe requis"),
-});
+// Fabriques : les messages d'erreur suivent la langue courante (t.validation).
+// Dans un composant : const schema = useMemo(() => makeLoginSchema(t.validation), [t]);
+type V = Messages["validation"];
 
-export const registerSchema = z
-  .object({
-    first_name: z.string().min(2, "Prénom requis (min 2 caractères)"),
-    last_name: z.string().min(2, "Nom requis (min 2 caractères)"),
-    email: z.string().email("Email invalide"),
+export const makeLoginSchema = (v: V) =>
+  z.object({
+    email: z.string().email(v.emailInvalid),
+    password: z.string().min(1, v.passwordRequired),
+  });
+
+export const makeRegisterSchema = (v: V) =>
+  z
+    .object({
+      first_name: z.string().min(2, v.firstNameMin),
+      last_name: z.string().min(2, v.lastNameMin),
+      email: z.string().email(v.emailInvalid),
+      phone: z.string().optional(),
+      password: z.string().min(8, v.passwordMin),
+      password_confirm: z.string().min(1, v.passwordConfirm),
+    })
+    .refine((d) => d.password === d.password_confirm, {
+      message: v.passwordMismatch,
+      path: ["password_confirm"],
+    });
+
+export const makeForgotPasswordSchema = (v: V) =>
+  z.object({
+    email: z.string().email(v.emailInvalid),
+  });
+
+export const makeResetPasswordSchema = (v: V) =>
+  z
+    .object({
+      new_password: z.string().min(8, v.passwordMin),
+      new_password_confirm: z.string().min(1, v.passwordConfirm),
+    })
+    .refine((d) => d.new_password === d.new_password_confirm, {
+      message: v.passwordMismatch,
+      path: ["new_password_confirm"],
+    });
+
+export const makeCandidatureSchema = (v: V) =>
+  z.object({
+    first_name: z.string().min(2, v.firstNameMin),
+    last_name: z.string().min(2, v.lastNameMin),
+    email: z.string().email(v.emailInvalid),
     phone: z.string().optional(),
-    password: z.string().min(8, "Minimum 8 caractères"),
-    password_confirm: z.string().min(1, "Confirmez le mot de passe"),
-  })
-  .refine((d) => d.password === d.password_confirm, {
-    message: "Les mots de passe ne correspondent pas",
-    path: ["password_confirm"],
+    country: z.string().min(2, v.countryRequired),
+    profession: z.string().min(2, v.professionRequired),
+    linkedin_url: z
+      .string()
+      .url(v.linkedinInvalid)
+      .optional()
+      .or(z.literal("")),
+    motivation: z.string().min(50, v.motivationMin),
   });
 
-export const forgotPasswordSchema = z.object({
-  email: z.string().email("Email invalide"),
-});
-
-export const resetPasswordSchema = z
-  .object({
-    new_password: z.string().min(8, "Minimum 8 caractères"),
-    new_password_confirm: z.string().min(1, "Confirmez le mot de passe"),
-  })
-  .refine((d) => d.new_password === d.new_password_confirm, {
-    message: "Les mots de passe ne correspondent pas",
-    path: ["new_password_confirm"],
-  });
-
-export const candidatureSchema = z.object({
-  first_name: z.string().min(2, "Prénom requis (min. 2 caractères)"),
-  last_name: z.string().min(2, "Nom requis (min. 2 caractères)"),
-  email: z.string().email("Email invalide"),
-  phone: z.string().optional(),
-  country: z.string().min(2, "Pays requis"),
-  profession: z.string().min(2, "Profession requise"),
-  linkedin_url: z
-    .string()
-    .url("URL LinkedIn invalide")
-    .optional()
-    .or(z.literal("")),
-  motivation: z
-    .string()
-    .min(50, "Décrivez votre motivation (minimum 50 caractères)"),
-});
-
-export type LoginInput = z.infer<typeof loginSchema>;
-export type RegisterInput = z.infer<typeof registerSchema>;
-export type CandidatureInput = z.infer<typeof candidatureSchema>;
-export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
-export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
+export type LoginInput = z.infer<ReturnType<typeof makeLoginSchema>>;
+export type RegisterInput = z.infer<ReturnType<typeof makeRegisterSchema>>;
+export type CandidatureInput = z.infer<ReturnType<typeof makeCandidatureSchema>>;
+export type ForgotPasswordInput = z.infer<ReturnType<typeof makeForgotPasswordSchema>>;
+export type ResetPasswordInput = z.infer<ReturnType<typeof makeResetPasswordSchema>>;

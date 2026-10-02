@@ -8,12 +8,15 @@ import { membersService } from "@/services/members.service";
 import { membershipsService } from "@/services/memberships.service";
 import { Users, CalendarDays, Award, FileText, ArrowRight, Clock, CheckCircle2 } from "lucide-react";
 import { isAdmin, isBureau } from "@/types/auth.types";
-import { formatDate, positionLabel, avatarUrl } from "@/lib/utils";
+import { avatarUrl } from "@/lib/utils";
+import { useI18n } from "@/i18n/I18nProvider";
 import type { Event } from "@/types/events.types";
 import type { CandidatureList } from "@/types/memberships.types";
 
 export function DashboardHome() {
   const { data: user, isLoading } = useCurrentUser();
+  const { t, fmt, label } = useI18n();
+  const d = t.dashboardHome;
 
   const { data: eventsData } = useQuery({
     queryKey: ["events", "dashboard"],
@@ -55,11 +58,11 @@ export function DashboardHome() {
       {/* Greeting */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-brand-navy">
-            Bonjour, {user?.first_name} !
+          <h1 className="text-2xl font-bold text-fg">
+            {d.greeting(user?.first_name ?? "")}
           </h1>
-          <p className="text-gray-500 text-sm mt-1">
-            {user ? positionLabel(user) : ""} · {formatDate(new Date().toISOString())}
+          <p className="text-fg-muted text-sm mt-1">
+            {user ? label.position(user) : ""} · {fmt.date(new Date().toISOString())}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -73,62 +76,62 @@ export function DashboardHome() {
 
       {/* Stats cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Link href="/events" target="_blank" rel="noopener noreferrer" className="bg-white rounded-xl border border-gray-100 p-5 flex items-center gap-4 hover:shadow-md transition-shadow group">
+        <Link href="/events" target="_blank" rel="noopener noreferrer" className="bg-surface rounded-xl border border-line-soft p-5 flex items-center gap-4 hover:shadow-md transition-shadow group">
           <div className="p-2.5 rounded-xl bg-brand-blue/10 text-brand-blue group-hover:bg-brand-blue group-hover:text-white transition-colors">
             <CalendarDays size={20} />
           </div>
           <div>
-            <p className="text-2xl font-bold text-brand-navy">{allEvents.length}</p>
-            <p className="text-xs text-gray-500">Événements</p>
+            <p className="text-2xl font-bold text-fg">{allEvents.length}</p>
+            <p className="text-xs text-fg-muted">{d.events}</p>
           </div>
         </Link>
 
         {(isAdminUser || isBureauUser) && (
-          <Link href="/members" target="_blank" rel="noopener noreferrer" className="bg-white rounded-xl border border-gray-100 p-5 flex items-center gap-4 hover:shadow-md transition-shadow group">
-            <div className="p-2.5 rounded-xl bg-brand-orange/10 text-brand-orange group-hover:bg-brand-orange group-hover:text-white transition-colors">
+          <Link href="/members" target="_blank" rel="noopener noreferrer" className="bg-surface rounded-xl border border-line-soft p-5 flex items-center gap-4 hover:shadow-md transition-shadow group">
+            <div className="p-2.5 rounded-xl bg-brand-orange/10 text-brand-orange group-hover:bg-brand-orange group-hover:text-ink transition-colors">
               <Users size={20} />
             </div>
             <div>
-              <p className="text-2xl font-bold text-brand-navy">{allMembers.length}</p>
-              <p className="text-xs text-gray-500">Membres</p>
+              <p className="text-2xl font-bold text-fg">{allMembers.length}</p>
+              <p className="text-xs text-fg-muted">{d.members}</p>
             </div>
           </Link>
         )}
 
         {(isAdminUser || user?.poste === "president") && (
-          <Link href="/memberships" className="bg-white rounded-xl border border-gray-100 p-5 flex items-center gap-4 hover:shadow-md transition-shadow group">
-            <div className="p-2.5 rounded-xl bg-purple-100 text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition-colors">
+          <Link href="/memberships" className="bg-surface rounded-xl border border-line-soft p-5 flex items-center gap-4 hover:shadow-md transition-shadow group">
+            <div className="p-2.5 rounded-xl bg-brand-blue/10 text-brand-blue group-hover:bg-brand-blue group-hover:text-white transition-colors">
               <FileText size={20} />
             </div>
             <div>
-              <p className="text-2xl font-bold text-brand-navy">{pendingCandidatures.length}</p>
-              <p className="text-xs text-gray-500">Candidatures en attente</p>
+              <p className="text-2xl font-bold text-fg">{pendingCandidatures.length}</p>
+              <p className="text-xs text-fg-muted">{d.pendingApplications}</p>
             </div>
           </Link>
         )}
 
-        <div className="bg-white rounded-xl border border-gray-100 p-5 flex items-center gap-4">
-          <div className="p-2.5 rounded-xl bg-green-100 text-green-600">
+        <div className="bg-surface rounded-xl border border-line-soft p-5 flex items-center gap-4">
+          <div className="p-2.5 rounded-xl bg-brand-orange/10 text-orange-600">
             <Award size={20} />
           </div>
           <div>
-            <p className="text-2xl font-bold text-brand-navy">0</p>
-            <p className="text-xs text-gray-500">Certificats</p>
+            <p className="text-2xl font-bold text-fg">0</p>
+            <p className="text-xs text-fg-muted">{d.certificates}</p>
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Prochains événements */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-gray-100 p-6">
+        <div className="lg:col-span-2 bg-surface rounded-xl border border-line-soft p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-brand-navy">Prochains événements</h2>
+            <h2 className="font-semibold text-fg">{t.home.events.title}</h2>
             <Link href="/events" target="_blank" rel="noopener noreferrer" className="text-xs text-brand-blue hover:underline flex items-center gap-1">
-              Voir tout <ArrowRight size={12} />
+              {t.common.seeAll} <ArrowRight size={12} />
             </Link>
           </div>
           {upcomingEvents.length === 0 ? (
-            <p className="text-gray-400 text-sm py-6 text-center">Aucun événement à venir</p>
+            <p className="text-fg-subtle text-sm py-6 text-center">{d.noUpcoming}</p>
           ) : (
             <div className="space-y-3">
               {upcomingEvents.map((event) => (
@@ -137,17 +140,17 @@ export function DashboardHome() {
                   href={`/events/${event.id}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors group"
+                  className="flex items-center gap-3 p-3 rounded-xl hover:bg-surface-muted transition-colors group"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-brand-navy flex items-center justify-center text-white shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-brand-deep flex items-center justify-center text-white shrink-0">
                     <CalendarDays size={16} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-brand-navy text-sm line-clamp-1 group-hover:text-brand-blue transition-colors">
+                    <p className="font-medium text-fg text-sm line-clamp-1 group-hover:text-brand-blue transition-colors">
                       {event.title}
                     </p>
-                    <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
-                      <Clock size={10} /> {formatDate(event.start_date)}
+                    <p className="text-xs text-fg-subtle flex items-center gap-1 mt-0.5">
+                      <Clock size={10} /> {fmt.date(event.start_date)}
                     </p>
                   </div>
                   {event.is_registered && (
@@ -160,8 +163,8 @@ export function DashboardHome() {
         </div>
 
         {/* Mon profil / prochaines étapes */}
-        <div className="bg-white rounded-xl border border-gray-100 p-6">
-          <h2 className="font-semibold text-brand-navy mb-4">Mon profil</h2>
+        <div className="bg-surface rounded-xl border border-line-soft p-6">
+          <h2 className="font-semibold text-fg mb-4">{t.sidebar.profile}</h2>
 
           {myProfile ? (
             <div className="space-y-4">
@@ -172,7 +175,7 @@ export function DashboardHome() {
                   className="w-12 h-12 rounded-full border-2 border-brand-blue"
                 />
                 <div>
-                  <p className="font-medium text-brand-navy text-sm">{user?.full_name}</p>
+                  <p className="font-medium text-fg text-sm">{user?.full_name}</p>
                   {myProfile.member_number && (
                     <p className="text-xs text-brand-orange font-medium">{myProfile.member_number}</p>
                   )}
@@ -187,7 +190,7 @@ export function DashboardHome() {
                     </span>
                   ))}
                   {myProfile.skills.length > 4 && (
-                    <span className="text-gray-400 text-xs px-2 py-0.5">+{myProfile.skills.length - 4}</span>
+                    <span className="text-fg-subtle text-xs px-2 py-0.5">+{myProfile.skills.length - 4}</span>
                   )}
                 </div>
               )}
@@ -196,17 +199,17 @@ export function DashboardHome() {
                 href="/profile"
                 className="block w-full text-center py-2.5 text-sm font-medium text-brand-blue border border-brand-blue/30 rounded-xl hover:bg-brand-blue hover:text-white transition-colors"
               >
-                Voir mon profil
+                {d.viewProfile}
               </Link>
             </div>
           ) : (
             <div className="space-y-3">
-              <p className="text-sm text-gray-500">Complétez votre profil pour être visible par la communauté.</p>
+              <p className="text-sm text-fg-muted">{d.completeProfile}</p>
               <Link
                 href="/profile"
                 className="block w-full text-center py-2.5 text-sm font-medium bg-brand-blue text-white rounded-xl hover:bg-blue-700 transition-colors"
               >
-                Créer mon profil
+                {d.createProfile}
               </Link>
             </div>
           )}
@@ -220,13 +223,13 @@ export function DashboardHome() {
 function DashboardSkeleton() {
   return (
     <div className="space-y-6 animate-pulse">
-      <div className="h-8 bg-gray-200 rounded w-56" />
+      <div className="h-8 bg-surface-strong rounded w-56" />
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[...Array(4)].map((_, i) => <div key={i} className="bg-white rounded-xl border border-gray-100 p-5 h-20" />)}
+        {[...Array(4)].map((_, i) => <div key={i} className="bg-surface rounded-xl border border-line-soft p-5 h-20" />)}
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white rounded-xl border border-gray-100 p-6 h-64" />
-        <div className="bg-white rounded-xl border border-gray-100 p-6 h-64" />
+        <div className="lg:col-span-2 bg-surface rounded-xl border border-line-soft p-6 h-64" />
+        <div className="bg-surface rounded-xl border border-line-soft p-6 h-64" />
       </div>
     </div>
   );

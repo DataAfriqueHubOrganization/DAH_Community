@@ -1,38 +1,160 @@
 @import "tailwindcss";
 
-/* ── Palette Data Afrique Hub ── */
+/* Mode sombre piloté par la classe .dark sur <html> (voir ThemeProvider) */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ── Palette Data Afrique Hub (charte graphique 2026) ──
+   La charte n'autorise que le bleu et l'orange du logo (+ blanc / noir),
+   déclinés en opacités de 10 % à 100 %. */
 :root {
-  --brand-navy: #04041A;
-  --brand-blue: #0972E1;
-  --brand-orange: #FF8A00;
+  --brand-sky: #0F87EF;    /* bleu du logo : icônes, accents */
+  --brand-blue: #2F6FE0;   /* bleu surface : boutons, liens, aplats */
+  --brand-deep: #1E4FAF;   /* bleu profond : sidebar, sections sombres */
+  --brand-orange: #FB7C2C; /* orange du logo : CTA, accents */
+  --ink: #111114;          /* noir de la charte : texte */
+  --paper: #F7F8FA;
 
   --background: #ffffff;
-  --foreground: #04041A;
-  --muted: #f4f4f5;
+  --foreground: var(--ink);
+  --muted: var(--paper);
   --muted-foreground: #71717a;
   --border: #e4e4e7;
-  --radius: 0.5rem;
+  --radius: 0.625rem;
+
+  /* Tokens sémantiques : utilisés à la place de white / gray-* pour que
+     chaque écran bascule automatiquement en mode sombre. */
+  --surface: #ffffff;          /* cartes, header, modales */
+  --surface-muted: #F7F8FA;    /* fonds de section, survols */
+  --surface-strong: #EEF0F3;   /* squelettes, pistes, chips neutres */
+  --fg: #111114;               /* texte principal */
+  --fg-soft: #3F3F46;          /* texte courant secondaire */
+  --fg-muted: #71717A;         /* légendes */
+  --fg-subtle: #9CA0A8;        /* icônes, placeholders */
+  --fg-faint: #C9CDD4;         /* icônes décoratives */
+  --line: #E4E4E7;
+  --line-soft: #EFF0F2;
+  --line-strong: #D4D4D8;
+  color-scheme: light;
 }
 
 .dark {
-  --background: #04041A;
-  --foreground: #f4f4f5;
-  --muted: #18182a;
-  --muted-foreground: #a1a1aa;
-  --border: #27273a;
+  /* Fond sombre « anthracite bleuté » plutôt que noir pur : gris foncé teinté
+     ~6 % du bleu de marque. Trois paliers de profondeur : page < carte < relief. */
+  --background: #141820;
+  --foreground: #EEF0F4;
+  --muted: #1B2029;
+  --muted-foreground: #A3A9B5;
+  --border: #2E3542;
+  --paper: #141820;
+
+  --surface: #1B2029;          /* cartes, header, modales */
+  --surface-muted: #141820;    /* fond de page et de section */
+  --surface-strong: #252B36;   /* squelettes, chips, survols marqués */
+  --fg: #EEF0F4;
+  --fg-soft: #D0D4DC;
+  --fg-muted: #A3A9B5;
+  --fg-subtle: #8E94A0;
+  --fg-faint: #4D5462;
+  --line: #2E3542;
+  --line-soft: #252B36;
+  --line-strong: #3A4252;
+  color-scheme: dark;
 }
 
 @theme inline {
-  --color-brand-navy: var(--brand-navy);
+  --color-brand-sky: var(--brand-sky);
   --color-brand-blue: var(--brand-blue);
+  --color-brand-deep: var(--brand-deep);
   --color-brand-orange: var(--brand-orange);
+  --color-ink: var(--ink);
+  --color-paper: var(--paper);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-border: var(--border);
-  --font-sans: "Poppins", system-ui, sans-serif;
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-surface-strong: var(--surface-strong);
+  --color-fg: var(--fg);
+  --color-fg-soft: var(--fg-soft);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-subtle: var(--fg-subtle);
+  --color-fg-faint: var(--fg-faint);
+  --color-line: var(--line);
+  --color-line-soft: var(--line-soft);
+  --color-line-strong: var(--line-strong);
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-display: var(--font-open-sans), system-ui, sans-serif;
   --radius: var(--radius);
+}
+
+/* Les gammes Tailwind bleu / orange sont recalées sur la charte,
+   pour que les classes utilitaires existantes restent conformes. */
+@theme {
+  --color-blue-50: #EFF5FE;
+  --color-blue-100: #DEE9FC;
+  --color-blue-200: #BED5FA;
+  --color-blue-300: #8FB8F6;
+  --color-blue-400: #5F9AF3;
+  --color-blue-500: #3B82F0;
+  --color-blue-600: #2F6FE0;
+  --color-blue-700: #2760CB;
+  --color-blue-800: #1E4FAF;
+  --color-blue-900: #193F8A;
+  --color-blue-950: #112A5C;
+
+  --color-orange-50: #FFF4EC;
+  --color-orange-100: #FFE6D5;
+  --color-orange-200: #FECBAA;
+  --color-orange-300: #FDAA77;
+  --color-orange-400: #FC9150;
+  --color-orange-500: #FB7C2C;
+  --color-orange-600: #E0661A;
+  --color-orange-700: #B95214;
+  --color-orange-800: #9A4410;
+  --color-orange-900: #7A360D;
+  --color-orange-950: #431C06;
+}
+
+/* ── Grands aplats de marque ──
+   En clair : bleu / orange de la charte à 100 %.
+   En sombre : les mêmes couleurs à faible opacité (10–30 %, autorisé par la charte)
+   posées sur le noir — bleu nuit et brun orangé — pour que le passage en sombre
+   se voie aussi sur les bandeaux, le footer et la sidebar. */
+:root {
+  --panel-univers: linear-gradient(135deg, #3B82F0 0%, #2F6FE0 45%, #1E4FAF 100%);
+  --panel-deep: #1E4FAF;
+  --panel-accent: #FB7C2C;
+  --panel-accent-line: transparent;
+}
+.dark {
+  /* Mêmes opacités qu'avant, recalculées sur le fond anthracite #141820 */
+  /* #3B82F0 @30 %, #2F6FE0 @24 %, #1E4FAF @14 % */
+  --panel-univers: linear-gradient(135deg, #20385E 0%, #1A2D4E 45%, #152034 100%);
+  /* #1E4FAF @18 % */
+  --panel-deep: #16223A;
+  /* #FB7C2C @22 % → @8 % */
+  --panel-accent: linear-gradient(135deg, #472E23 0%, #262021 100%);
+  --panel-accent-line: #FB7C2C;
+}
+
+/* Dégradé « univers » de la charte (héros, bandeaux, footer) — suit le thème */
+@utility bg-univers {
+  background-image: var(--panel-univers);
+}
+/* Version toujours vive : objets de marque (carte membre) */
+@utility bg-univers-brand {
+  background-image: linear-gradient(135deg, #3B82F0 0%, #2F6FE0 45%, #1E4FAF 100%);
+}
+/* Grand aplat bleu profond (sidebar, sections sombres) — suit le thème */
+@utility bg-panel {
+  background-color: var(--panel-deep);
+}
+/* Grand aplat orange (appel à l'action) — suit le thème */
+@utility bg-panel-accent {
+  background: var(--panel-accent);
+  box-shadow: inset 0 3px 0 var(--panel-accent-line);
 }
 
 body {
@@ -41,3 +163,51 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
+
+/* Mode sombre : fond dégradé plutôt qu'un aplat. Lueurs du bleu de marque
+   (haut gauche, droite) et une touche d'orange en bas, sur un anthracite
+   légèrement plus clair en haut qu'en bas. Fixe pour ne pas « défiler ». */
+.dark body {
+  background-color: #141820;
+  background-image:
+    radial-gradient(1100px 650px at 0% 0%, rgb(47 111 224 / 0.20), transparent 60%),
+    radial-gradient(900px 600px at 100% 35%, rgb(30 79 175 / 0.14), transparent 60%),
+    radial-gradient(800px 500px at 50% 110%, rgb(251 124 44 / 0.07), transparent 60%),
+    linear-gradient(180deg, #171C26 0%, #12151C 100%);
+  background-attachment: fixed;
+}
+
+/* Fonds de niveau page / section : couleurs habituelles en clair,
+   transparents en sombre pour laisser voir le dégradé du body.
+   Les cartes (bg-surface) restent opaques. */
+@utility bg-page {
+  background-color: var(--surface-muted);
+  &:where(.dark, .dark *) { background-color: transparent; }
+}
+@utility bg-section {
+  background-color: var(--surface);
+  &:where(.dark, .dark *) { background-color: transparent; }
+}
+
+/* Hiérarchie typographique : titres en Open Sans, texte courant en Inter */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+}
+
+/* Liens et accents bleus : un cran plus clair sur fond sombre (contraste AA) */
+.dark :where(.text-brand-blue) { color: #6FA3F5; }
+
+/* Teintes claires d'état (bg-*-50 + texte *-700) : versions sombres atténuées */
+.dark :where(.bg-red-50, .bg-red-100) { background-color: rgb(239 68 68 / 0.12); }
+.dark :where(.bg-green-50, .bg-green-100, .bg-emerald-50) { background-color: rgb(16 185 129 / 0.12); }
+.dark :where(.bg-amber-50, .bg-yellow-50) { background-color: rgb(245 158 11 / 0.12); }
+.dark :where(.bg-blue-50) { background-color: rgb(47 111 224 / 0.16); }
+.dark :where(.bg-orange-50) { background-color: rgb(251 124 44 / 0.14); }
+.dark :where(.text-red-700, .text-red-600) { color: #FCA5A5; }
+.dark :where(.text-green-700, .text-emerald-700, .text-green-600) { color: #6EE7B7; }
+.dark :where(.text-amber-700, .text-yellow-700, .text-amber-600) { color: #FCD34D; }
+.dark :where(.text-blue-700, .text-blue-600, .text-brand-deep) { color: #8FB8F6; }
+.dark :where(.text-orange-700, .text-orange-800) { color: #FDAA77; }
+.dark :where(.border-red-200, .border-green-200, .border-emerald-200, .border-amber-200, .border-yellow-200, .border-blue-200) { border-color: var(--line-strong); }
+.dark :where(.hover\:bg-red-50:hover) { background-color: rgb(239 68 68 / 0.14); }
+.dark :where(.hover\:bg-blue-50:hover) { background-color: rgb(47 111 224 / 0.18); }

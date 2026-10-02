@@ -5,11 +5,12 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { BookOpen, Search, Calendar, Tag, Heart, MessageCircle } from "lucide-react";
 import { blogService } from "@/services/blog.service";
-import { formatDate } from "@/lib/utils";
+import { useI18n } from "@/i18n/I18nProvider";
 import type { ArticleListItem } from "@/types/blog.types";
 import type { Metadata } from "next";
 
 export default function BlogPage() {
+  const { t } = useI18n();
   const [search, setSearch] = useState("");
   const [activeTag, setActiveTag] = useState("");
 
@@ -32,18 +33,18 @@ export default function BlogPage() {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-page">
       {/* Hero */}
-      <div className="bg-gradient-to-br from-brand-navy via-[#0a0a2e] to-[#0c1a4a] text-white">
+      <div className="bg-univers text-white">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-16 text-center">
-          <div className="inline-flex items-center gap-2 bg-brand-blue/20 border border-brand-blue/30 rounded-full px-4 py-1.5 text-sm text-blue-300 mb-6">
-            <BookOpen size={14} /> Actualités
+          <div className="inline-flex items-center gap-2 bg-white/10 border border-white/25 rounded-full px-4 py-1.5 text-sm text-white mb-6">
+            <BookOpen size={14} /> {t.nav.news}
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold mb-4">
-            Articles & <span className="text-brand-orange">Ressources</span>
+            {t.blog.title}
           </h1>
-          <p className="text-white/60 text-lg max-w-xl mx-auto">
-            Analyses, tutoriels et réflexions par les membres de Data Afrique Hub.
+          <p className="text-white/85 text-lg max-w-xl mx-auto">
+            {t.blog.intro}
           </p>
         </div>
       </div>
@@ -52,13 +53,14 @@ export default function BlogPage() {
         {/* Barre de recherche */}
         <div className="flex flex-col sm:flex-row gap-4 mb-8">
           <div className="relative flex-1 max-w-md">
-            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-fg-subtle" />
             <input
               type="text"
-              placeholder="Rechercher un article…"
+              placeholder={t.blog.searchPlaceholder}
+              aria-label={t.blog.searchPlaceholder}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue/30 bg-white"
+              className="w-full pl-10 pr-4 py-2.5 border border-line rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue/30 bg-surface"
             />
           </div>
           {allTags.length > 0 && (
@@ -66,17 +68,17 @@ export default function BlogPage() {
               <button
                 onClick={() => setActiveTag("")}
                 className={`px-3 py-1.5 text-xs rounded-full font-medium transition-colors ${
-                  !activeTag ? "bg-brand-blue text-white" : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
+                  !activeTag ? "bg-brand-blue text-white" : "bg-surface border border-line text-fg-soft hover:bg-surface-muted"
                 }`}
               >
-                Tous
+                {t.portfolio.all}
               </button>
               {allTags.slice(0, 6).map((tag) => (
                 <button
                   key={tag}
                   onClick={() => setActiveTag(activeTag === tag ? "" : tag)}
                   className={`px-3 py-1.5 text-xs rounded-full font-medium transition-colors ${
-                    activeTag === tag ? "bg-brand-blue text-white" : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
+                    activeTag === tag ? "bg-brand-blue text-white" : "bg-surface border border-line text-fg-soft hover:bg-surface-muted"
                   }`}
                 >
                   {tag}
@@ -90,28 +92,28 @@ export default function BlogPage() {
         {isLoading ? (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {[...Array(6)].map((_, i) => (
-              <div key={i} className="bg-white rounded-2xl border border-gray-100 overflow-hidden animate-pulse">
-                <div className="h-44 bg-gray-200" />
+              <div key={i} className="bg-surface rounded-2xl border border-line-soft overflow-hidden animate-pulse">
+                <div className="h-44 bg-surface-strong" />
                 <div className="p-5 space-y-3">
-                  <div className="h-4 bg-gray-200 rounded w-3/4" />
-                  <div className="h-3 bg-gray-100 rounded w-full" />
-                  <div className="h-3 bg-gray-100 rounded w-2/3" />
+                  <div className="h-4 bg-surface-strong rounded w-3/4" />
+                  <div className="h-3 bg-surface-strong rounded w-full" />
+                  <div className="h-3 bg-surface-strong rounded w-2/3" />
                 </div>
               </div>
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-20 text-gray-400">
+          <div className="text-center py-20 text-fg-subtle">
             <BookOpen size={40} className="mx-auto mb-3 opacity-30" />
-            <p className="text-gray-500">
-              {search || activeTag ? "Aucun article trouvé" : "Aucun article publié pour l'instant"}
+            <p className="text-fg-muted">
+              {search || activeTag ? t.blog.empty : t.blog.emptyNone}
             </p>
             {(search || activeTag) && (
               <button
                 onClick={() => { setSearch(""); setActiveTag(""); }}
                 className="mt-3 text-sm text-brand-blue hover:underline"
               >
-                Réinitialiser les filtres
+                {t.blog.resetFilters}
               </button>
             )}
           </div>
@@ -134,13 +136,14 @@ export default function BlogPage() {
 }
 
 function FeaturedArticle({ article }: { article: ArticleListItem }) {
+  const { t } = useI18n();
   return (
     <Link
       href={`/blog/${article.slug}`}
-      className="group block bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-lg hover:border-brand-blue/20 transition-all duration-200"
+      className="group block bg-surface rounded-2xl border border-line-soft overflow-hidden hover:shadow-lg hover:border-brand-blue/20 transition-all duration-200"
     >
       <div className="sm:flex">
-        <div className="sm:w-2/5 bg-gray-100 h-56 sm:h-auto relative overflow-hidden">
+        <div className="sm:w-2/5 bg-surface-strong h-56 sm:h-auto relative overflow-hidden">
           {article.cover_image ? (
             <img
               src={article.cover_image}
@@ -148,12 +151,12 @@ function FeaturedArticle({ article }: { article: ArticleListItem }) {
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             />
           ) : (
-            <div className="w-full h-full bg-gradient-to-br from-brand-navy to-brand-blue flex items-center justify-center">
+            <div className="w-full h-full bg-univers flex items-center justify-center">
               <BookOpen size={48} className="text-white/20" />
             </div>
           )}
-          <div className="absolute top-3 left-3 bg-brand-orange text-white text-xs font-bold px-2 py-1 rounded-full">
-            À la une
+          <div className="absolute top-3 left-3 bg-brand-orange text-ink text-xs font-bold px-2 py-1 rounded-full">
+            {t.blog.featured}
           </div>
         </div>
         <div className="sm:w-3/5 p-6 sm:p-8 flex flex-col justify-center">
@@ -162,11 +165,11 @@ function FeaturedArticle({ article }: { article: ArticleListItem }) {
               {article.category.name}
             </span>
           )}
-          <h2 className="text-xl sm:text-2xl font-bold text-brand-navy group-hover:text-brand-blue transition-colors leading-snug mb-3">
+          <h2 className="text-xl sm:text-2xl font-bold text-fg group-hover:text-brand-blue transition-colors leading-snug mb-3">
             {article.title}
           </h2>
           {article.excerpt && (
-            <p className="text-gray-500 text-sm leading-relaxed line-clamp-3 mb-4">{article.excerpt}</p>
+            <p className="text-fg-muted text-sm leading-relaxed line-clamp-3 mb-4">{article.excerpt}</p>
           )}
           <ArticleMeta article={article} />
         </div>
@@ -179,9 +182,9 @@ function ArticleCard({ article }: { article: ArticleListItem }) {
   return (
     <Link
       href={`/blog/${article.slug}`}
-      className="group bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-md hover:border-brand-blue/20 transition-all duration-200 flex flex-col"
+      className="group bg-surface rounded-2xl border border-line-soft overflow-hidden hover:shadow-md hover:border-brand-blue/20 transition-all duration-200 flex flex-col"
     >
-      <div className="h-44 bg-gray-100 overflow-hidden relative">
+      <div className="h-44 bg-surface-strong overflow-hidden relative">
         {article.cover_image ? (
           <img
             src={article.cover_image}
@@ -189,7 +192,7 @@ function ArticleCard({ article }: { article: ArticleListItem }) {
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-brand-navy to-brand-blue flex items-center justify-center">
+          <div className="w-full h-full bg-univers flex items-center justify-center">
             <BookOpen size={36} className="text-white/20" />
           </div>
         )}
@@ -200,11 +203,11 @@ function ArticleCard({ article }: { article: ArticleListItem }) {
         )}
       </div>
       <div className="p-5 flex flex-col flex-1">
-        <h3 className="font-bold text-brand-navy group-hover:text-brand-blue transition-colors leading-snug line-clamp-2 mb-2">
+        <h3 className="font-bold text-fg group-hover:text-brand-blue transition-colors leading-snug line-clamp-2 mb-2">
           {article.title}
         </h3>
         {article.excerpt && (
-          <p className="text-gray-500 text-sm leading-relaxed line-clamp-3 flex-1 mb-4">
+          <p className="text-fg-muted text-sm leading-relaxed line-clamp-3 flex-1 mb-4">
             {article.excerpt}
           </p>
         )}
@@ -215,11 +218,12 @@ function ArticleCard({ article }: { article: ArticleListItem }) {
 }
 
 function ArticleMeta({ article }: { article: ArticleListItem }) {
+  const { fmt } = useI18n();
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400">
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-fg-subtle">
       {article.published_at && (
         <span className="flex items-center gap-1">
-          <Calendar size={11} /> {formatDate(article.published_at)}
+          <Calendar size={11} /> {fmt.date(article.published_at)}
         </span>
       )}
       {article.tags_list.slice(0, 2).map((tag) => (

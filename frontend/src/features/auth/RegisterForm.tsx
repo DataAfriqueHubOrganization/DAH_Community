@@ -1,14 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRegister } from "@/hooks/useAuth";
-import { registerSchema, type RegisterInput } from "./schemas";
-
-const STEPS = ["Identité", "Compte", "Confirmation"] as const;
+import { makeRegisterSchema, type RegisterInput } from "./schemas";
+import { useI18n } from "@/i18n/I18nProvider";
 
 export function RegisterForm() {
+  const { t } = useI18n();
+  const STEPS = t.auth.registerSteps;
+  const schema = useMemo(() => makeRegisterSchema(t.validation), [t]);
   const [step, setStep] = useState(0);
   const register = useRegister();
   const {
@@ -16,7 +18,7 @@ export function RegisterForm() {
     handleSubmit,
     trigger,
     formState: { errors },
-  } = useForm<RegisterInput>({ resolver: zodResolver(registerSchema) });
+  } = useForm<RegisterInput>({ resolver: zodResolver(schema) });
 
   async function nextStep() {
     const fields: (keyof RegisterInput)[][] = [
@@ -40,7 +42,7 @@ export function RegisterForm() {
             >
               {i + 1}
             </div>
-            <span className={`text-xs hidden sm:block ${i <= step ? "text-brand-navy font-medium" : "text-muted-foreground"}`}>
+            <span className={`text-xs hidden sm:block ${i <= step ? "text-fg font-medium" : "text-muted-foreground"}`}>
               {label}
             </span>
             {i < STEPS.length - 1 && <div className="h-px w-6 bg-border" />}
@@ -51,13 +53,13 @@ export function RegisterForm() {
       {/* Étape 1 — Identité */}
       {step === 0 && (
         <>
-          <Field label="Prénom" error={errors.first_name?.message}>
+          <Field label={t.eventForm.firstName} error={errors.first_name?.message}>
             <input {...field("first_name")} placeholder="Merveille" className={inputCls} />
           </Field>
-          <Field label="Nom" error={errors.last_name?.message}>
+          <Field label={t.eventForm.lastName} error={errors.last_name?.message}>
             <input {...field("last_name")} placeholder="Houenagnon" className={inputCls} />
           </Field>
-          <Field label="Téléphone (optionnel)" error={errors.phone?.message}>
+          <Field label={`${t.candidature.phone} (${t.common.optional})`} error={errors.phone?.message}>
             <input {...field("phone")} placeholder="+229 61 00 00 00" className={inputCls} />
           </Field>
         </>
@@ -66,13 +68,13 @@ export function RegisterForm() {
       {/* Étape 2 — Compte */}
       {step === 1 && (
         <>
-          <Field label="Adresse email" error={errors.email?.message}>
-            <input type="email" {...field("email")} placeholder="vous@exemple.com" className={inputCls} />
+          <Field label={t.auth.email} error={errors.email?.message}>
+            <input type="email" {...field("email")} placeholder={t.eventForm.emailPlaceholder} className={inputCls} />
           </Field>
-          <Field label="Mot de passe" error={errors.password?.message}>
-            <input type="password" {...field("password")} placeholder="Minimum 8 caractères" className={inputCls} />
+          <Field label={t.auth.password} error={errors.password?.message}>
+            <input type="password" {...field("password")} placeholder={t.auth.passwordMinPlaceholder} className={inputCls} />
           </Field>
-          <Field label="Confirmer le mot de passe" error={errors.password_confirm?.message}>
+          <Field label={t.auth.confirmPassword} error={errors.password_confirm?.message}>
             <input type="password" {...field("password_confirm")} placeholder="••••••••" className={inputCls} />
           </Field>
         </>
@@ -83,15 +85,14 @@ export function RegisterForm() {
         <div className="text-center py-4">
           <div className="text-4xl mb-3">✉️</div>
           <p className="text-sm text-muted-foreground">
-            Cliquez sur <strong>Créer mon compte</strong> pour finaliser votre inscription.
-            Un email de vérification vous sera envoyé.
+            {t.auth.registerConfirmBefore} <strong>{t.auth.createAccount}</strong> {t.auth.registerConfirmAfter}
           </p>
         </div>
       )}
 
       {register.error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
-          Une erreur est survenue. Vérifiez vos informations.
+          {t.auth.registerError}
         </div>
       )}
 
@@ -102,7 +103,7 @@ export function RegisterForm() {
             onClick={() => setStep((s) => s - 1)}
             className="flex-1 border border-border rounded-lg py-2.5 text-sm font-medium hover:bg-muted transition-colors"
           >
-            Retour
+            {t.common.back}
           </button>
         )}
         {step < 2 ? (
@@ -111,7 +112,7 @@ export function RegisterForm() {
             onClick={nextStep}
             className="flex-1 bg-brand-blue text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-blue/90 transition-colors"
           >
-            Suivant →
+            {t.common.next} →
           </button>
         ) : (
           <button
@@ -119,7 +120,7 @@ export function RegisterForm() {
             disabled={register.isPending}
             className="flex-1 bg-brand-blue text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-blue/90 disabled:opacity-50 transition-colors"
           >
-            {register.isPending ? "Création…" : "Créer mon compte"}
+            {register.isPending ? t.auth.creating : t.auth.createAccount}
           </button>
         )}
       </div>
@@ -132,7 +133,7 @@ const inputCls = "w-full border border-border rounded-lg px-3 py-2 text-sm focus
 function Field({ label, children, error }: { label: string; children: React.ReactNode; error?: string }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-brand-navy mb-1">{label}</label>
+      <label className="block text-sm font-medium text-fg mb-1">{label}</label>
       {children}
       {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
     </div>

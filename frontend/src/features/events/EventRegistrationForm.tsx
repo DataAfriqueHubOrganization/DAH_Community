@@ -1,19 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Check } from "lucide-react";
 import { eventsService } from "@/services/events.service";
-import { eventRegistrationSchema, type EventRegistrationInput } from "@/features/events/schemas";
-import { AFRICAN_COUNTRIES, OTHER_COUNTRIES } from "@/lib/countries";
+import { makeEventRegistrationSchema, type EventRegistrationInput } from "@/features/events/schemas";
+import { AFRICAN_COUNTRIES, OTHER_COUNTRIES, sortedCountries } from "@/lib/countries";
+import { useI18n } from "@/i18n/I18nProvider";
 
 const inputCls =
   "w-full border border-border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue";
 
-function extractErrorMessage(error: unknown): string {
-  const fallback = "Une erreur est survenue. Vérifiez vos informations et réessayez.";
+function extractErrorMessage(error: unknown, fallback: string): string {
   const detail = (error as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail;
   if (!detail) return fallback;
   if (typeof detail === "string") return detail;
@@ -29,6 +29,8 @@ function extractErrorMessage(error: unknown): string {
 
 export function EventRegistrationForm({ eventId }: { eventId: string }) {
   const qc = useQueryClient();
+  const { t, locale } = useI18n();
+  const schema = useMemo(() => makeEventRegistrationSchema(t.validation), [t]);
   const [lookupDone, setLookupDone] = useState(false);
   const {
     register,
@@ -37,7 +39,7 @@ export function EventRegistrationForm({ eventId }: { eventId: string }) {
     getValues,
     formState: { errors },
   } = useForm<EventRegistrationInput>({
-    resolver: zodResolver(eventRegistrationSchema),
+    resolver: zodResolver(schema),
   });
 
   const mutation = useMutation({
@@ -51,8 +53,8 @@ export function EventRegistrationForm({ eventId }: { eventId: string }) {
         <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
           <Check size={24} className="text-green-600" />
         </div>
-        <p className="font-semibold text-gray-800 mb-1">Vous êtes inscrit !</p>
-        <p className="text-gray-500 text-sm">Vous recevrez un rappel avant l&apos;événement.</p>
+        <p className="font-semibold text-fg mb-1">{t.eventDetail.youAreRegistered}</p>
+        <p className="text-fg-muted text-sm">{t.eventDetail.reminder}</p>
       </div>
     );
   }
@@ -82,33 +84,34 @@ export function EventRegistrationForm({ eventId }: { eventId: string }) {
         <input
           type="email"
           {...register("email", { onBlur: handleEmailBlur })}
-          placeholder="vous@exemple.com"
+          placeholder={t.eventForm.emailPlaceholder}
+          aria-label={t.common.email}
           className={inputCls}
         />
         {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
       </div>
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <input {...register("first_name")} placeholder="Prénom" className={inputCls} />
+          <input {...register("first_name")} placeholder={t.eventForm.firstName} aria-label={t.eventForm.firstName} className={inputCls} />
           {errors.first_name && (
             <p className="text-red-500 text-xs mt-1">{errors.first_name.message}</p>
           )}
         </div>
         <div>
-          <input {...register("last_name")} placeholder="Nom" className={inputCls} />
+          <input {...register("last_name")} placeholder={t.eventForm.lastName} aria-label={t.eventForm.lastName} className={inputCls} />
           {errors.last_name && (
             <p className="text-red-500 text-xs mt-1">{errors.last_name.message}</p>
           )}
         </div>
       </div>
       <div>
-        <select {...register("nationality")} defaultValue="" className={`${inputCls} bg-white`}>
-          <option value="" disabled>Nationalité</option>
-          <optgroup label="Afrique">
-            {AFRICAN_COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
+        <select {...register("nationality")} defaultValue="" className={`${inputCls} bg-surface`} aria-label={t.eventForm.nationality}>
+          <option value="" disabled>{t.eventForm.nationality}</option>
+          <optgroup label={t.eventForm.africa}>
+            {sortedCountries(AFRICAN_COUNTRIES, locale).map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
           </optgroup>
-          <optgroup label="Autres pays">
-            {OTHER_COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          <optgroup label={t.eventForm.otherCountries}>
+            {sortedCountries(OTHER_COUNTRIES, locale).map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
           </optgroup>
         </select>
         {errors.nationality && (
@@ -117,13 +120,13 @@ export function EventRegistrationForm({ eventId }: { eventId: string }) {
       </div>
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <input {...register("organisation")} placeholder="Organisation" className={inputCls} />
+          <input {...register("organisation")} placeholder={t.eventForm.organisation} aria-label={t.eventForm.organisation} className={inputCls} />
           {errors.organisation && (
             <p className="text-red-500 text-xs mt-1">{errors.organisation.message}</p>
           )}
         </div>
         <div>
-          <input {...register("profession")} placeholder="Profession" className={inputCls} />
+          <input {...register("profession")} placeholder={t.eventForm.profession} aria-label={t.eventForm.profession} className={inputCls} />
           {errors.profession && (
             <p className="text-red-500 text-xs mt-1">{errors.profession.message}</p>
           )}
@@ -133,7 +136,8 @@ export function EventRegistrationForm({ eventId }: { eventId: string }) {
         <textarea
           {...register("motivation")}
           rows={3}
-          placeholder="Pourquoi souhaitez-vous participer à cet événement ?"
+          placeholder={t.eventForm.motivation}
+          aria-label={t.eventForm.motivation}
           className={`${inputCls} resize-none`}
         />
         {errors.motivation && (
@@ -142,7 +146,7 @@ export function EventRegistrationForm({ eventId }: { eventId: string }) {
       </div>
 
       {mutation.isError && (
-        <p className="text-red-500 text-xs">{extractErrorMessage(mutation.error)}</p>
+        <p className="text-red-500 text-xs">{extractErrorMessage(mutation.error, t.eventForm.genericError)}</p>
       )}
 
       <button
@@ -150,7 +154,7 @@ export function EventRegistrationForm({ eventId }: { eventId: string }) {
         disabled={mutation.isPending}
         className="w-full py-3 bg-brand-blue text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-60"
       >
-        {mutation.isPending ? "Inscription..." : "S'inscrire à l'événement"}
+        {mutation.isPending ? t.eventForm.submitting : t.eventForm.submit}
       </button>
     </form>
   );

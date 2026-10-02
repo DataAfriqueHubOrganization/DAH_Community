@@ -3,9 +3,11 @@
 import { use, useEffect, useState } from "react";
 import { authService } from "@/services/auth.service";
 import Link from "next/link";
+import { useI18n } from "@/i18n/I18nProvider";
 
 export default function VerifyEmailPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params);
+  const { t } = useI18n();
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
 
   useEffect(() => {
@@ -22,25 +24,25 @@ export default function VerifyEmailPage({ params }: { params: Promise<{ token: s
 
   return (
     <>
-      <h2 className="text-xl font-semibold text-brand-navy mb-1">Vérification de l&apos;email</h2>
+      <h2 className="text-xl font-semibold text-fg mb-1">{t.auth.verifyTitle}</h2>
 
       {status === "loading" && (
         <div className="text-center py-8">
           <div className="w-10 h-10 border-4 border-brand-blue border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-sm text-muted-foreground">Vérification en cours…</p>
+          <p className="text-sm text-muted-foreground">{t.auth.verifying}</p>
         </div>
       )}
 
       {status === "success" && (
         <div className="text-center py-6 space-y-3">
           <div className="text-5xl mb-2">✅</div>
-          <p className="text-sm font-medium text-brand-navy">Email vérifié avec succès !</p>
-          <p className="text-sm text-muted-foreground">Votre compte est maintenant actif.</p>
+          <p className="text-sm font-medium text-fg">{t.auth.verified}</p>
+          <p className="text-sm text-muted-foreground">{t.auth.accountActive}</p>
           <button
             onClick={() => { window.location.href = "/dashboard"; }}
             className="inline-block mt-3 px-6 py-2.5 bg-brand-blue text-white rounded-lg text-sm font-medium hover:bg-brand-blue/90 transition-colors"
           >
-            Accéder au tableau de bord
+            {t.auth.goToDashboard}
           </button>
         </div>
       )}
@@ -48,13 +50,12 @@ export default function VerifyEmailPage({ params }: { params: Promise<{ token: s
       {status === "error" && (
         <div className="text-center py-6 space-y-3">
           <div className="text-5xl mb-2">❌</div>
-          <p className="text-sm font-medium text-brand-navy">Lien invalide ou expiré</p>
+          <p className="text-sm font-medium text-fg">{t.auth.invalidLink}</p>
           <p className="text-sm text-muted-foreground">
-            Ce lien de vérification est peut-être déjà utilisé ou a expiré.
-            Reconnectez-vous pour en recevoir un nouveau.
+            {t.auth.invalidLinkText}
           </p>
           <Link href="/login" className="inline-block mt-3 px-6 py-2.5 bg-brand-blue text-white rounded-lg text-sm font-medium hover:bg-brand-blue/90 transition-colors">
-            Aller à la connexion
+            {t.auth.goToLogin}
           </Link>
         </div>
       )}

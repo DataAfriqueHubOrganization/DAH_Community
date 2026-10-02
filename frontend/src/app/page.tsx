@@ -5,10 +5,13 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { PublicHeader } from "@/components/PublicHeader";
 import { PublicFooter } from "@/components/PublicFooter";
+import { Logo } from "@/components/ui/Logo";
+import { NetworkPattern } from "@/components/ui/NetworkPattern";
 import { eventsService } from "@/services/events.service";
 import { membersService } from "@/services/members.service";
-import { formatDate, eventTypeLabel, avatarUrl, positionLabel } from "@/lib/utils";
-import { CalendarDays, MapPin, ArrowRight, Users, Globe, BookOpen, Lightbulb, Handshake, FlaskConical, Star, ChevronRight } from "lucide-react";
+import { avatarUrl } from "@/lib/utils";
+import { useI18n } from "@/i18n/I18nProvider";
+import { CalendarDays, MapPin, ArrowRight, BookOpen, Lightbulb, Handshake, FlaskConical, ChevronRight } from "lucide-react";
 import type { Event } from "@/types/events.types";
 import type { PublicMemberListItem } from "@/types/members.types";
 
@@ -35,17 +38,26 @@ function AnimatedCounter({ target, suffix = "" }: { target: number; suffix?: str
   return <div ref={ref}>{count}{suffix}</div>;
 }
 
+// Les textes (rôles, citations, descriptions) viennent du dictionnaire : t.home.*
 const testimonials = [
-  { name: "Alice Mensah", role: "Data Scientist @ AfricaAnalytics", avatar: "https://ui-avatars.com/api/?name=Alice+Mensah&background=0972E1&color=fff&bold=true&format=svg", text: "DAH a transformé ma carrière. Les formations, le mentoring et le réseau m'ont permis de décrocher mon poste actuel. C'est bien plus qu'une communauté — c'est une famille." },
-  { name: "Robert Ouedraogo", role: "Data Engineer @ OrangeMoney", avatar: "https://ui-avatars.com/api/?name=Robert+Ouedraogo&background=FF8A00&color=fff&bold=true&format=svg", text: "Grâce à DAH, j'ai rencontré des experts extraordinaires et participé à des hackathons qui m'ont appris autant qu'une année de formation classique." },
-  { name: "Claire Gbénou", role: "MLOps Engineer & Formatrice", avatar: "https://ui-avatars.com/api/?name=Claire+Gbenou&background=04041A&color=fff&bold=true&format=svg", text: "En tant que formatrice, DAH me donne la plateforme parfaite pour partager mes connaissances et contribuer à l'écosystème data africain." },
+  { name: "Alice Mensah", avatar: "https://ui-avatars.com/api/?name=Alice+Mensah&background=2F6FE0&color=fff&bold=true&format=svg" },
+  { name: "Robert Ouedraogo", avatar: "https://ui-avatars.com/api/?name=Robert+Ouedraogo&background=FB7C2C&color=fff&bold=true&format=svg" },
+  { name: "Claire Gbénou", avatar: "https://ui-avatars.com/api/?name=Claire+Gbenou&background=1E4FAF&color=fff&bold=true&format=svg" },
 ];
 
 const activities = [
-  { icon: BookOpen, title: "Apprentissage", desc: "Formations pratiques en Data Science, ML, IA et outils cloud pour tous les niveaux.", color: "bg-brand-blue" },
-  { icon: Lightbulb, title: "Innovation", desc: "Hackathons et projets communautaires pour résoudre des problèmes africains par la data.", color: "bg-brand-orange" },
-  { icon: Handshake, title: "Collaboration", desc: "Networking, mentoring et opportunités professionnelles au sein d'un réseau panafricain.", color: "bg-brand-navy" },
-  { icon: FlaskConical, title: "Recherche", desc: "Publications, conférences et articles sur l'impact de la data en Afrique.", color: "bg-violet-500" },
+  { icon: BookOpen, color: "bg-brand-blue" },
+  { icon: Lightbulb, color: "bg-brand-orange" },
+  { icon: Handshake, color: "bg-brand-deep" },
+  { icon: FlaskConical, color: "bg-blue-700" },
+];
+
+// Sous-entités présentées dans la charte graphique
+const poles = [
+  { name: "Data Tour", accent: "bg-brand-orange" },
+  { name: "DAH Academy", accent: "bg-brand-blue" },
+  { name: "DAH Média", accent: "bg-brand-orange" },
+  { name: "DAH Labs", accent: "bg-brand-blue" },
 ];
 
 const POSTE_ORDER: Record<string, number> = {
@@ -62,14 +74,15 @@ function memberSortRank(m: Pick<PublicMemberListItem, "role" | "poste">): number
 function roleBadgeColor(member: Pick<PublicMemberListItem, "role" | "poste">) {
   const posteMap: Record<string, string> = {
     president: "bg-brand-orange", vp1: "bg-brand-orange", vp2: "bg-brand-orange",
-    secretaire_general: "bg-purple-500", tresorier: "bg-green-500",
+    secretaire_general: "bg-brand-blue", tresorier: "bg-blue-700",
   };
   if (member.poste) return posteMap[member.poste] ?? "bg-gray-400";
-  const roleMap: Record<string, string> = { responsable: "bg-teal-500", membre: "bg-brand-blue", candidat: "bg-gray-400" };
+  const roleMap: Record<string, string> = { responsable: "bg-brand-sky", membre: "bg-brand-blue", candidat: "bg-gray-400" };
   return roleMap[member.role] ?? "bg-gray-400";
 }
 
 export default function LandingPage() {
+  const { t, fmt, label, intl } = useI18n();
   const { data: eventsData } = useQuery({
     queryKey: ["events", "public"],
     queryFn: () => eventsService.list({ is_published: "true" }).then((r) => r.data),
@@ -89,60 +102,75 @@ export default function LandingPage() {
   return (
     <>
       <PublicHeader />
-      <main className="pt-[72px]">
-        {/* HERO */}
-        <section className="relative min-h-[90vh] flex items-center justify-center text-white overflow-hidden" style={{ background: "linear-gradient(135deg, #04041A 0%, #0A1128 50%, #051A4A 100%)" }}>
-          <img
-            src="/images/innovation-img.png"
-            alt=""
-            aria-hidden="true"
-            className="absolute inset-0 w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-brand-navy/60 via-brand-navy/50 to-brand-navy/85" />
-          <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(circle at 25% 50%, #0972E1 0%, transparent 50%), radial-gradient(circle at 75% 20%, #FF8A00 0%, transparent 40%)" }} />
-          <div className="absolute inset-0 opacity-5" style={{ backgroundImage: "linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)", backgroundSize: "60px 60px" }} />
-          <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 text-center py-20">
-            <div className="inline-flex items-center gap-2 bg-brand-blue/20 border border-brand-blue/30 rounded-full px-4 py-1.5 text-sm text-blue-300 mb-8">
-              <span className="w-2 h-2 bg-brand-orange rounded-full animate-pulse" />
-              Communauté Data & IA en Afrique
+      <main className="pt-[72px] sm:pt-[88px]">
+        {/* HERO — dégradé « univers » + motif réseau */}
+        <section className="relative overflow-hidden bg-univers text-white">
+          <NetworkPattern />
+          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid lg:grid-cols-[1.15fr_1fr] gap-12 items-center py-16 sm:py-24 lg:py-28">
+            <div className="flex flex-col gap-6 text-center lg:text-left items-center lg:items-start">
+              <Logo variant="symbol" tone="white" height={110} className="lg:hidden" />
+              <p className="inline-flex items-center gap-3 font-display text-xs sm:text-sm font-semibold tracking-[0.16em] uppercase">
+                <span className="w-2.5 h-2.5 rounded-[2px] bg-brand-orange" />
+                {t.brand.tagline}
+              </p>
+              <h1 className="text-4xl sm:text-5xl lg:text-[62px] font-extrabold leading-[1.06] tracking-tight">
+                {t.home.heroTitle}
+              </h1>
+              <p className="text-lg sm:text-[19px] leading-relaxed max-w-xl text-white/90">
+                {t.home.heroText}
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto mt-2">
+                <Link href="/register" className="inline-flex items-center justify-center gap-2 h-14 px-7 bg-brand-orange hover:bg-orange-400 text-ink font-display font-bold rounded-[10px] transition-colors">
+                  {t.home.heroCta} <ArrowRight size={18} />
+                </Link>
+                <Link href="/events" className="inline-flex items-center justify-center h-14 px-7 border-[1.5px] border-white/60 hover:bg-white/10 text-white font-display font-semibold rounded-[10px] transition-colors">
+                  {t.home.heroSecondary}
+                </Link>
+              </div>
             </div>
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold leading-tight mb-6">
-              Bienvenue à <span className="text-brand-orange">Data Afrique Hub</span>
-            </h1>
-            <p className="text-lg sm:text-xl text-white/70 max-w-2xl mx-auto leading-relaxed mb-10">
-              La communauté passionnée qui se consacre à libérer le potentiel de la data science et de l'intelligence artificielle en Afrique.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/register" className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-brand-orange hover:bg-orange-600 text-white font-semibold rounded-xl transition-all duration-200 shadow-lg hover:scale-105">
-                Rejoignez-nous <ArrowRight size={18} />
-              </Link>
-              <Link href="/events" className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white/10 border border-white/20 hover:bg-white/20 text-white font-semibold rounded-xl backdrop-blur-sm transition-all duration-200">
-                Voir les événements
-              </Link>
+            <div className="hidden lg:flex justify-center">
+              <div className="w-[420px] h-[420px] rounded-full border border-white/20 flex items-center justify-center">
+                <div className="w-[330px] h-[330px] rounded-full bg-white/[0.08] flex items-center justify-center">
+                  <Logo variant="symbol" tone="white" height={245} />
+                </div>
+              </div>
             </div>
-          </div>
-          <div className="absolute bottom-0 left-0 right-0">
-            <svg viewBox="0 0 1440 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M0 80L1440 80L1440 20C1200 60 960 0 720 20C480 40 240 10 0 40L0 80Z" fill="white" />
-            </svg>
           </div>
         </section>
 
-        {/* STATS */}
-        <section className="relative bg-white py-20 overflow-hidden">
-          <div className="absolute inset-0 opacity-60" style={{ backgroundImage: "radial-gradient(circle at 10% 20%, #0972E110 0%, transparent 45%), radial-gradient(circle at 90% 80%, #FF8A0012 0%, transparent 45%)" }} />
-          <div className="relative max-w-5xl mx-auto px-4 sm:px-6">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
-              {[
-                { icon: Users, value: 30, suffix: "+", label: "Membres actifs", color: "text-brand-blue", bg: "bg-brand-blue" },
-                { icon: BookOpen, value: 50, suffix: "+", label: "Personnes formées", color: "text-brand-orange", bg: "bg-brand-orange" },
-                { icon: Globe, value: 10, suffix: "+", label: "Pays représentés", color: "text-brand-navy", bg: "bg-brand-navy" },
-              ].map(({ icon: Icon, value, suffix, label, color, bg }) => (
-                <div key={label} className="relative text-center p-8 rounded-2xl border border-gray-100 bg-white shadow-sm hover:shadow-lg transition-shadow overflow-hidden">
-                  <div className={`absolute top-0 left-0 right-0 h-1 ${bg}`} />
-                  <div className={`inline-flex items-center justify-center w-14 h-14 rounded-xl bg-gray-50 mb-4 ${color}`}><Icon size={26} /></div>
-                  <div className={`text-4xl font-bold mb-2 ${color}`}><AnimatedCounter target={value} suffix={suffix} /></div>
-                  <p className="text-gray-500 text-sm font-medium">{label}</p>
+        {/* CHIFFRES */}
+        <section className="bg-section border-b border-line">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 sm:grid-cols-3 py-6 sm:py-10">
+            {[
+              { value: 30, suffix: "+", label: t.home.stats.members },
+              { value: 50, suffix: "+", label: t.home.stats.trained },
+              { value: 10, suffix: "+", label: t.home.stats.countries },
+            ].map(({ value, suffix, label }) => (
+              <div key={label} className="flex flex-col gap-1 px-6 py-4 sm:py-0 border-b sm:border-b-0 sm:border-l border-line last:border-b-0">
+                <div className="font-display text-4xl font-bold text-brand-blue"><AnimatedCounter target={value} suffix={suffix} /></div>
+                <p className="text-sm text-fg-muted">{label}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* PÔLES */}
+        <section className="bg-section py-20 sm:py-24">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-12">
+              <div className="max-w-2xl">
+                <p className="font-display text-sm font-semibold tracking-[0.16em] uppercase text-brand-blue mb-3">{t.home.poles.eyebrow}</p>
+                <h2 className="text-3xl sm:text-[38px] font-semibold text-fg leading-tight">{t.home.poles.title}</h2>
+              </div>
+              <Logo variant="dah" height={54} className="hidden md:block" />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              {poles.map(({ name, accent }, i) => (
+
+                <div key={name} className="flex flex-col gap-3 p-7 rounded-2xl border border-line bg-surface hover:border-brand-blue/40 hover:shadow-lg transition-all">
+                  <span className={`w-3.5 h-3.5 rounded-[3px] ${accent}`} />
+                  <h3 className="text-xl font-bold text-fg">{name}</h3>
+                  <p className="text-[15px] leading-relaxed text-fg-soft">{t.home.poles.items[i]}</p>
                 </div>
               ))}
             </div>
@@ -150,21 +178,19 @@ export default function LandingPage() {
         </section>
 
         {/* ACTIVITÉS */}
-        <section className="bg-gray-50 py-20">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6">
-            <div className="text-center mb-14">
-              <span className="inline-block bg-brand-blue/10 text-brand-blue text-xs font-semibold px-3 py-1 rounded-full mb-4">
-                Nos piliers
-              </span>
-              <h2 className="text-3xl sm:text-4xl font-bold text-brand-navy mb-4">Ce que nous faisons</h2>
-              <p className="text-gray-500 max-w-xl mx-auto">DAH structure ses activités autour de quatre piliers qui forment l&apos;ADN de notre communauté.</p>
+        <section className="bg-page py-20 sm:py-24">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="max-w-2xl mb-12">
+              <p className="font-display text-sm font-semibold tracking-[0.16em] uppercase text-brand-blue mb-3">{t.home.activities.eyebrow}</p>
+              <h2 className="text-3xl sm:text-[38px] font-semibold text-fg leading-tight mb-4">{t.home.activities.title}</h2>
+              <p className="text-fg-soft">{t.home.activities.text}</p>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {activities.map(({ icon: Icon, title, desc, color }) => (
-                <div key={title} className="group bg-white rounded-2xl p-7 border border-gray-100 hover:border-transparent hover:shadow-xl transition-all duration-200 hover:-translate-y-1">
-                  <div className={`w-14 h-14 ${color} rounded-xl flex items-center justify-center text-white mb-5 group-hover:scale-110 transition-transform duration-200`}><Icon size={24} /></div>
-                  <h3 className="font-semibold text-lg text-brand-navy mb-2">{title}</h3>
-                  <p className="text-gray-500 text-sm leading-relaxed">{desc}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              {activities.map(({ icon: Icon, color }, i) => (
+                <div key={i} className="group bg-surface rounded-2xl p-7 border border-line hover:shadow-lg transition-all duration-200 hover:-translate-y-1">
+                  <div className={`w-12 h-12 ${color} rounded-[10px] flex items-center justify-center text-white mb-5`}><Icon size={22} /></div>
+                  <h3 className="font-semibold text-xl text-fg mb-2">{t.home.activities.items[i].title}</h3>
+                  <p className="text-fg-soft text-[15px] leading-relaxed">{t.home.activities.items[i].desc}</p>
                 </div>
               ))}
             </div>
@@ -173,36 +199,40 @@ export default function LandingPage() {
 
         {/* ÉVÉNEMENTS */}
         {upcomingEvents.length > 0 && (
-          <section className="relative py-20 overflow-hidden" style={{ background: "linear-gradient(135deg, #04041A 0%, #071233 55%, #0c1a4a 100%)" }}>
-            <div className="absolute inset-0 opacity-5" style={{ backgroundImage: "linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)", backgroundSize: "50px 50px" }} />
-            <div className="relative max-w-6xl mx-auto px-4 sm:px-6">
-              <div className="flex items-center justify-between mb-10">
+          <section className="bg-section py-20 sm:py-24">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex items-end justify-between mb-10">
                 <div>
-                  <h2 className="text-3xl font-bold text-white mb-2">Prochains événements</h2>
-                  <p className="text-white/60">Rejoignez-nous lors de nos prochains rendez-vous</p>
+                  <p className="font-display text-sm font-semibold tracking-[0.16em] uppercase text-brand-blue mb-3">{t.home.events.eyebrow}</p>
+                  <h2 className="text-3xl sm:text-[38px] font-semibold text-fg">{t.home.events.title}</h2>
                 </div>
-                <Link href="/events" className="hidden sm:inline-flex items-center gap-2 text-brand-orange font-medium hover:gap-3 transition-all text-sm">
-                  Tous les événements <ChevronRight size={16} />
+                <Link href="/events" className="hidden sm:inline-flex items-center gap-2 font-display font-semibold text-brand-blue hover:gap-3 transition-all">
+                  {t.home.events.all} <ChevronRight size={16} />
                 </Link>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {upcomingEvents.map((event) => (
-                  <Link key={event.id} href={`/events/${event.id}`} className="bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-200 group">
-                    <div className="h-40 bg-gradient-to-br from-brand-navy to-brand-blue relative">
-                      <div className="absolute inset-0 flex items-center justify-center opacity-20"><CalendarDays size={80} className="text-white" /></div>
-                      <div className="absolute top-3 left-3">
-                        <span className="bg-brand-orange text-white text-xs font-semibold px-2.5 py-1 rounded-full">{eventTypeLabel(event.event_type)}</span>
+                {upcomingEvents.map((event) => {
+                  const start = new Date(event.start_date);
+                  return (
+                    <Link key={event.id} href={`/events/${event.id}`} className="group bg-surface rounded-2xl overflow-hidden border border-line hover:border-brand-blue/40 hover:shadow-lg transition-all">
+                      <div className="h-44 bg-univers relative flex items-end p-4">
+                        <Logo variant="symbol" tone="white" height={110} className="absolute right-5 top-5 opacity-25" />
+                        <div className="relative bg-surface rounded-[10px] px-3 py-2 flex flex-col items-center border-t-4 border-brand-orange">
+                          <span className="font-display text-2xl font-extrabold leading-none text-fg">{start.toLocaleDateString(intl, { day: "2-digit" })}</span>
+                          <span className="text-xs font-semibold text-fg-muted uppercase">{start.toLocaleDateString(intl, { month: "short" }).replace(".", "")}</span>
+                        </div>
                       </div>
-                    </div>
-                    <div className="p-5">
-                      <h3 className="font-semibold text-brand-navy line-clamp-2 mb-3 group-hover:text-brand-blue transition-colors">{event.title}</h3>
-                      <div className="space-y-1.5 text-sm text-gray-500">
-                        <div className="flex items-center gap-2"><CalendarDays size={14} className="shrink-0 text-brand-blue" />{formatDate(event.start_date)}</div>
-                        {event.location && <div className="flex items-center gap-2"><MapPin size={14} className="shrink-0 text-brand-orange" /><span className="line-clamp-1">{event.location}</span></div>}
+                      <div className="p-5 flex flex-col gap-2.5">
+                        <span className="self-start px-2.5 py-1 rounded-full bg-brand-blue/10 text-brand-deep text-xs font-semibold">{label.eventType(event.event_type)}</span>
+                        <h3 className="font-semibold text-lg text-fg line-clamp-2 group-hover:text-brand-blue transition-colors">{event.title}</h3>
+                        <div className="space-y-1.5 text-sm text-fg-muted">
+                          <div className="flex items-center gap-2"><CalendarDays size={14} className="shrink-0 text-brand-blue" />{fmt.date(event.start_date)}</div>
+                          {event.location && <div className="flex items-center gap-2"><MapPin size={14} className="shrink-0 text-brand-orange" /><span className="line-clamp-1">{event.location}</span></div>}
+                        </div>
                       </div>
-                    </div>
-                  </Link>
-                ))}
+                    </Link>
+                  );
+                })}
               </div>
             </div>
           </section>
@@ -210,15 +240,16 @@ export default function LandingPage() {
 
         {/* MEMBRES */}
         {featuredMembers.length > 0 && (
-          <section id="membres" className="bg-gray-50 py-20">
-            <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <section id="membres" className="bg-surface-muted py-20 sm:py-24">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="flex items-end justify-between mb-10">
                 <div>
-                  <h2 className="text-3xl font-bold text-brand-navy mb-2">Notre communauté</h2>
-                  <p className="text-gray-500">Des experts data et IA engagés pour l&apos;Afrique</p>
+                  <p className="font-display text-sm font-semibold tracking-[0.16em] uppercase text-brand-blue mb-3">{t.home.community.eyebrow}</p>
+                  <h2 className="text-3xl sm:text-[38px] font-semibold text-fg mb-2">{t.home.community.title}</h2>
+                  <p className="text-fg-soft">{t.home.community.text}</p>
                 </div>
-                <Link href="/members" className="hidden sm:inline-flex items-center gap-2 text-brand-blue font-medium hover:gap-3 transition-all text-sm">
-                  Voir tous les membres <ChevronRight size={16} />
+                <Link href="/members" className="hidden sm:inline-flex items-center gap-2 font-display font-semibold text-brand-blue hover:gap-3 transition-all">
+                  {t.home.community.all} <ChevronRight size={16} />
                 </Link>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -229,29 +260,29 @@ export default function LandingPage() {
                     <Link
                       key={member.slug}
                       href={`/members/${member.slug}`}
-                      className="group flex items-start gap-4 p-5 rounded-2xl border border-gray-100 hover:border-brand-blue/25 hover:shadow-md transition-all duration-200 bg-white"
+                      className="group flex items-start gap-4 p-5 rounded-2xl border border-line hover:border-brand-blue/40 hover:shadow-md transition-all duration-200 bg-surface"
                     >
                       <div className="relative shrink-0">
                         <img
                           src={avatar}
                           alt={fullName}
-                          className="w-14 h-14 rounded-xl object-cover border-2 border-gray-100 group-hover:border-brand-blue/30 transition-colors"
+                          className="w-14 h-14 rounded-xl object-cover border-2 border-white shadow-sm"
                         />
-                        <div className={`absolute -bottom-1.5 -right-1.5 w-4 h-4 rounded-full border-2 border-white ${roleBadgeColor(member)}`} />
+                        <div className={`absolute -bottom-1.5 -right-1.5 w-4 h-4 rounded-[4px] border-2 border-white ${roleBadgeColor(member)}`} />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="font-semibold text-brand-navy group-hover:text-brand-blue transition-colors text-sm leading-tight">{fullName}</p>
-                        <p className="text-xs text-gray-400 mt-0.5">{positionLabel(member)}</p>
+                        <p className="font-display font-semibold text-fg group-hover:text-brand-blue transition-colors leading-tight">{fullName}</p>
+                        <p className="text-xs text-fg-muted mt-0.5">{label.position(member)}</p>
                         {member.current_job && (
-                          <p className="text-xs text-gray-500 mt-1 truncate">
+                          <p className="text-xs text-fg-soft mt-1 truncate">
                             {member.current_job.title}
-                            <span className="text-brand-orange"> @ {member.current_job.company}</span>
+                            <span className="text-orange-700"> @ {member.current_job.company}</span>
                           </p>
                         )}
                         {member.skills.length > 0 && (
                           <div className="flex flex-wrap gap-1 mt-2">
                             {member.skills.slice(0, 3).map((skill) => (
-                              <span key={skill} className="px-1.5 py-0.5 bg-brand-blue/8 text-brand-blue text-[10px] font-medium rounded border border-brand-blue/15">
+                              <span key={skill} className="px-1.5 py-0.5 bg-brand-blue/10 text-brand-deep text-[10px] font-medium rounded">
                                 {skill}
                               </span>
                             ))}
@@ -263,8 +294,8 @@ export default function LandingPage() {
                 })}
               </div>
               <div className="mt-8 text-center sm:hidden">
-                <Link href="/members" className="inline-flex items-center gap-2 text-brand-blue font-medium text-sm">
-                  Voir tous les membres <ChevronRight size={16} />
+                <Link href="/members" className="inline-flex items-center gap-2 font-display font-semibold text-brand-blue text-sm">
+                  {t.home.community.all} <ChevronRight size={16} />
                 </Link>
               </div>
             </div>
@@ -272,42 +303,41 @@ export default function LandingPage() {
         )}
 
         {/* TÉMOIGNAGES */}
-        <section className="py-20 relative overflow-hidden" style={{ background: "linear-gradient(135deg, #04041A 0%, #051640 100%)" }}>
-          <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">Ils parlent de DAH</h2>
-              <p className="text-white/60">Ce que nos membres disent de leur expérience</p>
+        <section className="bg-panel text-white py-20 sm:py-24">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="max-w-2xl mb-12">
+              <p className="font-display text-sm font-semibold tracking-[0.16em] uppercase text-white/85 mb-3">{t.home.testimonials.eyebrow}</p>
+              <h2 className="text-3xl sm:text-[38px] font-semibold mb-3">{t.home.testimonials.title}</h2>
+              <p className="text-white/85">{t.home.testimonials.text}</p>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {testimonials.map((t) => (
-                <div key={t.name} className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-sm">
-                  <div className="flex gap-1 mb-4">{[...Array(5)].map((_, i) => <Star key={i} size={14} className="text-brand-orange fill-brand-orange" />)}</div>
-                  <p className="text-white/70 text-sm leading-relaxed mb-6 italic">&ldquo;{t.text}&rdquo;</p>
-                  <div className="flex items-center gap-3">
-                    <img src={t.avatar} alt={t.name} className="w-10 h-10 rounded-full" />
-                    <div><p className="font-semibold text-white text-sm">{t.name}</p><p className="text-white/50 text-xs">{t.role}</p></div>
-                  </div>
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              {testimonials.map((p, i) => (
+                <figure key={p.name} className="flex flex-col gap-5 bg-white/[0.08] border border-white/15 rounded-2xl p-7">
+                  <span aria-hidden="true" className="font-display text-5xl leading-[0.6] font-extrabold text-brand-orange">&ldquo;</span>
+                  <blockquote className="text-white/90 text-[15px] leading-relaxed flex-1">{t.home.testimonials.items[i].text}</blockquote>
+                  <figcaption className="flex items-center gap-3">
+                    <img src={p.avatar} alt={p.name} className="w-11 h-11 rounded-[10px]" />
+                    <div><p className="font-display font-semibold text-sm">{p.name}</p><p className="text-white/75 text-xs">{t.home.testimonials.items[i].role}</p></div>
+                  </figcaption>
+                </figure>
               ))}
             </div>
           </div>
         </section>
 
-        {/* CTA FINAL */}
-        <section className="relative bg-brand-blue py-20 overflow-hidden">
-          <img
-            src="/images/collaboration-img.png"
-            alt=""
-            aria-hidden="true"
-            className="absolute inset-0 w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-br from-brand-blue/70 via-brand-blue/55 to-brand-navy/70" />
-          <div className="relative max-w-3xl mx-auto px-4 text-center text-white">
-            <h2 className="text-3xl sm:text-4xl font-bold mb-4">Prêt à rejoindre l&apos;aventure ?</h2>
-            <p className="text-blue-100 mb-8 text-lg">Faites partie d&apos;une communauté qui façonne l&apos;avenir de la data en Afrique.</p>
-            <Link href="/register" className="inline-flex items-center gap-2 px-8 py-4 bg-white text-brand-blue font-bold rounded-xl hover:bg-blue-50 transition-colors shadow-lg">
-              Devenir membre <ArrowRight size={18} />
-            </Link>
+        {/* CTA FINAL — aplat orange, fond autorisé par la charte pour le logo blanc */}
+        <section className="bg-panel-accent py-16 sm:py-20">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col lg:flex-row items-center justify-between gap-8 text-center lg:text-left">
+            <div className="max-w-2xl">
+              <h2 className="text-3xl sm:text-[40px] font-bold text-ink dark:text-white leading-tight mb-3">{t.home.cta.title}</h2>
+              <p className="text-ink/85 dark:text-white/85 text-lg">{t.home.cta.text}</p>
+            </div>
+            <div className="flex flex-col sm:flex-row items-center gap-7">
+              <Logo variant="full" tone="white" height={80} />
+              <Link href="/register" className="inline-flex items-center gap-2 h-14 px-8 bg-ink text-white dark:bg-brand-orange dark:text-ink font-display font-bold rounded-[10px] hover:bg-ink/85 dark:hover:bg-orange-400 transition-colors">
+                {t.home.cta.button} <ArrowRight size={18} />
+              </Link>
+            </div>
           </div>
         </section>
       </main>
