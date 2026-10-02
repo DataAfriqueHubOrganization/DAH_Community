@@ -6,7 +6,11 @@ import type {
 import type { MemberListItem } from "@/types/members.types";
 
 export const departmentsService = {
+  /** Hors bureau/admin, l'API ne renvoie que le(s) département(s) de l'utilisateur. */
   list: () => api.get<Department[] | { results: Department[] }>("/departments/"),
+
+  /** Tous les départements (id + nom), sans authentification : annuaire public. */
+  publicList: () => api.get<Pick<Department, "id" | "name">[]>("/departments/public/"),
 
   get: (id: number) => api.get<DepartmentDetail>(`/departments/${id}/`),
 

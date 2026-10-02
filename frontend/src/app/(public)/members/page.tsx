@@ -9,7 +9,6 @@ import { Users, Search } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import type { PublicMemberListItem } from "@/types/members.types";
-import type { Department } from "@/types/departments.types";
 import type { Messages } from "@/i18n/messages";
 
 const POSTE_ORDER: Record<string, number> = {
@@ -34,12 +33,11 @@ export default function MembersPage() {
     staleTime: 1000 * 60 * 5,
   });
 
-  const { data: departmentsData } = useQuery({
-    queryKey: ["departments", "list"],
-    queryFn: () => departmentsService.list().then((r) => r.data),
+  const { data: departments = [] } = useQuery({
+    queryKey: ["departments", "public"],
+    queryFn: () => departmentsService.publicList().then((r) => r.data),
     staleTime: 1000 * 60 * 5,
   });
-  const departments: Department[] = Array.isArray(departmentsData) ? departmentsData : departmentsData?.results ?? [];
 
   const members: PublicMemberListItem[] = data?.results ?? [];
 

@@ -166,7 +166,7 @@ export default function DepartmentsManagePage() {
       ) : departments.length === 0 ? (
         <div className="text-center py-16">
           <Building2 size={48} className="mx-auto text-fg-faint mb-4" />
-          <p className="text-fg-muted font-medium">{x.none}</p>
+          <p className="text-fg-muted font-medium">{canManage ? x.none : t.myDepartment.none}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

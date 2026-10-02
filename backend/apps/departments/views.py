@@ -1,11 +1,11 @@
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
-from apps.common.permissions import IsAdminOrBureau
+from apps.common.permissions import IsAdminOrBureau, is_bureau
 from .models import Department, DepartmentMembership, DepartmentAnnouncement, DepartmentSession, DepartmentTask
 from .serializers import (
     DepartmentListSerializer, DepartmentDetailSerializer, DepartmentWriteSerializer,
@@ -17,6 +17,7 @@ from .serializers import (
 from .services import (
     save_department, add_member, end_membership,
     can_manage_department, is_current_department_member, get_my_department_context,
+    get_user_department_ids,
     create_announcement, update_announcement,
     create_session, update_session, delete_session_series, submit_session_report, send_session_reminder,
     create_task,
@@ -33,7 +34,18 @@ class DepartmentViewSet(ModelViewSet):
             return DepartmentWriteSerializer
         return DepartmentDetailSerializer
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        # Bureau/admin voient tous les départements ; un membre uniquement le(s)
+        # sien(s) (adhésion en cours ou lead/co-lead). Un autre département répond
+        # 404, sous-ressources comprises (membres, annonces, séances, tâches).
+        if self.action != "public_list" and not is_bureau(self.request.user):
+            qs = qs.filter(id__in=get_user_department_ids(self.request.user))
+        return qs
+
     def get_permissions(self):
+        if self.action == "public_list":
+            return [AllowAny()]
         if self.action == "mine":
             return [IsAuthenticated()]
         if self.action in ["create", "update", "partial_update", "destroy"]:
@@ -298,6 +310,11 @@ class DepartmentViewSet(ModelViewSet):
             raise PermissionDenied("Vous ne pouvez modifier que vos propres tâches.")
 
         return Response(DepartmentTaskSerializer(task).data)
+
+    # ── Liste publique (id + nom) : filtre de l'annuaire public des membres ──
+    @action(detail=False, methods=["get"], url_path="public")
+    def public_list(self, request):
+        return Response(list(Department.objects.order_by("name").values("id", "name")))
 
     # ── Mon département (vue membre) ────────────────────────────────
     @action(detail=False, methods=["get"], url_path="mine")
