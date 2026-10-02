@@ -62,12 +62,8 @@ def accept_candidature(candidature, reviewed_by) -> "Candidature":
             error_message=f"Impossible d'envoyer l'email de bienvenue à {user.email}",
         )
 
-    if not user.email_verified:
-        # L'accès aux fonctionnalités n'est plus conditionné à la vérification,
-        # mais on envoie quand même le lien dès l'acceptation (utile pour les
-        # emails à venir qui pourraient s'appuyer sur ce statut).
-        from apps.accounts.services import send_verification_email_async
-        send_verification_email_async(user)
+    # Pas d'email de vérification : le compte est activé automatiquement à la
+    # première connexion (voir DAHTokenObtainPairSerializer.validate).
 
     candidature.status = Candidature.STATUS_ACCEPTED
     candidature.reviewed_by = reviewed_by

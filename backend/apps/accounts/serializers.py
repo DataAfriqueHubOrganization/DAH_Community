@@ -77,10 +77,16 @@ class DAHTokenObtainPairSerializer(TokenObtainPairSerializer):
 
     def validate(self, attrs):
         data = super().validate(attrs)
-        data["user"] = UserSerializer(self.user).data
         if not self.user.email_verified:
-            from .services import send_verification_email_async
-            send_verification_email_async(self.user)
+            # Première connexion : se connecter avec le mot de passe reçu par email
+            # prouve que l'adresse est valide — le compte est activé automatiquement,
+            # sans email de vérification. Tokens régénérés pour refléter le statut.
+            from .services import mark_email_verified
+            mark_email_verified(self.user)
+            refresh = self.get_token(self.user)
+            data["refresh"] = str(refresh)
+            data["access"] = str(refresh.access_token)
+        data["user"] = UserSerializer(self.user).data
         return data
 
 

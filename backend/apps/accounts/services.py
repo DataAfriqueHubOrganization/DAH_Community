@@ -23,13 +23,18 @@ def send_password_reset_email_async(user: User) -> None:
     )
 
 
+def mark_email_verified(user: User) -> None:
+    if not user.email_verified:
+        user.email_verified = True
+        user.save(update_fields=["email_verified"])
+
+
 def verify_user_email(token: str) -> User:
+    """Lien de vérification envoyé par email. N'est plus envoyé (le compte est
+    activé à la première connexion), mais les liens déjà reçus restent valides."""
     from .tokens import read_email_verify_token
     user = read_email_verify_token(token)
-    if user.email_verified:
-        return user
-    user.email_verified = True
-    user.save(update_fields=["email_verified"])
+    mark_email_verified(user)
     return user
 
 
