@@ -10,9 +10,10 @@ services:
     runtime: python
     plan: free
     rootDir: backend
-    # TODO: retirer "&& python manage.py seed_dah" une fois les données de démo
-    # vérifiées en prod (temporaire, pour tester les fonctionnalités de département).
-    buildCommand: "pip install -r requirements/prod.txt && python manage.py migrate && python manage.py seed_dah && python manage.py collectstatic --noinput"
+    # Seed des données de démo retiré du build : il ne doit plus tourner en prod.
+    # Si besoin ponctuel, le lancer à la main depuis le Shell Render :
+    #   python manage.py seed_dah
+    buildCommand: "pip install -r requirements/prod.txt && python manage.py migrate && python manage.py collectstatic --noinput"
     startCommand: "gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --timeout 60"
     healthCheckPath: /admin/login/
     envVars:
