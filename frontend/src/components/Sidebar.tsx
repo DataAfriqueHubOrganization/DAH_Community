@@ -14,7 +14,9 @@ const allNavItems = [
   { href: "/dashboard", key: "dashboard", icon: LayoutDashboard, roles: "all" },
   { href: "/manage/events", key: "events", icon: CalendarDays, roles: "bureau" },
   { href: "/manage/members", key: "members", icon: Users, roles: "bureau" },
-  { href: "/manage/departments", key: "departments", icon: Building2, roles: "all" },
+  // Liste des départements : bureau uniquement — un membre n'y verrait que le sien,
+  // déjà accessible via « Mon département ».
+  { href: "/manage/departments", key: "departments", icon: Building2, roles: "bureau" },
   { href: "/manage/actualites", key: "news", icon: Newspaper, roles: "bureau" },
   { href: "/my-department", key: "myDepartment", icon: Building2, roles: "all" },
   { href: "/memberships", key: "applications", icon: FileText, roles: "admin_president" },
@@ -65,7 +67,12 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: { mobileOpen?: bo
         <nav className="flex-1 py-4 overflow-y-auto">
           {navItems.map(({ href, key, icon: Icon }) => {
             const label = t.sidebar[key];
-            const active = pathname === href || pathname.startsWith(href + "/");
+            // « Mon département » redirige vers /manage/departments/<id> : sans l'entrée
+            // « Départements » (masquée hors bureau), c'est elle qui doit être surlignée.
+            const showsMyDepartment = !isBureau(user) && pathname.startsWith("/manage/departments/");
+            const active = href === "/my-department" && showsMyDepartment
+              ? true
+              : pathname === href || pathname.startsWith(href + "/");
             return (
               <Link key={href} href={href} title={collapsed ? label : undefined}
                 onClick={onMobileClose}

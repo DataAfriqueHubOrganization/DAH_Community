@@ -214,9 +214,12 @@ export default function DepartmentWorkspacePage({ params }: { params: Promise<{ 
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/manage/departments" className="flex items-center gap-1.5 text-sm text-fg-subtle hover:text-brand-blue mb-2 transition-colors">
-          <ArrowLeft size={14} /> {d.backToList}
-        </Link>
+        {/* La liste des départements n'est proposée qu'au bureau */}
+        {isBureau(currentUser) && (
+          <Link href="/manage/departments" className="flex items-center gap-1.5 text-sm text-fg-subtle hover:text-brand-blue mb-2 transition-colors">
+            <ArrowLeft size={14} /> {d.backToList}
+          </Link>
+        )}
         <h1 className="text-2xl font-bold text-fg">{department.name}</h1>
         {department.description && <p className="text-fg-muted text-sm mt-1">{department.description}</p>}
         <div className="flex flex-wrap items-center gap-2 mt-3">
