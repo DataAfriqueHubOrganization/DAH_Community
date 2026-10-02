@@ -1,19 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import { membershipsService } from "@/services/memberships.service";
-import { candidatureSchema, type CandidatureInput } from "@/features/auth/schemas";
-import { AFRICAN_COUNTRIES, OTHER_COUNTRIES } from "@/lib/countries";
+import { makeCandidatureSchema, type CandidatureInput } from "@/features/auth/schemas";
+import { AFRICAN_COUNTRIES, OTHER_COUNTRIES, sortedCountries } from "@/lib/countries";
+import { useI18n } from "@/i18n/I18nProvider";
 import { CheckCircle2, FileText, X } from "lucide-react";
 
-const STEPS = ["Identité", "Profil & Motivation"] as const;
 const MAX_CV_SIZE = 5 * 1024 * 1024; // 5 Mo
 
-function extractErrorMessage(error: unknown): string {
-  const fallback = "Une erreur est survenue. Vérifiez vos informations et réessayez.";
+function extractErrorMessage(error: unknown, fallback: string): string {
   const detail = (error as {
     response?: { data?: { detail?: Record<string, string[]> | string } };
   })?.response?.data?.detail;
@@ -39,15 +38,19 @@ function Field({
 }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-brand-navy mb-1">{label}</label>
+      <label className="block text-sm font-medium text-fg mb-1">{label}</label>
       {children}
-      {hint && !error && <p className="text-gray-400 text-xs mt-1">{hint}</p>}
+      {hint && !error && <p className="text-fg-subtle text-xs mt-1">{hint}</p>}
       {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
     </div>
   );
 }
 
 export function CandidatureForm() {
+  const { t, locale } = useI18n();
+  const c = t.candidature;
+  const STEPS = c.steps;
+  const schema = useMemo(() => makeCandidatureSchema(t.validation), [t]);
   const [step, setStep] = useState(0);
   const [cvFile, setCvFile] = useState<File | null>(null);
   const [cvError, setCvError] = useState("");
@@ -72,12 +75,12 @@ export function CandidatureForm() {
       return;
     }
     if (file.type !== "application/pdf") {
-      setCvError("Le fichier doit être un PDF.");
+      setCvError(c.cvMustBePdf);
       setCvFile(null);
       return;
     }
     if (file.size > MAX_CV_SIZE) {
-      setCvError("Le fichier ne doit pas dépasser 5 Mo.");
+      setCvError(c.cvTooLarge);
       setCvFile(null);
       return;
     }
@@ -91,7 +94,7 @@ export function CandidatureForm() {
     trigger,
     watch,
     formState: { errors },
-  } = useForm<CandidatureInput>({ resolver: zodResolver(candidatureSchema) });
+  } = useForm<CandidatureInput>({ resolver: zodResolver(schema) });
 
   const motivation = watch("motivation") ?? "";
 
@@ -107,13 +110,8 @@ export function CandidatureForm() {
     return (
       <div className="text-center py-6 space-y-4">
         <CheckCircle2 size={48} className="text-green-500 mx-auto" />
-        <h3 className="text-lg font-semibold text-brand-navy">
-          Candidature envoyée !
-        </h3>
-        <p className="text-sm text-gray-500 leading-relaxed">
-          Merci pour votre intérêt. Notre équipe examinera votre candidature et
-          vous contactera par email dans les meilleurs délais.
-        </p>
+        <h3 className="text-lg font-semibold text-fg">{c.successTitle}</h3>
+        <p className="text-sm text-fg-muted leading-relaxed">{c.successText}</p>
       </div>
     );
   }
@@ -135,7 +133,7 @@ export function CandidatureForm() {
             </div>
             <span
               className={`text-xs hidden sm:block ${
-                i <= step ? "text-brand-navy font-medium" : "text-muted-foreground"
+                i <= step ? "text-fg font-medium" : "text-muted-foreground"
               }`}
             >
               {label}
@@ -151,17 +149,17 @@ export function CandidatureForm() {
       {step === 0 && (
         <>
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Prénom *" error={errors.first_name?.message}>
+            <Field label={`${t.eventForm.firstName} *`} error={errors.first_name?.message}>
               <input {...register("first_name")} placeholder="Merveille" className={inputCls} />
             </Field>
-            <Field label="Nom *" error={errors.last_name?.message}>
+            <Field label={`${t.eventForm.lastName} *`} error={errors.last_name?.message}>
               <input {...register("last_name")} placeholder="Houenagnon" className={inputCls} />
             </Field>
           </div>
-          <Field label="Adresse email *" error={errors.email?.message}>
-            <input type="email" {...register("email")} placeholder="vous@exemple.com" className={inputCls} />
+          <Field label={`${c.email} *`} error={errors.email?.message}>
+            <input type="email" {...register("email")} placeholder={t.eventForm.emailPlaceholder} className={inputCls} />
           </Field>
-          <Field label="Téléphone" error={errors.phone?.message} hint="Optionnel">
+          <Field label={c.phone} error={errors.phone?.message} hint={c.optional}>
             <input {...register("phone")} placeholder="+229 61 00 00 00" className={inputCls} />
           </Field>
         </>
@@ -171,22 +169,22 @@ export function CandidatureForm() {
       {step === 1 && (
         <>
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Pays *" error={errors.country?.message}>
-              <select {...register("country")} defaultValue="" className={`${inputCls} bg-white`}>
-                <option value="" disabled>Sélectionnez un pays</option>
-                <optgroup label="Afrique">
-                  {AFRICAN_COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            <Field label={`${c.country} *`} error={errors.country?.message}>
+              <select {...register("country")} defaultValue="" className={`${inputCls} bg-surface`}>
+                <option value="" disabled>{c.selectCountry}</option>
+                <optgroup label={t.eventForm.africa}>
+                  {sortedCountries(AFRICAN_COUNTRIES, locale).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </optgroup>
-                <optgroup label="Autres pays">
-                  {OTHER_COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                <optgroup label={t.eventForm.otherCountries}>
+                  {sortedCountries(OTHER_COUNTRIES, locale).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </optgroup>
               </select>
             </Field>
-            <Field label="Profession *" error={errors.profession?.message}>
+            <Field label={`${t.eventForm.profession} *`} error={errors.profession?.message}>
               <input {...register("profession")} placeholder="Data Scientist" className={inputCls} />
             </Field>
           </div>
-          <Field label="LinkedIn" error={errors.linkedin_url?.message} hint="Optionnel">
+          <Field label="LinkedIn" error={errors.linkedin_url?.message} hint={c.optional}>
             <input
               {...register("linkedin_url")}
               placeholder="https://linkedin.com/in/..."
@@ -194,35 +192,36 @@ export function CandidatureForm() {
             />
           </Field>
           <Field
-            label="Pourquoi souhaitez-vous rejoindre DAH ? *"
+            label={`${c.motivationLabel} *`}
             error={errors.motivation?.message}
           >
             <textarea
               {...register("motivation")}
               rows={5}
-              placeholder="Décrivez votre parcours, vos motivations et ce que vous souhaitez apporter à la communauté..."
+              placeholder={c.motivationPlaceholder}
               className={`${inputCls} resize-none`}
             />
-            <p className={`text-xs mt-1 text-right ${motivation.length < 50 ? "text-gray-400" : "text-green-600"}`}>
-              {motivation.length} / 50 min.
+            <p className={`text-xs mt-1 text-right ${motivation.length < 50 ? "text-fg-subtle" : "text-green-600"}`}>
+              {c.motivationCount(motivation.length)}
             </p>
           </Field>
 
           <Field
-            label="CV (PDF)"
+            label={c.cv}
             error={cvError}
-            hint="Optionnel — un CV à jour pourrait avantager votre candidature"
+            hint={c.cvHint}
           >
             {cvFile ? (
               <div className="flex items-center justify-between gap-2 border border-border rounded-lg px-3 py-2.5 text-sm">
-                <span className="flex items-center gap-2 text-brand-navy truncate">
+                <span className="flex items-center gap-2 text-fg truncate">
                   <FileText size={16} className="text-brand-blue shrink-0" />
                   <span className="truncate">{cvFile.name}</span>
                 </span>
                 <button
                   type="button"
                   onClick={() => setCvFile(null)}
-                  className="text-gray-400 hover:text-red-500 shrink-0"
+                  aria-label={c.removeCv}
+                  className="text-fg-subtle hover:text-red-500 shrink-0"
                 >
                   <X size={16} />
                 </button>
@@ -232,7 +231,7 @@ export function CandidatureForm() {
                 type="file"
                 accept="application/pdf"
                 onChange={handleCvChange}
-                className="w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-brand-blue/10 file:text-brand-blue file:text-sm file:font-medium hover:file:bg-brand-blue/20 border border-border rounded-lg"
+                className="w-full text-sm text-fg-muted file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-brand-blue/10 file:text-brand-blue file:text-sm file:font-medium hover:file:bg-brand-blue/20 border border-border rounded-lg"
               />
             )}
           </Field>
@@ -241,7 +240,7 @@ export function CandidatureForm() {
 
       {mutation.isError && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
-          {extractErrorMessage(mutation.error)}
+          {extractErrorMessage(mutation.error, t.eventForm.genericError)}
         </div>
       )}
 
@@ -253,7 +252,7 @@ export function CandidatureForm() {
             onClick={() => setStep(0)}
             className="flex-1 border border-border rounded-lg py-2.5 text-sm font-medium hover:bg-muted transition-colors"
           >
-            ← Retour
+            ← {t.common.back}
           </button>
         )}
         {step === 0 ? (
@@ -262,7 +261,7 @@ export function CandidatureForm() {
             onClick={nextStep}
             className="flex-1 bg-brand-blue text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-blue/90 transition-colors"
           >
-            Suivant →
+            {t.common.next} →
           </button>
         ) : (
           <button
@@ -270,7 +269,7 @@ export function CandidatureForm() {
             disabled={mutation.isPending}
             className="flex-1 bg-brand-blue text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-blue/90 disabled:opacity-50 transition-colors"
           >
-            {mutation.isPending ? "Envoi en cours…" : "Envoyer ma candidature"}
+            {mutation.isPending ? c.submitting : c.submit}
           </button>
         )}
       </div>

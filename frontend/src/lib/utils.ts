@@ -2,25 +2,6 @@ export function cn(...classes: (string | undefined | null | false)[]): string {
   return classes.filter(Boolean).join(" ");
 }
 
-export function formatDate(dateStr: string, options?: Intl.DateTimeFormatOptions): string {
-  return new Date(dateStr).toLocaleDateString("fr-FR", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    ...options,
-  });
-}
-
-export function formatDateTime(dateStr: string): string {
-  return new Date(dateStr).toLocaleString("fr-FR", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
 export function toDatetimeLocalValue(isoString?: string | null): string {
   if (!isoString) return "";
   const d = new Date(isoString);
@@ -30,24 +11,11 @@ export function toDatetimeLocalValue(isoString?: string | null): string {
 
 export function avatarUrl(name: string, size = 80): string {
   const encoded = encodeURIComponent(name);
-  return `https://ui-avatars.com/api/?name=${encoded}&size=${size}&background=0972E1&color=fff&bold=true&format=svg`;
+  return `https://ui-avatars.com/api/?name=${encoded}&size=${size}&background=2F6FE0&color=fff&bold=true&format=svg`;
 }
 
 export function qrCodeUrl(data: string, size = 120): string {
   return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(data)}`;
-}
-
-export function eventTypeLabel(type: string): string {
-  const labels: Record<string, string> = {
-    webinaire: "Webinaire",
-    conference: "Conférence",
-    atelier: "Atelier",
-    hackathon: "Hackathon",
-    meetup: "Meetup",
-    formation: "Formation",
-    autre: "Autre",
-  };
-  return labels[type] ?? type;
 }
 
 export function eventTypeBadgeVariant(type: string): "blue" | "orange" | "green" | "gray" | "yellow" {
@@ -63,43 +31,5 @@ export function eventTypeBadgeVariant(type: string): "blue" | "orange" | "green"
   return variants[type] ?? "gray";
 }
 
-export function roleLabel(role: string): string {
-  const labels: Record<string, string> = {
-    admin: "Administrateur",
-    responsable: "Responsable",
-    membre: "Membre",
-    candidat: "Candidat",
-    visiteur: "Visiteur",
-  };
-  return labels[role] ?? role;
-}
-
-export function posteLabel(poste: string | null | undefined): string {
-  if (!poste) return "--";
-  const labels: Record<string, string> = {
-    president: "Président",
-    vp1: "Vice-Président 1",
-    vp2: "Vice-Président 2",
-    secretaire_general: "Secrétaire Général",
-    secretaire_general_adj: "Secrétaire Général Adj.",
-    tresorier: "Trésorier",
-    tresorier_adj: "Trésorier Adj.",
-  };
-  return labels[poste] ?? poste;
-}
-
-/** Libellé affiché à côté du nom d'une personne : son poste au bureau s'il en a
- * un (plus parlant que "Membre"), sinon son rôle d'accès. */
-export function positionLabel(person: { role: string; poste?: string | null }): string {
-  return person.poste ? posteLabel(person.poste) : roleLabel(person.role);
-}
-
-export function timeUntil(dateStr: string): string {
-  const diff = new Date(dateStr).getTime() - Date.now();
-  if (diff < 0) return "Passé";
-  const days = Math.floor(diff / 86400000);
-  const hours = Math.floor((diff % 86400000) / 3600000);
-  if (days > 0) return `Dans ${days}j ${hours}h`;
-  const minutes = Math.floor((diff % 3600000) / 60000);
-  return `Dans ${hours}h ${minutes}min`;
-}
+// Libellés métier (types d'événement, rôles, postes) et formats de date :
+// voir useI18n() dans src/i18n/I18nProvider.tsx, qui suit la langue courante.

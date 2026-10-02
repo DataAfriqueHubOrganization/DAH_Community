@@ -1,24 +1,43 @@
 import type { Metadata } from "next";
-import { Poppins } from "next/font/google";
+import { Inter, Open_Sans } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
+import { themeInitScript } from "@/components/ThemeProvider";
+import { getLocale, getT } from "@/i18n/server";
 
-const poppins = Poppins({
-  weight: ["300", "400", "500", "600", "700"],
+// Charte : Open Sans pour les titres et l'UI, Inter pour le texte courant
+const openSans = Open_Sans({
+  weight: ["400", "500", "600", "700", "800"],
   subsets: ["latin"],
   display: "swap",
+  variable: "--font-open-sans",
 });
 
-export const metadata: Metadata = {
-  title: { default: "Data Afrique Hub", template: "%s | Data Afrique Hub" },
-  description: "Portail officiel de la communauté Data Afrique Hub",
-};
+const inter = Inter({
+  weight: ["400", "500", "600"],
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-inter",
+});
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT();
+  return {
+    title: { default: "Data Afrique Hub", template: "%s | Data Afrique Hub" },
+    description: t.meta.description,
+  };
+}
+
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const locale = await getLocale();
   return (
-    <html lang="fr" className="h-full" suppressHydrationWarning>
-      <body className={`${poppins.className} min-h-full flex flex-col bg-background text-foreground`}>
-        <Providers>{children}</Providers>
+    <html lang={locale} className={`${openSans.variable} ${inter.variable} h-full`} suppressHydrationWarning>
+      <head>
+        {/* Pose .dark avant le premier rendu pour éviter un flash de thème clair */}
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
+      <body className="font-sans min-h-full flex flex-col bg-background text-foreground">
+        <Providers locale={locale}>{children}</Providers>
       </body>
     </html>
   );

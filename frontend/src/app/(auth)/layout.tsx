@@ -1,79 +1,70 @@
 import Link from "next/link";
+import { Logo } from "@/components/ui/Logo";
+import { NetworkPattern } from "@/components/ui/NetworkPattern";
+import { PreferencesToggle } from "@/components/PreferencesToggle";
+import { getT } from "@/i18n/server";
 
-export default function AuthLayout({ children }: { children: React.ReactNode }) {
+export default async function AuthLayout({ children }: { children: React.ReactNode }) {
+  const t = await getT();
   return (
     <div className="min-h-screen flex">
       {/* Left panel - Brand */}
-      <div className="hidden lg:flex lg:w-[45%] bg-brand-navy relative overflow-hidden flex-col justify-between p-12">
-        {/* Photo de communauté en fond */}
-        <img
-          src="/images/students-celebrating.png"
-          alt=""
-          aria-hidden="true"
-          className="absolute inset-0 w-full h-full object-cover opacity-50"
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-brand-navy/90 via-brand-navy/80 to-brand-navy/95" />
-        {/* Background decoration */}
-        <div className="absolute inset-0" style={{ backgroundImage: "radial-gradient(circle at 20% 80%, #0972E1 0%, transparent 50%), radial-gradient(circle at 80% 20%, #FF8A00 0%, transparent 40%)", opacity: 0.15 }} />
-        <div className="absolute inset-0 opacity-5" style={{ backgroundImage: "linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)", backgroundSize: "40px 40px" }} />
+      <div className="hidden lg:flex lg:w-[45%] bg-univers relative overflow-hidden flex-col justify-between p-12 text-white">
+        <NetworkPattern />
 
-        {/* Logo */}
-        <Link href="/" className="relative z-10 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-white p-1 flex items-center justify-center overflow-hidden">
-            <img src="/logo/dah-logo.jpg" alt="Data Afrique Hub" className="w-full h-full object-cover rounded" />
-          </div>
-          <span className="text-white font-bold text-lg">Data Afrique Hub</span>
+        <Link href="/" className="relative z-10 self-start" aria-label={t.nav.homeAria}>
+          <Logo variant="dah" tone="white" height={64} />
         </Link>
 
         {/* Center content */}
         <div className="relative z-10 space-y-6">
-          <div className="inline-flex items-center gap-2 bg-brand-blue/20 border border-brand-blue/30 rounded-full px-4 py-1.5 text-sm text-blue-300">
-            <span className="w-2 h-2 bg-brand-orange rounded-full animate-pulse" />
-            Communauté panafricaine
-          </div>
-          <h2 className="text-3xl font-bold text-white leading-tight">
-            La data au service<br />de <span className="text-brand-orange">l&apos;Afrique</span>
+          <p className="inline-flex items-center gap-3 font-display text-sm font-semibold tracking-[0.16em] uppercase">
+            <span className="w-2.5 h-2.5 rounded-[2px] bg-brand-orange" />
+            {t.authLayout.badge}
+          </p>
+          <h2 className="text-4xl font-bold leading-tight">
+            {t.authLayout.title}
           </h2>
-          <p className="text-white/60 leading-relaxed">
-            Rejoignez des centaines de data scientists, ingénieurs et innovateurs africains qui construisent ensemble l&apos;avenir numérique du continent.
+          <p className="text-white/90 text-[17px] leading-relaxed max-w-md">
+            {t.authLayout.text}
           </p>
 
           {/* Stats */}
-          <div className="grid grid-cols-3 gap-4 pt-4">
-            {[["30+", "Membres"], ["10+", "Pays"], ["50+", "Formés"]].map(([val, lbl]) => (
-              <div key={lbl} className="text-center p-3 bg-white/5 rounded-xl border border-white/10">
-                <p className="text-xl font-bold text-brand-orange">{val}</p>
-                <p className="text-white/50 text-xs mt-0.5">{lbl}</p>
+          <div className="grid grid-cols-3 gap-3 pt-4 max-w-md">
+            {[["30+", t.authLayout.stats[0]], ["10+", t.authLayout.stats[1]], ["50+", t.authLayout.stats[2]]].map(([val, lbl]) => (
+              <div key={lbl} className="p-3 bg-white/10 rounded-xl border border-white/20">
+                <p className="font-display text-2xl font-bold">{val}</p>
+                <p className="text-white/85 text-xs mt-0.5">{lbl}</p>
               </div>
             ))}
           </div>
         </div>
 
         {/* Testimonial */}
-        <div className="relative z-10 bg-white/5 border border-white/10 rounded-2xl p-5">
-          <p className="text-white/70 text-sm italic leading-relaxed">
-            &ldquo;DAH m&apos;a donné accès à un réseau de professionnels incroyables et des formations de qualité. C&apos;est la meilleure communauté data d&apos;Afrique.&rdquo;
-          </p>
-          <div className="flex items-center gap-3 mt-4">
-            <img src="https://ui-avatars.com/api/?name=Alice+Mensah&background=0972E1&color=fff&bold=true&format=svg" alt="Alice" className="w-8 h-8 rounded-full" />
+        <figure className="relative z-10 bg-white/10 border border-white/20 rounded-2xl p-5">
+          <blockquote className="text-white/90 text-sm leading-relaxed">
+            &ldquo;{t.authLayout.quote}&rdquo;
+          </blockquote>
+          <figcaption className="flex items-center gap-3 mt-4">
+            <img src="https://ui-avatars.com/api/?name=Alice+Mensah&background=FB7C2C&color=111114&bold=true&format=svg" alt="Alice" className="w-9 h-9 rounded-[10px]" />
             <div>
-              <p className="text-white text-sm font-medium">Alice Mensah</p>
-              <p className="text-white/40 text-xs">Data Scientist</p>
+              <p className="font-display text-sm font-semibold">Alice Mensah</p>
+              <p className="text-white/75 text-xs">Data Scientist</p>
             </div>
-          </div>
-        </div>
+          </figcaption>
+        </figure>
       </div>
 
       {/* Right panel - Form */}
-      <div className="flex-1 flex flex-col justify-center items-center p-6 sm:p-12 bg-gray-50">
+      <div className="relative flex-1 flex flex-col justify-center items-center p-6 sm:p-12 bg-page">
+        <PreferencesToggle className="absolute top-4 right-4 sm:top-6 sm:right-6" />
         {/* Mobile logo */}
-        <Link href="/" className="lg:hidden flex items-center gap-2 mb-10">
-          <img src="/logo/dah-logo.jpg" alt="Data Afrique Hub" className="w-9 h-9 rounded-lg object-cover" />
-          <span className="font-bold text-brand-navy">Data Afrique Hub</span>
+        <Link href="/" className="lg:hidden mb-10" aria-label={t.nav.homeAria}>
+          <Logo variant="full" height={66} />
         </Link>
 
-        <div className="w-full max-w-[380px]">
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <div className="w-full max-w-[420px]">
+          <div className="bg-surface rounded-2xl shadow-sm border border-line p-8">
             {children}
           </div>
         </div>

@@ -11,12 +11,15 @@ import { Building2, Plus, Users, Edit2, Trash2, X, Crown, ShieldHalf } from "luc
 import { MemberSearchSelect } from "@/components/MemberSearchSelect";
 import type { Department, DepartmentWritePayload } from "@/types/departments.types";
 import type { MemberListItem } from "@/types/members.types";
+import { useI18n } from "@/i18n/I18nProvider";
 
 const emptyForm: DepartmentWritePayload = { name: "", description: "", lead: null, co_lead: null };
 
 export default function DepartmentsManagePage() {
   const { data: user } = useCurrentUser();
   const qc = useQueryClient();
+  const { t } = useI18n();
+  const x = t.departments;
   const [showForm, setShowForm] = useState(false);
   const [editingDept, setEditingDept] = useState<Department | null>(null);
   const [form, setForm] = useState<DepartmentWritePayload>(emptyForm);
@@ -88,40 +91,42 @@ export default function DepartmentsManagePage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-brand-navy">Départements</h1>
-          <p className="text-gray-500 text-sm mt-1">{departments.length} département{departments.length > 1 ? "s" : ""}</p>
+          <h1 className="text-2xl font-bold text-fg">{t.sidebar.departments}</h1>
+          <p className="text-fg-muted text-sm mt-1">{x.count(departments.length)}</p>
         </div>
         {canManage && (
           <button onClick={openCreateForm} className="flex items-center justify-center gap-2 px-4 py-2 bg-brand-blue text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors shrink-0">
-            <Plus size={16} /> Créer un département
+            <Plus size={16} /> {x.create}
           </button>
         )}
       </div>
 
       {showForm && (
-        <div className="bg-white rounded-2xl border border-brand-blue/20 p-6 shadow-sm">
+        <div className="bg-surface rounded-2xl border border-brand-blue/20 p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-brand-navy">
-              {editingDept ? `Modifier « ${editingDept.name} »` : "Nouveau département"}
+            <h2 className="font-semibold text-fg">
+              {editingDept ? t.manageEvents.editTitle(editingDept.name) : x.newDepartment}
             </h2>
-            <button onClick={closeForm} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+            <button onClick={closeForm} aria-label={t.common.close} className="text-fg-subtle hover:text-fg-soft"><X size={18} /></button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <input
-              placeholder="Nom *"
+              placeholder={`${t.common.name} *`}
+              aria-label={t.common.name}
               value={form.name}
               onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-              className="sm:col-span-2 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue/20"
+              className="sm:col-span-2 border border-line rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue/20"
             />
             <textarea
-              placeholder="Description"
+              placeholder={t.myProfile.description}
+              aria-label={t.myProfile.description}
               value={form.description}
               onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
               rows={3}
-              className="sm:col-span-2 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue/20 resize-none"
+              className="sm:col-span-2 border border-line rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue/20 resize-none"
             />
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Responsable (lead)</label>
+              <label className="block text-xs text-fg-muted mb-1">{x.lead}</label>
               <MemberSearchSelect
                 members={members}
                 value={form.lead ?? null}
@@ -129,15 +134,15 @@ export default function DepartmentsManagePage() {
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Co-responsable (co-lead)</label>
+              <label className="block text-xs text-fg-muted mb-1">{x.coLead}</label>
               <MemberSearchSelect
                 members={members}
                 value={form.co_lead ?? null}
                 onChange={(userId) => setForm(f => ({ ...f, co_lead: userId }))}
               />
             </div>
-            <p className="sm:col-span-2 text-xs text-gray-400">
-              Désigner un lead ou co-lead attribue automatiquement le rôle « Responsable de département » à cette personne.
+            <p className="sm:col-span-2 text-xs text-fg-subtle">
+              {x.leadHint}
             </p>
             <div className="sm:col-span-2 flex justify-end">
               <button
@@ -146,8 +151,8 @@ export default function DepartmentsManagePage() {
                 className="px-6 py-2.5 bg-brand-blue text-white rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
               >
                 {createDept.isPending || updateDept.isPending
-                  ? "Enregistrement..."
-                  : editingDept ? "Enregistrer les modifications" : "Créer le département"}
+                  ? t.common.saving
+                  : editingDept ? t.manageEvents.saveChanges : x.createSubmit}
               </button>
             </div>
           </div>
@@ -156,31 +161,32 @@ export default function DepartmentsManagePage() {
 
       {isLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {[...Array(4)].map((_, i) => <div key={i} className="bg-white rounded-2xl border border-gray-100 p-5 h-32 animate-pulse" />)}
+          {[...Array(4)].map((_, i) => <div key={i} className="bg-surface rounded-2xl border border-line-soft p-5 h-32 animate-pulse" />)}
         </div>
       ) : departments.length === 0 ? (
         <div className="text-center py-16">
-          <Building2 size={48} className="mx-auto text-gray-300 mb-4" />
-          <p className="text-gray-500 font-medium">Aucun département</p>
+          <Building2 size={48} className="mx-auto text-fg-faint mb-4" />
+          <p className="text-fg-muted font-medium">{x.none}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {departments.map(dept => (
-            <div key={dept.id} className="bg-white rounded-2xl border border-gray-100 p-5 space-y-3">
+            <div key={dept.id} className="bg-surface rounded-2xl border border-line-soft p-5 space-y-3">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-9 h-9 rounded-xl bg-brand-navy/10 flex items-center justify-center shrink-0">
-                    <Building2 size={16} className="text-brand-navy" />
+                  <div className="w-9 h-9 rounded-xl bg-brand-blue/10 flex items-center justify-center shrink-0">
+                    <Building2 size={16} className="text-fg" />
                   </div>
-                  <p className="font-semibold text-brand-navy text-sm truncate">{dept.name}</p>
+                  <p className="font-semibold text-fg text-sm truncate">{dept.name}</p>
                 </div>
                 {canManage && (
                   <div className="flex items-center gap-1 shrink-0">
-                    <button onClick={() => openEditForm(dept)} title="Modifier" className="p-1.5 text-gray-300 hover:text-brand-blue rounded-lg hover:bg-brand-blue/5 transition-colors"><Edit2 size={14} /></button>
+                    <button onClick={() => openEditForm(dept)} title={t.common.edit} aria-label={t.common.edit} className="p-1.5 text-fg-faint hover:text-brand-blue rounded-lg hover:bg-brand-blue/5 transition-colors"><Edit2 size={14} /></button>
                     <button
-                      onClick={() => { if (confirm(`Supprimer le département « ${dept.name} » ?`)) deleteDept.mutate(dept.id); }}
-                      title="Supprimer"
-                      className="p-1.5 text-gray-300 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors"
+                      onClick={() => { if (confirm(x.confirmDelete(dept.name))) deleteDept.mutate(dept.id); }}
+                      title={t.common.delete}
+                      aria-label={t.common.delete}
+                      className="p-1.5 text-fg-faint hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors"
                     >
                       <Trash2 size={14} />
                     </button>
@@ -188,16 +194,16 @@ export default function DepartmentsManagePage() {
                 )}
               </div>
 
-              {dept.description && <p className="text-gray-500 text-xs line-clamp-2">{dept.description}</p>}
+              {dept.description && <p className="text-fg-muted text-xs line-clamp-2">{dept.description}</p>}
 
-              <div className="space-y-1.5 text-xs text-gray-500">
+              <div className="space-y-1.5 text-xs text-fg-muted">
                 <div className="flex items-center gap-1.5">
                   <Crown size={12} className="text-brand-orange shrink-0" />
-                  {dept.lead_name ?? <span className="text-gray-300">Aucun lead</span>}
+                  {dept.lead_name ?? <span className="text-fg-subtle">{x.noLead}</span>}
                 </div>
                 <div className="flex items-center gap-1.5">
                   <ShieldHalf size={12} className="text-brand-blue shrink-0" />
-                  {dept.co_lead_name ?? <span className="text-gray-300">Aucun co-lead</span>}
+                  {dept.co_lead_name ?? <span className="text-fg-subtle">{x.noCoLead}</span>}
                 </div>
               </div>
 
@@ -205,7 +211,7 @@ export default function DepartmentsManagePage() {
                 href={`/manage/departments/${dept.id}`}
                 className="flex items-center justify-center gap-1.5 w-full py-2 text-xs text-brand-blue border border-brand-blue/20 rounded-xl hover:bg-brand-blue hover:text-white transition-colors font-medium"
               >
-                <Users size={13} /> {dept.member_count} membre{dept.member_count > 1 ? "s" : ""} — {dept.can_manage ? "Gérer" : "Voir"}
+                <Users size={13} /> {x.members(dept.member_count)} — {dept.can_manage ? x.manage : x.view}
               </Link>
             </div>
           ))}

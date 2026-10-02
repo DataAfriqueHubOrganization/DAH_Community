@@ -8,7 +8,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-muted">
+    <div className="flex h-screen overflow-hidden bg-page">
       <Sidebar mobileOpen={mobileOpen} onMobileClose={() => setMobileOpen(false)} />
       <div className="flex flex-col flex-1 overflow-hidden min-w-0">
         <DashboardHeader onMenuClick={() => setMobileOpen(true)} />
