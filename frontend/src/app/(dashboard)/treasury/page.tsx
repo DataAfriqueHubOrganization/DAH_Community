@@ -8,64 +8,78 @@ import { useCurrentUser } from "@/hooks/useAuth";
 import { isTreasurer } from "@/types/auth.types";
 import { useI18n } from "@/i18n/I18nProvider";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/Badge";
-import { ContributionsTab } from "@/features/treasury/ContributionsTab";
+import { todayIso } from "@/features/engagement/period";
+import { ValidateTab } from "@/features/treasury/ValidateTab";
+import { MembersTab } from "@/features/treasury/MembersTab";
 import { CashTab } from "@/features/treasury/CashTab";
-import { YearSelect, yearOptions } from "@/features/treasury/shared";
+import { monthName } from "@/features/treasury/shared";
 
-type Tab = "contributions" | "cash";
+type Tab = "validate" | "members" | "cash";
+const TABS: Tab[] = ["validate", "members", "cash"];
 
-/** Trésorerie (trésorier, adjoint, admin) : cotisations et caisse. */
+/** Trésorerie (trésorier, adjoint, admin), organisée autour de trois gestes :
+ *  valider les déclarations, suivre les membres mois par mois, tenir la caisse. */
 export default function TreasuryPage() {
-  const { t } = useI18n();
+  const { t, intl } = useI18n();
   const x = t.treasury;
+  const v = x.v2;
   const { data: user, isLoading: loadingUser } = useCurrentUser();
   const allowed = isTreasurer(user);
   const searchParams = useSearchParams();
-  const [tab, setTab] = useState<Tab>(searchParams.get("tab") === "cash" ? "cash" : "contributions");
+  const requested = searchParams.get("tab") as Tab | null;
+  const [chosen, setChosen] = useState<Tab | null>(requested && TABS.includes(requested) ? requested : null);
   const [year, setYear] = useState(() => new Date().getFullYear());
 
-  const { data: overview, isLoading } = useQuery({
+  const { data: declarations = [], isLoading: loadingDeclarations } = useQuery({
+    queryKey: ["treasury", "declarations", "pending"],
+    queryFn: () => treasuryService.declarations.list("pending").then((r) => r.data),
+    enabled: allowed,
+  });
+  const { data: overview, isLoading: loadingOverview } = useQuery({
     queryKey: ["treasury", "overview", year],
     queryFn: () => treasuryService.contributions.overview(year).then((r) => r.data),
     enabled: allowed,
   });
 
+  // Par défaut : « À valider » s'il y a quelque chose à valider, sinon « Membres ».
+  const tab: Tab = chosen ?? (loadingDeclarations ? "members" : declarations.length > 0 ? "validate" : "members");
   const select = (next: Tab) => {
-    setTab(next);
+    setChosen(next);
     window.history.replaceState(null, "", `?tab=${next}`);
   };
 
-  if (loadingUser) return <div className="h-40 bg-surface rounded-2xl border border-line-soft animate-pulse" />;
+  if (loadingUser) return <div className="h-40 bg-surface rounded-3xl animate-pulse" />;
   if (!allowed) return <p className="text-fg-muted">{t.common.error}</p>;
+
+  const month = monthName(`${todayIso().slice(0, 7)}-01`, intl);
 
   return (
     <div className="space-y-6">
-      <header className="-mx-4 sm:-mx-6 -mt-4 sm:-mt-6 px-4 sm:px-6 pt-4 sm:pt-6 bg-surface border-b border-line-soft">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-fg">{x.title}</h1>
-            <Badge variant="orange">{x.roleBadge}</Badge>
-          </div>
-          <YearSelect value={year} onChange={setYear} years={yearOptions()} />
+      <header className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+        <div>
+          <h1 className="font-display text-[28px] font-extrabold tracking-tight text-fg">{x.title}</h1>
+          <p className="text-sm text-fg-muted mt-1 capitalize-first">
+            {declarations.length > 0 ? v.subtitleWaiting(month, declarations.length) : v.subtitleClear(month)}
+          </p>
         </div>
-        <nav aria-label={x.sectionsLabel} className="flex gap-6 mt-3 -mb-px">
-          {(["contributions", "cash"] as Tab[]).map((key) => (
+        <nav aria-label={x.sectionsLabel} className="inline-flex self-start lg:self-auto gap-1.5 bg-surface rounded-2xl p-1.5 shadow-sm">
+          {TABS.map((key) => (
             <button key={key} onClick={() => select(key)} aria-current={tab === key ? "page" : undefined}
-              className={cn("inline-flex items-center gap-2 py-3 text-sm border-b-[3px] transition-colors",
-                tab === key ? "border-brand-orange text-fg font-semibold" : "border-transparent text-fg-muted hover:text-fg font-medium")}>
-              {x.tabs[key]}
-              {key === "contributions" && overview && (overview.pending_declarations > 0 || overview.late_count > 0) && (
-                <span className="text-[11px] font-bold rounded-full px-2 py-0.5 bg-brand-orange/15 text-orange-800 dark:text-orange-300">
-                  {overview.pending_declarations > 0 ? x.nToValidate(overview.pending_declarations) : x.nLate(overview.late_count)}
-                </span>
+              className={cn("inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm transition-colors",
+                tab === key ? "bg-fg text-surface font-semibold" : "text-fg-muted hover:text-fg font-medium")}>
+              {key === "validate" && declarations.length > 0 && <span className="w-2 h-2 rounded-full bg-brand-orange" aria-hidden="true" />}
+              {v.tabs[key]}
+              {key === "validate" && declarations.length > 0 && (
+                <span className="text-[11px] font-bold rounded-full px-2 py-0.5 bg-brand-orange text-ink">{declarations.length}</span>
               )}
             </button>
           ))}
         </nav>
       </header>
 
-      {tab === "contributions" ? <ContributionsTab data={overview} isLoading={isLoading} /> : <CashTab year={year} />}
+      {tab === "validate" && <ValidateTab declarations={declarations} isLoading={loadingDeclarations} />}
+      {tab === "members" && <MembersTab data={overview} isLoading={loadingOverview} year={year} onYear={setYear} />}
+      {tab === "cash" && <CashTab year={year} onYear={setYear} />}
     </div>
   );
 }

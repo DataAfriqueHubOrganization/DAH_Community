@@ -38,6 +38,7 @@ export interface Contribution {
   note: string;
   recorded_by_name: string | null;
   points: number;
+  via_declaration: boolean;
   created_at: string;
 }
 
@@ -48,6 +49,7 @@ export interface MemberContributions extends MemberSituation {
   points_in_year: number;
   points_per_month: number;
   history: Contribution[];
+  declarations: PaymentDeclaration[];
 }
 
 export type DeclarationStatus = "pending" | "approved" | "rejected";

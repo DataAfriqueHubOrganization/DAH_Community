@@ -35,9 +35,9 @@ def _year(request) -> int:
     return serializer.validated_data.get("year") or timezone.localdate().year
 
 
-def _situation_payload(user, year):
+def _situation_payload(user, year, request=None):
     situation = services.member_situation(user, year)
-    history = Contribution.objects.filter(user=user).select_related("recorded_by")
+    history = Contribution.objects.filter(user=user).select_related("recorded_by", "declaration")
     return {
         "user_id": user.id,
         "full_name": user.full_name,
@@ -46,6 +46,11 @@ def _situation_payload(user, year):
         "points_in_year": services.POINTS_PER_MONTH * situation["months_paid_in_year"],
         "points_per_month": services.POINTS_PER_MONTH,
         "history": ContributionSerializer(history, many=True).data,
+        # Déclarations non validées (en attente ou refusées) : visibles sur la fiche.
+        "declarations": PaymentDeclarationSerializer(
+            PaymentDeclaration.objects.filter(user=user).exclude(status=PaymentDeclaration.STATUS_APPROVED)[:10],
+            many=True, context={"request": request},
+        ).data,
     }
 
 
@@ -90,7 +95,7 @@ class ContributionViewSet(GenericViewSet):
         user = get_object_or_404(get_user_model(), pk=user_id)
         if not services.is_liable(user):
             return Response({"detail": "Cette personne n'est pas soumise à cotisation."}, status=status.HTTP_400_BAD_REQUEST)
-        return Response(_situation_payload(user, _year(request)))
+        return Response(_situation_payload(user, _year(request), request))
 
     def create(self, request):
         serializer = RecordContributionSerializer(data=request.data)

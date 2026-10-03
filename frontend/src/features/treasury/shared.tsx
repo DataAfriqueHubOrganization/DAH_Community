@@ -122,3 +122,33 @@ export function apiError(error: unknown, fallback: string): string {
   }
   return fallback;
 }
+
+/** Contrôle segmenté (filtre exclusif) — plus léger qu'une rangée de puces. */
+export function Segmented<T extends string>({
+  label, value, onChange, options,
+}: {
+  label: string;
+  value: T;
+  onChange: (value: T) => void;
+  options: [T, string][];
+}) {
+  return (
+    <div role="radiogroup" aria-label={label} className="inline-flex flex-wrap bg-surface-strong rounded-xl p-1 gap-1">
+      {options.map(([key, text]) => (
+        <button
+          key={key}
+          type="button"
+          role="radio"
+          aria-checked={value === key}
+          onClick={() => onChange(key)}
+          className={cn(
+            "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap",
+            value === key ? "bg-surface text-fg shadow-sm" : "text-fg-muted hover:text-fg",
+          )}
+        >
+          {text}
+        </button>
+      ))}
+    </div>
+  );
+}

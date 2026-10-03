@@ -144,6 +144,13 @@
   background-image: var(--panel-univers);
 }
 /* Version toujours vive : objets de marque (carte membre) */
+/* Majuscule initiale seulement (« octobre 2026 » → « Octobre 2026 ») */
+@utility capitalize-first {
+  &::first-letter {
+    text-transform: uppercase;
+  }
+}
+
 @utility bg-univers-brand {
   background-image: linear-gradient(135deg, #3B82F0 0%, #2F6FE0 45%, #1E4FAF 100%);
 }

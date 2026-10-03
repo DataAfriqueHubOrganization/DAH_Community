@@ -19,13 +19,19 @@ class ContributionSerializer(serializers.ModelSerializer):
     recorded_by_name = serializers.CharField(source="recorded_by.full_name", read_only=True, default=None)
     period_end = serializers.SerializerMethodField()
     points = serializers.SerializerMethodField()
+    via_declaration = serializers.SerializerMethodField()
 
     class Meta:
         model = Contribution
         fields = [
             "id", "user", "user_name", "period_start", "period_end", "months", "monthly_rate", "amount",
-            "paid_on", "method", "method_display", "reference", "note", "recorded_by_name", "points", "created_at",
+            "paid_on", "method", "method_display", "reference", "note", "recorded_by_name", "points",
+            "via_declaration", "created_at",
         ]
+
+    def get_via_declaration(self, obj):
+        """Déclaré par le membre (avec preuve) plutôt qu'encaissé en main propre."""
+        return hasattr(obj, "declaration")
 
     def get_period_end(self, obj):
         from .services import add_months
