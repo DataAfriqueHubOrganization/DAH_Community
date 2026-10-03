@@ -1,0 +1,318 @@
+"""
+python manage.py seed_engagement
+
+Données de démonstration pour les points, points d'étape, classement et
+« membre du mois », sur les départements et comptes de démo (@dah.com).
+
+- Idempotent : relancer la commande ne crée aucun doublon (get_or_create
+  partout, points uniques par tâche / point d'étape).
+- Aucun email envoyé : tout est créé directement en base (les adresses de démo
+  sont fictives — des envois rebondiraient).
+- Déterministe : génération pseudo-aléatoire à graine fixe.
+"""
+import random
+from datetime import datetime, time, timedelta
+
+from django.contrib.auth import get_user_model
+from django.core.management import call_command
+from django.core.management.base import BaseCommand
+from django.db import transaction
+from django.utils import timezone
+
+User = get_user_model()
+
+PASSWORD = "Dah@2024!"
+HISTORY_DAYS = 175  # ~6 mois d'historique
+
+# Membres supplémentaires pour un classement réaliste (2 par département).
+EXTRA_MEMBERS = [
+    ("aicha@dah.com", "Aïcha", "Koné", "Data Engineering", ["SQL", "Airflow", "Python"]),
+    ("yao@dah.com", "Yao", "Mensah", "Data Engineering", ["Spark", "dbt", "Docker"]),
+    ("fatoumata@dah.com", "Fatoumata", "Sow", "Machine Learning & MLOps", ["PyTorch", "MLflow", "Python"]),
+    ("kwame@dah.com", "Kwame", "Asante", "Machine Learning & MLOps", ["Scikit-learn", "FastAPI", "NLP"]),
+    ("mariam@dah.com", "Mariam", "Traoré", "Formation & Mentorat", ["Pédagogie", "Power BI", "Excel"]),
+    ("ibrahim@dah.com", "Ibrahim", "Diallo", "Formation & Mentorat", ["Python", "Statistiques", "R"]),
+]
+
+# Niveau d'activité (nombre de tâches validées sur la période) : crée de l'écart.
+ACTIVITY = {
+    "felix@dah.com": 9, "bob@dah.com": 6, "aicha@dah.com": 8, "yao@dah.com": 4,
+    "alice@dah.com": 10, "claire@dah.com": 5, "fatoumata@dah.com": 7, "kwame@dah.com": 3,
+    "david@dah.com": 5, "emma@dah.com": 6, "mariam@dah.com": 8, "ibrahim@dah.com": 2,
+}
+
+TASK_POOL = {
+    "Data Engineering": [
+        "Optimiser le pipeline d'ingestion", "Documenter un modèle dbt", "Écrire des tests de qualité",
+        "Migrer un job cron vers Airflow", "Corriger un import de données", "Monitorer la fraîcheur des tables",
+        "Revue de code d'un pipeline", "Nettoyer un jeu de données partenaire",
+    ],
+    "Machine Learning & MLOps": [
+        "Entraîner un modèle de référence", "Mettre en production un modèle", "Écrire une fiche modèle",
+        "Évaluer un jeu de features", "Automatiser le réentraînement", "Comparer deux approches NLP",
+        "Préparer une démo pour le meetup", "Suivre la dérive d'un modèle",
+    ],
+    "Formation & Mentorat": [
+        "Préparer un support d'atelier", "Animer une séance de mentorat", "Rédiger un tutoriel débutant",
+        "Corriger les exercices d'une cohorte", "Organiser un webinaire", "Mettre à jour le parcours Python",
+        "Recueillir les retours d'une formation", "Créer un quiz d'évaluation",
+    ],
+}
+
+FEEDBACKS = [
+    "Merci pour ton implication sur cette période.\n\nPoints forts :\n- Fiabilité sur les délais\n- Très bonne entraide dans l'équipe\n\nAxes de progression :\n- Partager davantage ton avancement en réunion\n\nCe que nous mettons en place ensemble :\n- Un point mensuel en tête-à-tête",
+    "Merci pour ton implication sur cette période.\n\nPoints forts :\n- Qualité des livrables\n- Prise d'initiative sur les sujets techniques\n\nAxes de progression :\n- Mieux estimer la charge des tâches\n\nCe que nous mettons en place ensemble :\n- Découper les grosses tâches avec toi en début de sprint",
+    "Merci pour ton implication sur cette période.\n\nPoints forts :\n- Présence régulière aux séances\n\nAxes de progression :\n- Respect des échéances sur les tâches longues\n\nCe que nous mettons en place ensemble :\n- Des échéances intermédiaires et un binôme sur le prochain projet",
+]
+
+CRITERIA = ["participation", "follow_up", "quality", "teamwork", "initiative"]
+DEMO_MARKER = "Tâche de démonstration."
+
+
+def _aware(day, hour=10):
+    return timezone.make_aware(datetime.combine(day, time(hour, 0)))
+
+
+def _quarter_label(day) -> str:
+    return f"T{(day.month - 1) // 3 + 1} {day.year}"
+
+
+class Command(BaseCommand):
+    help = "Données de démo : tâches validées, points d'étape, classement, membre du mois"
+
+    def handle(self, *args, **options):
+        from apps.departments.models import Department
+
+        if not User.objects.filter(email="admin@dah.com").exists() or not Department.objects.exists():
+            self.stdout.write("  → Données de base absentes : lancement de seed_dah...")
+            call_command("seed_dah")
+
+        from apps.engagement.models import PointEntry
+
+        # Une seule exécution utile : la commande peut rester dans la commande de build
+        # sans recréer de données à chaque déploiement.
+        if PointEntry.objects.filter(project_task__description=DEMO_MARKER).exists():
+            self.stdout.write("  → Démo engagement déjà présente : rien à faire.")
+            return
+
+        self.rng = random.Random(2026)
+        self.today = timezone.localdate()
+        with transaction.atomic():
+            self._extra_members()
+            self._task_history()
+            self._live_tasks()
+            self._checkins()
+            self._awards()
+        self.stdout.write(self.style.SUCCESS("✅ Seed engagement terminé."))
+
+    # ── Membres ────────────────────────────────────────────────────────
+    def _extra_members(self):
+        from apps.departments.models import Department, DepartmentMembership
+        from apps.members.models import MemberProfile
+
+        self.stdout.write("  → Membres de démo supplémentaires...")
+        for index, (email, first, last, dept_name, skills) in enumerate(EXTRA_MEMBERS, start=1):
+            user, created = User.objects.get_or_create(
+                email=email,
+                defaults=dict(first_name=first, last_name=last, role="membre", email_verified=True),
+            )
+            if created:
+                user.set_password(PASSWORD)
+                user.save()
+            MemberProfile.objects.get_or_create(
+                user=user,
+                defaults=dict(skills=skills, member_number=f"DAH-2026-{900 + index}",
+                              bio=f"Membre du département {dept_name}."),
+            )
+            department = Department.objects.filter(name=dept_name).first()
+            if department and not DepartmentMembership.objects.filter(department=department, user=user).exists():
+                DepartmentMembership.objects.create(
+                    department=department, user=user, start_date=self.today - timedelta(days=240 + index * 7),
+                )
+
+    def _department_people(self):
+        """[(département, projet principal, [membres actifs])] pour les 3 départements de démo."""
+        from apps.departments.models import Department
+        from apps.departments.services import get_department_member_ids
+        from apps.projects.models import Project
+
+        result = []
+        for name in TASK_POOL:
+            department = Department.objects.filter(name=name).first()
+            if not department:
+                continue
+            project = Project.objects.filter(department=department).order_by("created_at").first()
+            if not project:
+                project = Project.objects.create(
+                    title=f"Projet de démo — {name}", description="Projet créé pour la démonstration.",
+                    department=department, owner=department.lead, status="active",
+                )
+            members = list(User.objects.filter(
+                id__in=get_department_member_ids(department), email__in=ACTIVITY,
+            ).order_by("email"))
+            result.append((department, project, members))
+        return result
+
+    # ── Historique de tâches validées ──────────────────────────────────
+    def _task_history(self):
+        from apps.engagement.models import PointEntry
+        from apps.engagement.services import compute_task_points
+        from apps.projects.models import ProjectTask
+
+        self.stdout.write("  → Historique de tâches validées (6 mois)...")
+        created_points = 0
+        for department, project, members in self._department_people():
+            pool = TASK_POOL[department.name]
+            validator = department.lead or department.co_lead
+            for member in members:
+                for n in range(ACTIVITY[member.email]):
+                    validated_on = self.today - timedelta(days=self.rng.randint(2, HISTORY_DAYS))
+                    size = self.rng.choices(["small", "medium", "large"], weights=[3, 5, 2])[0]
+                    on_time = self.rng.random() < 0.78
+                    outstanding = self.rng.random() < 0.15
+                    due = validated_on - timedelta(days=1)
+                    submitted_on = due - timedelta(days=self.rng.randint(0, 3)) if on_time else due + timedelta(days=self.rng.randint(1, 4))
+                    submitted_on = min(submitted_on, validated_on)
+                    # Titre stable (sans date) : relancer la commande ne recrée rien.
+                    title = f"{pool[(n + len(member.email)) % len(pool)]} — {member.first_name} #{n + 1}"
+
+                    task, _ = ProjectTask.objects.get_or_create(
+                        project=project, title=title,
+                        defaults=dict(
+                            description=DEMO_MARKER, assigned_to=member, size=size,
+                            due_date=due, status="done", submitted_at=_aware(submitted_on, 9),
+                        ),
+                    )
+                    if task.status != "done" or PointEntry.objects.filter(project_task=task).exists():
+                        continue
+                    points, punctual = compute_task_points(task, outstanding)
+                    # Le responsable ne valide pas sa propre tâche : le bureau (admin) le fait.
+                    reviewer = validator if validator and validator.id != member.id else User.objects.filter(email="admin@dah.com").first()
+                    entry, made = PointEntry.objects.get_or_create(
+                        project_task=task,
+                        defaults=dict(
+                            user=member, points=points, source=PointEntry.SOURCE_TASK, department=department,
+                            label=f"{project.title} — {task.title}", on_time=punctual,
+                            awarded_by=reviewer, awarded_at=_aware(validated_on, 17),
+                        ),
+                    )
+                    task.validated_at = entry.awarded_at
+                    task.validated_by = reviewer
+                    task.is_outstanding = outstanding
+                    task.points_awarded = entry.points
+                    task.save(update_fields=["validated_at", "validated_by", "is_outstanding", "points_awarded"])
+                    created_points += made
+        self.stdout.write(f"    + {created_points} attributions de points")
+
+    # ── Tâches en cours de cycle (pour tester en direct) ───────────────
+    def _live_tasks(self):
+        from apps.projects.models import ProjectTask
+
+        self.stdout.write("  → Tâches en cours (à valider, renvoyées, en retard)...")
+        for department, project, members in self._department_people():
+            others = [m for m in members if m.id not in (department.lead_id, department.co_lead_id)] or members
+            if not others:
+                continue
+            specs = [
+                ("Finaliser la documentation du sprint", "submitted", 2, "medium", "Lien vers la doc : drive/sprint-12"),
+                ("Préparer la présentation du mois", "submitted", -1, "small", ""),
+                ("Refaire le schéma d'architecture", "in_progress", 5, "large", None),
+                ("Mettre à jour le tableau de suivi", "in_progress", -4, "small", None),
+                ("Rédiger le compte rendu de la séance", "todo", 10, "small", None),
+            ]
+            for i, (title, status, due_in, size, note) in enumerate(specs):
+                member = others[i % len(others)]
+                task, created = ProjectTask.objects.get_or_create(
+                    project=project, title=f"{title} — {department.name}",
+                    defaults=dict(
+                        description="Tâche de démonstration en cours.", assigned_to=member, size=size,
+                        due_date=self.today + timedelta(days=due_in), status=status,
+                    ),
+                )
+                if not created:
+                    continue
+                if status == "submitted":
+                    task.submitted_at = _aware(self.today - timedelta(days=1), 15)
+                    task.submission_note = note
+                    task.save(update_fields=["submitted_at", "submission_note"])
+                if i == 2:  # tâche renvoyée une fois par le responsable
+                    task.return_reason = "Il manque la partie sur la sauvegarde des données — peux-tu la compléter ?"
+                    task.save(update_fields=["return_reason"])
+
+    # ── Points d'étape ────────────────────────────────────────────────
+    def _checkins(self):
+        from apps.engagement.models import CheckIn, PointEntry
+        from apps.engagement.services import checkin_points
+
+        self.stdout.write("  → Points d'étape (trimestre précédent confirmé, trimestre en cours ouvert)...")
+        quarter_start = self.today.replace(month=3 * ((self.today.month - 1) // 3) + 1, day=1)
+        previous_quarter_end = quarter_start - timedelta(days=1)
+        previous_label = _quarter_label(previous_quarter_end)
+        current_label = _quarter_label(self.today)
+        confirmed_on = previous_quarter_end - timedelta(days=5)  # fin du trimestre précédent
+
+        for department, _project, members in self._department_people():
+            manager = department.lead or department.co_lead
+            for i, member in enumerate(m for m in members if m.id != (manager.id if manager else None)):
+                base = 3 + (ACTIVITY[member.email] >= 6)
+                self_scores = {k: max(1, min(5, base + self.rng.choice([-1, 0, 0, 1]))) for k in CRITERIA}
+                final_scores = {k: max(1, min(5, v + self.rng.choice([-1, 0, 0, 0, 1]))) for k, v in self_scores.items()}
+
+                # Trimestre précédent : confirmé, avec retour et points.
+                previous, _ = CheckIn.objects.get_or_create(
+                    department=department, member=member, period_label=previous_label,
+                    defaults=dict(
+                        launched_by=manager, status=CheckIn.STATUS_CONFIRMED, self_scores=self_scores,
+                        improve_self="Être plus régulier dans le suivi de mes tâches.",
+                        department_help="Des points d'équipe plus courts mais plus fréquents.",
+                        submitted_at=_aware(confirmed_on - timedelta(days=4)),
+                        final_scores=final_scores, feedback=FEEDBACKS[i % len(FEEDBACKS)],
+                        confirmed_by=manager, confirmed_at=_aware(confirmed_on, 18),
+                        points=checkin_points(final_scores),
+                    ),
+                )
+                if previous.status == CheckIn.STATUS_CONFIRMED:
+                    PointEntry.objects.get_or_create(
+                        checkin=previous,
+                        defaults=dict(
+                            user=member, points=previous.points, source=PointEntry.SOURCE_CHECKIN,
+                            department=department, label=f"Point d'étape — {previous_label}",
+                            awarded_by=manager, awarded_at=previous.confirmed_at,
+                        ),
+                    )
+
+                # Trimestre en cours : un sur deux rempli (à confirmer), les autres à remplir.
+                submitted = i % 2 == 0
+                CheckIn.objects.get_or_create(
+                    department=department, member=member, period_label=current_label,
+                    defaults=dict(
+                        launched_by=manager, due_date=self.today + timedelta(days=10),
+                        status=CheckIn.STATUS_SUBMITTED if submitted else CheckIn.STATUS_PENDING,
+                        self_scores=self_scores if submitted else {},
+                        improve_self="Prendre davantage la parole en réunion." if submitted else "",
+                        department_help="Un accompagnement sur les outils de déploiement." if submitted else "",
+                        submitted_at=_aware(self.today - timedelta(days=1)) if submitted else None,
+                    ),
+                )
+
+    # ── Membre du mois ────────────────────────────────────────────────
+    def _awards(self):
+        from apps.engagement.models import Award
+        from apps.engagement.services import build_ranking, period_bounds
+
+        self.stdout.write("  → Membres du mois (3 derniers mois écoulés)...")
+        admin = User.objects.filter(email="admin@dah.com").first()
+        month_start = self.today.replace(day=1)
+        for _ in range(3):
+            month_start = (month_start - timedelta(days=1)).replace(day=1)
+            start, end = period_bounds("month", month_start)
+            rows = build_ranking(start, end)
+            if not rows or rows[0]["total"] == 0:
+                continue
+            Award.objects.update_or_create(
+                kind=Award.KIND_MONTH, period_start=start,
+                defaults=dict(
+                    user_id=rows[0]["user_id"], awarded_by=admin,
+                    note="Pour ton implication et la qualité de tes contributions ce mois-ci.",
+                ),
+            )
