@@ -1,4 +1,6 @@
 from rest_framework import serializers
+
+from apps.common.sanitize import clean_rich_text
 from .models import EventReminder, Event, EventParticipant, EventSpeaker
 
 
@@ -52,6 +54,12 @@ class EventDetailSerializer(serializers.ModelSerializer):
             return False
         return obj.participants.filter(user=request.user).exists()
 
+    def to_representation(self, instance):
+        # Description affichée en HTML sur le site : nettoyée aussi en lecture.
+        data = super().to_representation(instance)
+        data["description"] = clean_rich_text(data.get("description") or "")
+        return data
+
 
 class EventWriteSerializer(serializers.ModelSerializer):
     class Meta:
@@ -63,6 +71,9 @@ class EventWriteSerializer(serializers.ModelSerializer):
             "location", "online_link", "max_participants", "is_published",
         ]
         read_only_fields = ["id"]
+
+    def validate_description(self, value):
+        return clean_rich_text(value)
 
 
 class EventParticipantSerializer(serializers.ModelSerializer):

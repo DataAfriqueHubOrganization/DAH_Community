@@ -24,6 +24,8 @@ from .services import (
 
 
 class EventViewSet(ModelViewSet):
+    # Quota propre à certaines actions publiques (voir @action(throttle_scope=…)).
+    throttle_scope = None
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = EventFilter
     search_fields = ["title", "description"]
@@ -82,7 +84,7 @@ class EventViewSet(ModelViewSet):
         response["Content-Disposition"] = 'attachment; filename="participants_dah.xlsx"'
         return response
 
-    @action(detail=True, methods=["post"], permission_classes=[AllowAny])
+    @action(detail=True, methods=["post"], permission_classes=[AllowAny], throttle_scope="event_register")
     def register(self, request, pk=None):
         event = self.get_object()
         serializer = RegisterForEventSerializer(data=request.data)
@@ -103,7 +105,8 @@ class EventViewSet(ModelViewSet):
             status=status.HTTP_201_CREATED,
         )
 
-    @action(detail=False, methods=["get"], url_path="participants/lookup", permission_classes=[AllowAny])
+    @action(detail=False, methods=["get"], url_path="participants/lookup", permission_classes=[AllowAny],
+            throttle_scope="participant_lookup")
     def participant_lookup(self, request):
         serializer = ParticipantLookupSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)

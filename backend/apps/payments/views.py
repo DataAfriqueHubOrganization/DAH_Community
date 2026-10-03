@@ -13,6 +13,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet, GenericViewSet
 
+from apps.common.throttling import WRITE_THROTTLES
+
 from . import services
 from .models import CashEntry, Contribution, PaymentDeclaration
 from .serializers import (
@@ -167,6 +169,8 @@ class CashEntryViewSet(ModelViewSet):
 
 
 class PaymentDeclarationViewSet(GenericViewSet):
+    throttle_classes = WRITE_THROTTLES
+    throttle_scope = "declaration"
     """Le membre déclare (avec preuve) ; la trésorerie valide ou refuse."""
     queryset = PaymentDeclaration.objects.select_related("user", "reviewed_by")
     serializer_class = PaymentDeclarationSerializer

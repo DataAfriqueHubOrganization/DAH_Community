@@ -56,6 +56,7 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 # ─── Middleware ───────────────────────────────────────────────────
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "apps.common.middleware.MaxRequestSizeMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -154,7 +155,38 @@ REST_FRAMEWORK = {
         "rest_framework.renderers.JSONRenderer",
     ),
     "EXCEPTION_HANDLER": "apps.common.exceptions.custom_exception_handler",
+    # Limites de débit (par IP pour les anonymes, par compte sinon). Les vues
+    # sensibles ont en plus leur propre quota (throttle_scope).
+    "DEFAULT_THROTTLE_CLASSES": (
+        "apps.common.throttling.ClientAnonRateThrottle",
+        "apps.common.throttling.ClientUserRateThrottle",
+        "apps.common.throttling.ClientScopedRateThrottle",
+    ),
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "300/min",
+        "user": "600/min",
+        "login": "10/min",              # force brute sur les mots de passe
+        "password_reset": "5/hour",     # emails de réinitialisation
+        "candidature": "5/hour",        # formulaire d'adhésion public
+        "event_register": "20/hour",    # inscription publique aux événements
+        "participant_lookup": "60/hour",  # pré-remplissage (aspiration de données)
+        "comment": "30/hour",
+        "declaration": "20/hour",
+    },
+    # Derrière le proxy de Render : l'IP du client est lue dans X-Forwarded-For
+    # (sinon tout le monde partagerait l'IP du proxy). Surchargé en prod.
+    "NUM_PROXIES": None,
 }
+
+# En-tête portant l'IP réelle du visiteur, posé par un proxy de confiance (voir
+# apps.common.throttling.ClientIPMixin). Aucun par défaut.
+CLIENT_IP_HEADER = config("CLIENT_IP_HEADER", default="") or None
+
+# Lien de réinitialisation du mot de passe : valable 24 h, usage unique.
+PASSWORD_RESET_TIMEOUT = 60 * 60 * 24
+
+# Taille maximale d'une requête (fichiers compris) — voir MaxRequestSizeMiddleware.
+MAX_REQUEST_BYTES = 20 * 1024 * 1024
 
 # ─── JWT ─────────────────────────────────────────────────────────
 SIMPLE_JWT = {

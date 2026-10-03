@@ -1,6 +1,8 @@
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models
 from apps.common.mixins import TimestampMixin
+from apps.common.validators import MaxFileSizeValidator
+from django.core.validators import FileExtensionValidator
 
 
 class ROLES:
@@ -64,7 +66,10 @@ class User(AbstractBaseUser, PermissionsMixin, TimestampMixin):
     first_name = models.CharField(max_length=100, verbose_name="Prénom")
     last_name = models.CharField(max_length=100, verbose_name="Nom")
     phone = models.CharField(max_length=20, blank=True, verbose_name="Téléphone")
-    avatar = models.ImageField(upload_to="avatars/", null=True, blank=True, verbose_name="Photo")
+    avatar = models.ImageField(
+        upload_to="avatars/", null=True, blank=True, verbose_name="Photo",
+        validators=[FileExtensionValidator(["jpg", "jpeg", "png", "webp"]), MaxFileSizeValidator(5)],
+    )
     role = models.CharField(
         max_length=30,
         choices=ROLES.CHOICES,

@@ -10,6 +10,7 @@ from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
 
 from apps.common.permissions import IsAdminOrBureau, is_bureau
+from apps.common.throttling import WRITE_THROTTLES
 from .models import Article, ArticleCategory, ArticleComment, ArticleLike
 from .serializers import (
     ArticleListSerializer, ArticleDetailSerializer, ArticleAdminSerializer, ArticleCategorySerializer,
@@ -84,6 +85,8 @@ def _get_published_article(slug):
 
 class ArticleCommentListCreateView(generics.ListCreateAPIView):
     serializer_class = ArticleCommentSerializer
+    throttle_classes = WRITE_THROTTLES
+    throttle_scope = "comment"
     pagination_class = None
 
     def get_permissions(self):

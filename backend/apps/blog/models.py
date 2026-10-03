@@ -3,6 +3,8 @@ from django.db import models
 from django.utils import timezone
 from django.utils.text import slugify
 from apps.common.mixins import TimestampMixin
+from apps.common.validators import MaxFileSizeValidator
+from django.core.validators import FileExtensionValidator
 
 
 class ArticleCategory(models.Model):
@@ -39,7 +41,7 @@ class Article(TimestampMixin):
     slug = models.SlugField(unique=True, blank=True, max_length=320)
     content = models.TextField()
     excerpt = models.TextField(blank=True, max_length=500)
-    cover_image = models.ImageField(upload_to="blog/covers/", null=True, blank=True)
+    cover_image = models.ImageField(upload_to="blog/covers/", null=True, blank=True, validators=[FileExtensionValidator(["jpg", "jpeg", "png", "webp", "gif"]), MaxFileSizeValidator(8)])
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
     category = models.ForeignKey(ArticleCategory, null=True, blank=True, on_delete=models.SET_NULL)
     tags = models.CharField(max_length=500, blank=True)

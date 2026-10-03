@@ -35,7 +35,10 @@ class TestUserModel:
         assert user.email == "Test@dah.com"
 
     def test_is_bureau(self):
-        user = User(role="president")
+        # Le bureau = un poste (président, trésorier…) ou le rôle admin.
+        user = User(role="membre", poste="president")
         assert user.is_bureau
-        user.role = "membre"
+        user.poste = None
         assert not user.is_bureau
+        user.role = "admin"
+        assert user.is_bureau

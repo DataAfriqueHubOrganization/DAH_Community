@@ -3,6 +3,7 @@ from django.core.files.storage import FileSystemStorage
 from django.core.validators import FileExtensionValidator
 from django.db import models
 from apps.common.mixins import TimestampMixin
+from apps.common.validators import MaxFileSizeValidator
 
 
 def _cv_storage():
@@ -59,7 +60,7 @@ class Candidature(TimestampMixin):
     cv = models.FileField(
         upload_to="candidatures_cv/", null=True, blank=True,
         storage=_cv_storage,
-        validators=[FileExtensionValidator(["pdf"])],
+        validators=[FileExtensionValidator(["pdf"]), MaxFileSizeValidator(10)],
         verbose_name="CV",
     )
 

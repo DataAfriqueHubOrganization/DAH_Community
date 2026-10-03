@@ -1,7 +1,32 @@
 from .base import *  # noqa
 from decouple import config, Csv
+from django.core.exceptions import ImproperlyConfigured
 
 DEBUG = False
+
+# Jamais la clé de développement en production : les jetons (sessions, liens
+# de réinitialisation) seraient falsifiables.
+SECRET_KEY = config("SECRET_KEY", default="")
+if not SECRET_KEY or SECRET_KEY.startswith("dev-insecure"):
+    raise ImproperlyConfigured("SECRET_KEY doit être défini dans les variables d'environnement.")
+
+# Render termine le HTTPS : sans cet en-tête, Django croit chaque requête en
+# HTTP (redirections en boucle, liens absolus en http://).
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
+
+# Un proxy devant l'application : IP réelle du client pour les quotas.
+REST_FRAMEWORK["NUM_PROXIES"] = 1  # noqa: F405
+# Render est derrière Cloudflare (CF-Connecting-IP fiable). Sur un autre
+# hébergement, définir CLIENT_IP_HEADER selon le proxy (ex. HTTP_X_REAL_IP avec nginx).
+CLIENT_IP_HEADER = config(
+    "CLIENT_IP_HEADER",
+    default="HTTP_CF_CONNECTING_IP" if config("RENDER_EXTERNAL_HOSTNAME", default="") else "",
+) or None
+
+# Documentation de l'API réservée aux administrateurs en production.
+SPECTACULAR_SETTINGS["SERVE_PERMISSIONS"] = ["rest_framework.permissions.IsAdminUser"]  # noqa: F405
+SPECTACULAR_SETTINGS["SERVE_AUTHENTICATION"] = ["rest_framework.authentication.SessionAuthentication"]  # noqa: F405
 
 SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True

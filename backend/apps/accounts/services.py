@@ -38,9 +38,19 @@ def verify_user_email(token: str) -> User:
     return user
 
 
+def revoke_all_sessions(user: User) -> None:
+    """Invalide tous les jetons de rafraîchissement : toutes les sessions ouvertes
+    (autres appareils, éventuel attaquant) devront se reconnecter."""
+    from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
+
+    for token in OutstandingToken.objects.filter(user=user):
+        BlacklistedToken.objects.get_or_create(token=token)
+
+
 def reset_user_password(token: str, new_password: str) -> User:
     from .tokens import read_password_reset_token
     user = read_password_reset_token(token)
     user.set_password(new_password)
     user.save(update_fields=["password"])
+    revoke_all_sessions(user)
     return user

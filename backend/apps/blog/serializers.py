@@ -1,4 +1,6 @@
 from rest_framework import serializers
+
+from apps.common.sanitize import clean_html
 from apps.common.permissions import is_bureau
 from .models import Article, ArticleCategory, ArticleComment
 
@@ -40,6 +42,12 @@ class ArticleDetailSerializer(ArticleListSerializer):
     class Meta(ArticleListSerializer.Meta):
         fields = ArticleListSerializer.Meta.fields + ["content", "seo_title", "seo_description"]
 
+    def to_representation(self, instance):
+        # Contenu affiché tel quel sur le site : nettoyé aussi en lecture (anciens articles).
+        data = super().to_representation(instance)
+        data["content"] = clean_html(data.get("content") or "")
+        return data
+
 
 class ArticleAdminSerializer(serializers.ModelSerializer):
     """Lecture + écriture pour la gestion admin — expose le statut et category_id
@@ -62,6 +70,14 @@ class ArticleAdminSerializer(serializers.ModelSerializer):
     def get_author_name(self, obj):
         return obj.author.full_name if obj.author else None
 
+    def validate_content(self, value):
+        return clean_html(value)
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data["content"] = clean_html(data.get("content") or "")
+        return data
+
 
 class ArticleCommentSerializer(serializers.ModelSerializer):
     author_name = serializers.CharField(source="author.full_name", read_only=True)
@@ -72,6 +88,7 @@ class ArticleCommentSerializer(serializers.ModelSerializer):
         model = ArticleComment
         fields = ["id", "content", "author_name", "author_avatar", "created_at", "can_delete"]
         read_only_fields = ["id", "author_name", "author_avatar", "created_at", "can_delete"]
+        extra_kwargs = {"content": {"max_length": 3000}}
 
     def get_can_delete(self, obj) -> bool:
         request = self.context.get("request")

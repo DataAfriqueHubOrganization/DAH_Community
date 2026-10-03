@@ -19,7 +19,7 @@ from .serializers import (
 )
 from .services import (
     send_password_reset_email_async, send_verification_email_async,
-    verify_user_email, reset_user_password,
+    verify_user_email, reset_user_password, revoke_all_sessions,
 )
 
 User = get_user_model()
@@ -44,6 +44,7 @@ def _set_refresh_cookie(response, token: str) -> None:
 
 class DAHTokenObtainPairView(TokenObtainPairView):
     serializer_class = DAHTokenObtainPairSerializer
+    throttle_scope = "login"
 
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
@@ -109,12 +110,17 @@ class PasswordChangeView(APIView):
         serializer.is_valid(raise_exception=True)
         request.user.set_password(serializer.validated_data["new_password"])
         request.user.save(update_fields=["password"])
+        # Les autres sessions sont fermées ; celle-ci reçoit un nouveau jeton.
+        revoke_all_sessions(request.user)
         logger.info("Mot de passe changé : %s", request.user.email)
-        return Response({"detail": "Mot de passe modifié avec succès."})
+        response = Response({"detail": "Mot de passe modifié avec succès."})
+        _set_refresh_cookie(response, str(RefreshToken.for_user(request.user)))
+        return response
 
 
 class PasswordResetRequestView(APIView):
     permission_classes = [AllowAny]
+    throttle_scope = "password_reset"
 
     def post(self, request):
         serializer = PasswordResetRequestSerializer(data=request.data)
@@ -131,6 +137,7 @@ class PasswordResetRequestView(APIView):
 
 class PasswordResetConfirmView(APIView):
     permission_classes = [AllowAny]
+    throttle_scope = "login"
 
     def post(self, request):
         serializer = PasswordResetConfirmSerializer(data=request.data)
@@ -147,6 +154,7 @@ class PasswordResetConfirmView(APIView):
 
 class EmailVerifyView(APIView):
     permission_classes = [AllowAny]
+    throttle_scope = "login"
 
     def post(self, request):
         serializer = EmailVerifySerializer(data=request.data)

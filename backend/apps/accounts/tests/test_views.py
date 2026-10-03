@@ -28,35 +28,15 @@ def auth_client(client, user):
 
 
 @pytest.mark.django_db
-class TestRegisterView:
-    def test_register_success(self, client):
-        response = client.post(reverse("auth-register"), {
-            "email": "new@dah.com",
-            "first_name": "Nouveau",
-            "last_name": "Membre",
-            "password": "securepass123",
-            "password_confirm": "securepass123",
+class TestNoSelfRegistration:
+    def test_pas_d_inscription_libre(self, client):
+        """On rejoint DAH par une candidature, jamais en créant un compte soi-même."""
+        response = client.post("/api/v1/auth/register/", {
+            "email": "new@dah.com", "first_name": "N", "last_name": "M",
+            "password": "securepass123", "password_confirm": "securepass123",
         })
-        assert response.status_code == 201
-        assert User.objects.filter(email="new@dah.com").exists()
-
-    def test_register_password_mismatch(self, client):
-        response = client.post(reverse("auth-register"), {
-            "email": "new@dah.com",
-            "first_name": "X", "last_name": "Y",
-            "password": "securepass123",
-            "password_confirm": "wrongpass123",
-        })
-        assert response.status_code == 400
-
-    def test_register_duplicate_email(self, client, user):
-        response = client.post(reverse("auth-register"), {
-            "email": user.email,
-            "first_name": "X", "last_name": "Y",
-            "password": "securepass123",
-            "password_confirm": "securepass123",
-        })
-        assert response.status_code == 400
+        assert response.status_code in (401, 404, 405)
+        assert not User.objects.filter(email="new@dah.com").exists()
 
 
 @pytest.mark.django_db
@@ -67,8 +47,10 @@ class TestLoginView:
         })
         assert response.status_code == 200
         assert "access" in response.data
-        assert "refresh" in response.data
-        assert "user" in response.data
+        # Le jeton de rafraîchissement n'est jamais lisible en JavaScript : cookie httpOnly.
+        assert "refresh" not in response.data
+        cookie = response.cookies["refresh_token"]
+        assert cookie["httponly"] and cookie["path"] == "/api/v1/auth/token/refresh/"
         assert response.data["user"]["role"] == "visiteur"
 
     def test_login_wrong_password(self, client, user):

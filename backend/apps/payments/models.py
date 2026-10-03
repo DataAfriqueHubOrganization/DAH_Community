@@ -4,6 +4,7 @@ from django.core.files.storage import FileSystemStorage
 from django.core.validators import FileExtensionValidator
 from django.db import models
 from apps.common.mixins import TimestampMixin
+from apps.common.validators import MaxFileSizeValidator
 
 
 PAYMENT_STATUS_CHOICES = [
@@ -144,7 +145,7 @@ class CashEntry(TimestampMixin):
     note = models.TextField(blank=True)
     attachment = models.FileField(
         upload_to="treasury/", null=True, blank=True, storage=_attachment_storage,
-        validators=[FileExtensionValidator(["pdf", "jpg", "jpeg", "png", "webp"])],
+        validators=[FileExtensionValidator(["pdf", "jpg", "jpeg", "png", "webp"]), MaxFileSizeValidator(10)],
         verbose_name="Justificatif",
     )
     contribution = models.OneToOneField(
@@ -191,7 +192,7 @@ class PaymentDeclaration(TimestampMixin):
     reference = models.CharField(max_length=100, blank=True)
     proof = models.ImageField(
         upload_to="payment_proofs/",
-        validators=[FileExtensionValidator(["jpg", "jpeg", "png", "webp"])],
+        validators=[FileExtensionValidator(["jpg", "jpeg", "png", "webp"]), MaxFileSizeValidator(5)],
         verbose_name="Preuve de paiement",
     )
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=STATUS_PENDING, db_index=True)

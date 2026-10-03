@@ -2,6 +2,8 @@ import uuid
 from django.conf import settings
 from django.db import models
 from apps.common.mixins import TimestampMixin
+from apps.common.validators import MaxFileSizeValidator
+from django.core.validators import FileExtensionValidator
 
 
 EVENT_TYPE_CHOICES = [
@@ -20,9 +22,10 @@ class Event(TimestampMixin):
     title = models.CharField(max_length=300, verbose_name="Titre")
     description = models.TextField(verbose_name="Description")
     event_type = models.CharField(max_length=20, choices=EVENT_TYPE_CHOICES, verbose_name="Type")
-    cover_image = models.ImageField(upload_to="events/covers/", null=True, blank=True)
+    cover_image = models.ImageField(upload_to="events/covers/", null=True, blank=True, validators=[FileExtensionValidator(["jpg", "jpeg", "png", "webp", "gif"]), MaxFileSizeValidator(8)])
     recap_image = models.ImageField(
-        upload_to="events/recap/", null=True, blank=True, verbose_name="Image récapitulative"
+        upload_to="events/recap/", null=True, blank=True, verbose_name="Image récapitulative",
+        validators=[FileExtensionValidator(["jpg", "jpeg", "png", "webp", "gif"]), MaxFileSizeValidator(8)],
     )
     start_date = models.DateTimeField(verbose_name="Date de début")
     end_date = models.DateTimeField(null=True, blank=True, verbose_name="Date de fin")
@@ -89,7 +92,7 @@ class EventSpeaker(models.Model):
     )
     name = models.CharField(max_length=200)
     bio = models.TextField(blank=True)
-    photo = models.ImageField(upload_to="events/speakers/", null=True, blank=True)
+    photo = models.ImageField(upload_to="events/speakers/", null=True, blank=True, validators=[FileExtensionValidator(["jpg", "jpeg", "png", "webp", "gif"]), MaxFileSizeValidator(8)])
 
     def __str__(self):
         return self.name

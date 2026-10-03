@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 class CandidatureCreateView(generics.CreateAPIView):
+    throttle_scope = "candidature"
     serializer_class = CandidatureCreateSerializer
     permission_classes = [AllowAny]
 

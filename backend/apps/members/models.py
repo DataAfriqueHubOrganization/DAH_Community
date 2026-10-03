@@ -3,6 +3,8 @@ from django.contrib.postgres.fields import ArrayField
 from django.db import models
 from django.utils.text import slugify
 from apps.common.mixins import TimestampMixin
+from apps.common.validators import MaxFileSizeValidator
+from django.core.validators import FileExtensionValidator
 
 
 class MemberProfile(TimestampMixin):
@@ -16,7 +18,10 @@ class MemberProfile(TimestampMixin):
     github_url = models.URLField(blank=True)
     linkedin_url = models.URLField(blank=True)
     website_url = models.URLField(blank=True)
-    cv = models.FileField(upload_to="cvs/", null=True, blank=True)
+    cv = models.FileField(
+        upload_to="cvs/", null=True, blank=True,
+        validators=[FileExtensionValidator(["pdf"]), MaxFileSizeValidator(10)],
+    )
     is_public = models.BooleanField(default=True)
     member_number = models.CharField(max_length=20, unique=True, null=True, blank=True)
 

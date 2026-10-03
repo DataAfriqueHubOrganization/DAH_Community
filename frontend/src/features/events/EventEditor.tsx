@@ -99,9 +99,10 @@ export function EventEditor({ event }: { event: EventDetail | null }) {
       Object.entries(values).forEach(([k, v]) => data.append(k, v));
       if (cover) data.append("cover_image", cover);
       if (recap) data.append("recap_image", recap);
-      return event ? eventsService.update(event.id, data) : eventsService.create(data);
+      const request = event ? eventsService.update(event.id, data) : eventsService.create(data);
+      return request.then((r) => r.data as EventDetail);
     },
-    onSuccess: ({ data }, publish) => {
+    onSuccess: (data, publish) => {
       qc.invalidateQueries({ queryKey: ["events"] });
       qc.invalidateQueries({ queryKey: ["event", data.id] });
       setForm((f) => ({ ...f, is_published: publish }));
