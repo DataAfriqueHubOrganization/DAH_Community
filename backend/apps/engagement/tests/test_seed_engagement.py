@@ -22,7 +22,7 @@ def test_seed_engagement_complet_sans_email_et_idempotent(no_side_effects):
     call_command("seed_engagement")
 
     task_points = PointEntry.objects.filter(source="task").count()
-    assert task_points >= 60  # ~6 mois d'historique pour 12 membres
+    assert task_points >= 60  # historique janvier → septembre 2026, 12 membres
     assert PointEntry.objects.filter(source="checkin").count() > 0
     assert ProjectTask.objects.filter(status="submitted").exists()  # à valider en direct
     assert ProjectTask.objects.exclude(return_reason="").exists()   # tâche renvoyée

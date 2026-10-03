@@ -11,7 +11,7 @@ Données de démonstration pour les points, points d'étape, classement et
 - Déterministe : génération pseudo-aléatoire à graine fixe.
 """
 import random
-from datetime import datetime, time, timedelta
+from datetime import date, datetime, time, timedelta
 
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
@@ -22,7 +22,10 @@ from django.utils import timezone
 User = get_user_model()
 
 PASSWORD = "Dah@2024!"
-HISTORY_DAYS = 175  # ~6 mois d'historique
+# Historique figé : de janvier à septembre 2026, quelle que soit la date d'exécution.
+HISTORY_START = date(2026, 1, 5)
+HISTORY_END = date(2026, 9, 28)
+AWARD_MONTHS = [date(2026, m, 1) for m in range(1, 10)]  # membre du mois, janvier → septembre
 
 # Membres supplémentaires pour un classement réaliste (2 par département).
 EXTRA_MEMBERS = [
@@ -36,9 +39,9 @@ EXTRA_MEMBERS = [
 
 # Niveau d'activité (nombre de tâches validées sur la période) : crée de l'écart.
 ACTIVITY = {
-    "felix@dah.com": 9, "bob@dah.com": 6, "aicha@dah.com": 8, "yao@dah.com": 4,
-    "alice@dah.com": 10, "claire@dah.com": 5, "fatoumata@dah.com": 7, "kwame@dah.com": 3,
-    "david@dah.com": 5, "emma@dah.com": 6, "mariam@dah.com": 8, "ibrahim@dah.com": 2,
+    "felix@dah.com": 13, "bob@dah.com": 9, "aicha@dah.com": 12, "yao@dah.com": 6,
+    "alice@dah.com": 15, "claire@dah.com": 8, "fatoumata@dah.com": 10, "kwame@dah.com": 5,
+    "david@dah.com": 8, "emma@dah.com": 9, "mariam@dah.com": 12, "ibrahim@dah.com": 4,
 }
 
 TASK_POOL = {
@@ -67,6 +70,8 @@ FEEDBACKS = [
 
 CRITERIA = ["participation", "follow_up", "quality", "teamwork", "initiative"]
 DEMO_MARKER = "Tâche de démonstration."
+LIVE_MARKER = "Tâche de démonstration en cours."
+AWARD_NOTE = "Pour ton implication et la qualité de tes contributions ce mois-ci."
 
 
 def _aware(day, hour=10):
@@ -80,6 +85,12 @@ def _quarter_label(day) -> str:
 class Command(BaseCommand):
     help = "Données de démo : tâches validées, points d'étape, classement, membre du mois"
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--reset", action="store_true",
+            help="Supprime d'abord les données générées par ce seed (démo uniquement), puis les recrée.",
+        )
+
     def handle(self, *args, **options):
         from apps.departments.models import Department
 
@@ -88,6 +99,9 @@ class Command(BaseCommand):
             call_command("seed_dah")
 
         from apps.engagement.models import PointEntry
+
+        if options["reset"]:
+            self._reset()
 
         # Une seule exécution utile : la commande peut rester dans la commande de build
         # sans recréer de données à chaque déploiement.
@@ -127,7 +141,7 @@ class Command(BaseCommand):
             department = Department.objects.filter(name=dept_name).first()
             if department and not DepartmentMembership.objects.filter(department=department, user=user).exists():
                 DepartmentMembership.objects.create(
-                    department=department, user=user, start_date=self.today - timedelta(days=240 + index * 7),
+                    department=department, user=user, start_date=date(2025, 11, 1) + timedelta(days=index * 7),
                 )
 
     def _department_people(self):
@@ -159,14 +173,14 @@ class Command(BaseCommand):
         from apps.engagement.services import compute_task_points
         from apps.projects.models import ProjectTask
 
-        self.stdout.write("  → Historique de tâches validées (6 mois)...")
+        self.stdout.write("  → Historique de tâches validées (janvier → septembre 2026)...")
         created_points = 0
         for department, project, members in self._department_people():
             pool = TASK_POOL[department.name]
             validator = department.lead or department.co_lead
             for member in members:
                 for n in range(ACTIVITY[member.email]):
-                    validated_on = self.today - timedelta(days=self.rng.randint(2, HISTORY_DAYS))
+                    validated_on = HISTORY_START + timedelta(days=self.rng.randint(0, (HISTORY_END - HISTORY_START).days))
                     size = self.rng.choices(["small", "medium", "large"], weights=[3, 5, 2])[0]
                     on_time = self.rng.random() < 0.78
                     outstanding = self.rng.random() < 0.15
@@ -225,7 +239,7 @@ class Command(BaseCommand):
                 task, created = ProjectTask.objects.get_or_create(
                     project=project, title=f"{title} — {department.name}",
                     defaults=dict(
-                        description="Tâche de démonstration en cours.", assigned_to=member, size=size,
+                        description=LIVE_MARKER, assigned_to=member, size=size,
                         due_date=self.today + timedelta(days=due_in), status=status,
                     ),
                 )
@@ -244,42 +258,42 @@ class Command(BaseCommand):
         from apps.engagement.models import CheckIn, PointEntry
         from apps.engagement.services import checkin_points
 
-        self.stdout.write("  → Points d'étape (trimestre précédent confirmé, trimestre en cours ouvert)...")
-        quarter_start = self.today.replace(month=3 * ((self.today.month - 1) // 3) + 1, day=1)
-        previous_quarter_end = quarter_start - timedelta(days=1)
-        previous_label = _quarter_label(previous_quarter_end)
+        self.stdout.write("  → Points d'étape (T1 à T3 2026 confirmés, trimestre en cours ouvert)...")
+        # (libellé, date de confirmation) — fin de chaque trimestre écoulé de 2026
+        past_quarters = [("T1 2026", date(2026, 3, 26)), ("T2 2026", date(2026, 6, 25)), ("T3 2026", date(2026, 9, 25))]
         current_label = _quarter_label(self.today)
-        confirmed_on = previous_quarter_end - timedelta(days=5)  # fin du trimestre précédent
 
         for department, _project, members in self._department_people():
             manager = department.lead or department.co_lead
             for i, member in enumerate(m for m in members if m.id != (manager.id if manager else None)):
-                base = 3 + (ACTIVITY[member.email] >= 6)
-                self_scores = {k: max(1, min(5, base + self.rng.choice([-1, 0, 0, 1]))) for k in CRITERIA}
-                final_scores = {k: max(1, min(5, v + self.rng.choice([-1, 0, 0, 0, 1]))) for k, v in self_scores.items()}
-
-                # Trimestre précédent : confirmé, avec retour et points.
-                previous, _ = CheckIn.objects.get_or_create(
-                    department=department, member=member, period_label=previous_label,
-                    defaults=dict(
-                        launched_by=manager, status=CheckIn.STATUS_CONFIRMED, self_scores=self_scores,
-                        improve_self="Être plus régulier dans le suivi de mes tâches.",
-                        department_help="Des points d'équipe plus courts mais plus fréquents.",
-                        submitted_at=_aware(confirmed_on - timedelta(days=4)),
-                        final_scores=final_scores, feedback=FEEDBACKS[i % len(FEEDBACKS)],
-                        confirmed_by=manager, confirmed_at=_aware(confirmed_on, 18),
-                        points=checkin_points(final_scores),
-                    ),
-                )
-                if previous.status == CheckIn.STATUS_CONFIRMED:
-                    PointEntry.objects.get_or_create(
-                        checkin=previous,
+                base = 3 + (ACTIVITY[member.email] >= 9)
+                self_scores = {}
+                for q, (label, confirmed_on) in enumerate(past_quarters):
+                    if label == current_label:
+                        continue
+                    self_scores = {k: max(1, min(5, base + self.rng.choice([-1, 0, 0, 1]))) for k in CRITERIA}
+                    final_scores = {k: max(1, min(5, v + self.rng.choice([-1, 0, 0, 0, 1]))) for k, v in self_scores.items()}
+                    checkin, _ = CheckIn.objects.get_or_create(
+                        department=department, member=member, period_label=label,
                         defaults=dict(
-                            user=member, points=previous.points, source=PointEntry.SOURCE_CHECKIN,
-                            department=department, label=f"Point d'étape — {previous_label}",
-                            awarded_by=manager, awarded_at=previous.confirmed_at,
+                            launched_by=manager, status=CheckIn.STATUS_CONFIRMED, self_scores=self_scores,
+                            improve_self="Être plus régulier dans le suivi de mes tâches.",
+                            department_help="Des points d'équipe plus courts mais plus fréquents.",
+                            submitted_at=_aware(confirmed_on - timedelta(days=4)),
+                            final_scores=final_scores, feedback=FEEDBACKS[(i + q) % len(FEEDBACKS)],
+                            confirmed_by=manager, confirmed_at=_aware(confirmed_on, 18),
+                            points=checkin_points(final_scores),
                         ),
                     )
+                    if checkin.status == CheckIn.STATUS_CONFIRMED:
+                        PointEntry.objects.get_or_create(
+                            checkin=checkin,
+                            defaults=dict(
+                                user=member, points=checkin.points, source=PointEntry.SOURCE_CHECKIN,
+                                department=department, label=f"Point d'étape — {label}",
+                                awarded_by=manager, awarded_at=checkin.confirmed_at,
+                            ),
+                        )
 
                 # Trimestre en cours : un sur deux rempli (à confirmer), les autres à remplir.
                 submitted = i % 2 == 0
@@ -300,19 +314,31 @@ class Command(BaseCommand):
         from apps.engagement.models import Award
         from apps.engagement.services import build_ranking, period_bounds
 
-        self.stdout.write("  → Membres du mois (3 derniers mois écoulés)...")
+        self.stdout.write("  → Membres du mois (janvier à septembre 2026)...")
         admin = User.objects.filter(email="admin@dah.com").first()
-        month_start = self.today.replace(day=1)
-        for _ in range(3):
-            month_start = (month_start - timedelta(days=1)).replace(day=1)
+        for month_start in AWARD_MONTHS:
             start, end = period_bounds("month", month_start)
             rows = build_ranking(start, end)
             if not rows or rows[0]["total"] == 0:
                 continue
             Award.objects.update_or_create(
                 kind=Award.KIND_MONTH, period_start=start,
-                defaults=dict(
-                    user_id=rows[0]["user_id"], awarded_by=admin,
-                    note="Pour ton implication et la qualité de tes contributions ce mois-ci.",
-                ),
+                defaults=dict(user_id=rows[0]["user_id"], awarded_by=admin, note=AWARD_NOTE),
             )
+
+    # ── Réinitialisation (démo uniquement) ────────────────────────────
+    def _reset(self):
+        """Supprime uniquement ce que ce seed a créé : tâches de démo (et leurs
+        points), points d'étape des membres de démo, membres du mois de la démo."""
+        from apps.engagement.models import Award, CheckIn, PointEntry
+        from apps.projects.models import ProjectTask
+
+        self.stdout.write("  → Réinitialisation des données de démo engagement...")
+        demo_tasks = ProjectTask.objects.filter(description__in=[DEMO_MARKER, LIVE_MARKER])
+        demo_checkins = CheckIn.objects.filter(member__email__in=ACTIVITY)
+        PointEntry.objects.filter(project_task__in=demo_tasks).delete()
+        PointEntry.objects.filter(checkin__in=demo_checkins).delete()
+        deleted_tasks, _ = demo_tasks.delete()
+        demo_checkins.delete()
+        Award.objects.filter(note=AWARD_NOTE).delete()
+        self.stdout.write(f"    - {deleted_tasks} tâches de démo supprimées")
