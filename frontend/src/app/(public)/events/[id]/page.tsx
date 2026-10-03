@@ -3,7 +3,7 @@
 import { use } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { CalendarDays, MapPin, Users, Video, ArrowLeft, Check, ExternalLink, Clock } from "lucide-react";
+import { CalendarDays, MapPin, Video, ArrowLeft, Check, ExternalLink, Clock } from "lucide-react";
 import { eventsService } from "@/services/events.service";
 import { eventTypeBadgeVariant } from "@/lib/utils";
 import { useI18n } from "@/i18n/I18nProvider";
@@ -112,10 +112,6 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     </a>
                   </div>
                 )}
-                <div className="flex items-center gap-3 text-fg-soft">
-                  <Users size={16} className="shrink-0 text-fg-subtle" />
-                  <span>{t.eventDetail.participants(event.participant_count)}{event.max_participants ? ` / ${event.max_participants}` : ""}</span>
-                </div>
               </div>
             </div>
 
@@ -124,7 +120,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               <h2 className="font-semibold text-fg mb-4">
                 {isPast ? t.eventDetail.summary : t.eventDetail.aboutEvent}
               </h2>
-              <p className="text-fg-soft leading-relaxed whitespace-pre-line text-sm">{event.description}</p>
+              {/^\s*</.test(event.description) ? (
+                // Description saisie avec l'éditeur (HTML), sinon texte brut des anciens événements.
+                <div className="rich-content text-sm" dangerouslySetInnerHTML={{ __html: event.description }} />
+              ) : (
+                <p className="text-fg-soft leading-relaxed whitespace-pre-line text-sm">{event.description}</p>
+              )}
             </div>
 
             {/* Speakers */}

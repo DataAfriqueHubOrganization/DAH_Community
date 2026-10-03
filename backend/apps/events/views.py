@@ -13,10 +13,13 @@ from .models import Event, EventParticipant
 from .serializers import (
     EventListSerializer, EventDetailSerializer, EventWriteSerializer,
     EventParticipantSerializer, RegisterForEventSerializer, ParticipantLookupSerializer,
+    EventReminderSerializer, SendEventReminderSerializer,
+    ParticipantWithEventSerializer, ParticipantsFilterSerializer,
 )
 from .services import (
     register_participant, validate_presence, generate_qr_code,
-    export_participants_excel, find_latest_participant_info,
+    export_participants_excel, find_latest_participant_info, send_event_reminder,
+    participants_queryset, export_all_participants_excel,
 )
 
 
@@ -44,11 +47,40 @@ class EventViewSet(ModelViewSet):
     def get_permissions(self):
         if self.action in ["create", "update", "partial_update", "destroy"]:
             return [IsAuthenticated(), IsAdminOrBureau()]
-        return [AllowAny()]
+        if self.action in ["list", "retrieve"]:
+            return [AllowAny()]
+        # Actions personnalisées : leurs propres permission_classes (inscription
+        # publique ; participants, export, présence, rappels réservés au bureau).
+        return super().get_permissions()
 
     def perform_create(self, serializer):
         event = serializer.save(created_by=self.request.user)
         generate_qr_code(event)
+
+    # ── Tous les participants (tous événements), par période ou par événements ──
+    def _all_participants(self, request):
+        filters = ParticipantsFilterSerializer(data=request.query_params)
+        filters.is_valid(raise_exception=True)
+        data = filters.validated_data
+        qs = participants_queryset(
+            date_from=data.get("date_from"), date_to=data.get("date_to"), event_ids=data.get("events"),
+        )
+        return qs, data["group"]
+
+    @action(detail=False, methods=["get"], url_path="participants", permission_classes=[IsAuthenticated, IsAdminOrBureau])
+    def all_participants(self, request):
+        qs, _ = self._all_participants(request)
+        return Response(ParticipantWithEventSerializer(qs, many=True).data)
+
+    @action(detail=False, methods=["get"], url_path="participants/export", permission_classes=[IsAuthenticated, IsAdminOrBureau])
+    def export_all_participants(self, request):
+        qs, group = self._all_participants(request)
+        response = HttpResponse(
+            export_all_participants_excel(list(qs), by_person=group == "person"),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        response["Content-Disposition"] = 'attachment; filename="participants_dah.xlsx"'
+        return response
 
     @action(detail=True, methods=["post"], permission_classes=[AllowAny])
     def register(self, request, pk=None):
@@ -104,6 +136,21 @@ class EventViewSet(ModelViewSet):
         queryset = event.participants.select_related("user").order_by("created_at")
         serializer = EventParticipantSerializer(queryset, many=True)
         return Response(serializer.data)
+
+    @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated, IsAdminOrBureau])
+    def remind(self, request, pk=None):
+        """Rappel par email aux inscrits (ou test à soi-même avec test=true)."""
+        event = self.get_object()
+        serializer = SendEventReminderSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        count = send_event_reminder(event, request.user, **serializer.validated_data)
+        return Response({"sent": count, "test": serializer.validated_data["test"]})
+
+    @action(detail=True, methods=["get"], permission_classes=[IsAuthenticated, IsAdminOrBureau])
+    def reminders(self, request, pk=None):
+        event = self.get_object()
+        queryset = event.reminders.select_related("sent_by")[:20]
+        return Response(EventReminderSerializer(queryset, many=True).data)
 
     @action(detail=True, methods=["get"], permission_classes=[IsAuthenticated, IsAdminOrBureau])
     def export(self, request, pk=None):

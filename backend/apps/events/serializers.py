@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Event, EventParticipant, EventSpeaker
+from .models import EventReminder, Event, EventParticipant, EventSpeaker
 
 
 class EventSpeakerSerializer(serializers.ModelSerializer):
@@ -57,10 +57,12 @@ class EventWriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Event
         fields = [
-            "title", "description", "event_type", "cover_image", "recap_image",
+            # id renvoyé après création : l'éditeur enchaîne sur la page de modification.
+            "id", "title", "description", "event_type", "cover_image", "recap_image",
             "start_date", "end_date", "registration_deadline",
             "location", "online_link", "max_participants", "is_published",
         ]
+        read_only_fields = ["id"]
 
 
 class EventParticipantSerializer(serializers.ModelSerializer):
@@ -99,3 +101,48 @@ class ParticipantLookupSerializer(serializers.Serializer):
 
     def validate_email(self, value: str) -> str:
         return value.strip().lower()
+
+
+class EventReminderSerializer(serializers.ModelSerializer):
+    sent_by_name = serializers.CharField(source="sent_by.full_name", read_only=True, default=None)
+
+    class Meta:
+        model = EventReminder
+        fields = ["id", "subject", "message", "sent_by_name", "sent_at", "recipients"]
+
+
+class SendEventReminderSerializer(serializers.Serializer):
+    subject = serializers.CharField(max_length=150)
+    message = serializers.CharField(max_length=5000)
+    test = serializers.BooleanField(required=False, default=False)
+
+
+class ParticipantWithEventSerializer(EventParticipantSerializer):
+    """Inscription vue depuis la liste de tous les participants (avec son événement)."""
+    event_id = serializers.UUIDField(source="event.id", read_only=True)
+    event_title = serializers.CharField(source="event.title", read_only=True)
+    event_start_date = serializers.DateTimeField(source="event.start_date", read_only=True)
+
+    class Meta(EventParticipantSerializer.Meta):
+        fields = EventParticipantSerializer.Meta.fields + ["event_id", "event_title", "event_start_date"]
+
+
+class ParticipantsFilterSerializer(serializers.Serializer):
+    date_from = serializers.DateField(required=False)
+    date_to = serializers.DateField(required=False)
+    # Identifiants d'événements séparés par des virgules.
+    events = serializers.CharField(required=False, allow_blank=True)
+    group = serializers.ChoiceField(choices=["registration", "person"], required=False, default="registration")
+
+    def validate_events(self, value):
+        import uuid
+        ids = [v.strip() for v in value.split(",") if v.strip()]
+        try:
+            return [uuid.UUID(v) for v in ids]
+        except ValueError:
+            raise serializers.ValidationError("Identifiant d'événement invalide.")
+
+    def validate(self, attrs):
+        if attrs.get("date_from") and attrs.get("date_to") and attrs["date_from"] > attrs["date_to"]:
+            raise serializers.ValidationError({"date_to": "La date de fin précède la date de début."})
+        return attrs

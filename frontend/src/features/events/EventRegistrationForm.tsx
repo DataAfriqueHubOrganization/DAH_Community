@@ -1,14 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Check } from "lucide-react";
+import { Check, Sparkles } from "lucide-react";
 import { eventsService } from "@/services/events.service";
 import { makeEventRegistrationSchema, type EventRegistrationInput } from "@/features/events/schemas";
 import { AFRICAN_COUNTRIES, OTHER_COUNTRIES, sortedCountries } from "@/lib/countries";
 import { useI18n } from "@/i18n/I18nProvider";
+import { useCurrentUser } from "@/hooks/useAuth";
 
 const inputCls =
   "w-full border border-border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue";
@@ -31,7 +32,10 @@ export function EventRegistrationForm({ eventId }: { eventId: string }) {
   const qc = useQueryClient();
   const { t, locale } = useI18n();
   const schema = useMemo(() => makeEventRegistrationSchema(t.validation), [t]);
-  const [lookupDone, setLookupDone] = useState(false);
+  const { data: user } = useCurrentUser();
+  // Dernier email recherché : une correction d'email relance la recherche.
+  const lastLookup = useRef<string | null>(null);
+  const [prefilled, setPrefilled] = useState(false);
   const {
     register,
     handleSubmit,
@@ -41,6 +45,44 @@ export function EventRegistrationForm({ eventId }: { eventId: string }) {
   } = useForm<EventRegistrationInput>({
     resolver: zodResolver(schema),
   });
+
+  /** Remplit seulement les champs encore vides : on n'écrase jamais une saisie. */
+  function fillEmpty(values: Partial<EventRegistrationInput>) {
+    let changed = false;
+    (Object.entries(values) as [keyof EventRegistrationInput, string][]).forEach(([key, value]) => {
+      if (value && !getValues(key)) {
+        setValue(key, value, { shouldValidate: true });
+        changed = true;
+      }
+    });
+    return changed;
+  }
+
+  async function lookup(email: string) {
+    const normalized = email.trim().toLowerCase();
+    if (!normalized.includes("@") || normalized === lastLookup.current) return;
+    lastLookup.current = normalized;
+    try {
+      const { data, status } = await eventsService.lookupParticipant(normalized);
+      if (status === 200 && data) {
+        // Inscription précédente : identité et parcours ; la motivation reste propre à chaque événement.
+        if (fillEmpty({
+          first_name: data.first_name, last_name: data.last_name, nationality: data.nationality,
+          organisation: data.organisation, profession: data.profession,
+        })) setPrefilled(true);
+      }
+    } catch {
+      // pas de correspondance : la personne remplit le formulaire elle-même
+    }
+  }
+
+  // Membre connecté : email et nom depuis son compte, puis ses infos d'une inscription passée.
+  useEffect(() => {
+    if (!user) return;
+    fillEmpty({ email: user.email, first_name: user.first_name, last_name: user.last_name });
+    lookup(user.email);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const mutation = useMutation({
     mutationFn: (data: EventRegistrationInput) => eventsService.register(eventId, data),
@@ -59,36 +101,22 @@ export function EventRegistrationForm({ eventId }: { eventId: string }) {
     );
   }
 
-  async function handleEmailBlur() {
-    const email = getValues("email");
-    if (!email || lookupDone) return;
-    try {
-      const { data, status } = await eventsService.lookupParticipant(email);
-      if (status === 200 && data) {
-        setValue("first_name", data.first_name);
-        setValue("last_name", data.last_name);
-        setValue("nationality", data.nationality);
-        setValue("organisation", data.organisation);
-        setValue("profession", data.profession);
-      }
-    } catch {
-      // pas de correspondance : la personne remplit le formulaire elle-même
-    } finally {
-      setLookupDone(true);
-    }
-  }
-
   return (
     <form onSubmit={handleSubmit((data) => mutation.mutate(data))} className="space-y-3">
       <div>
         <input
           type="email"
-          {...register("email", { onBlur: handleEmailBlur })}
+          {...register("email", { onBlur: (e) => lookup(e.target.value) })}
           placeholder={t.eventForm.emailPlaceholder}
           aria-label={t.common.email}
           className={inputCls}
         />
         {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
+        {prefilled && (
+          <p className="flex items-center gap-1.5 text-xs text-brand-deep mt-1.5" role="status">
+            <Sparkles size={13} aria-hidden="true" /> {t.eventForm.prefilled}
+          </p>
+        )}
       </div>
       <div className="grid grid-cols-2 gap-2">
         <div>

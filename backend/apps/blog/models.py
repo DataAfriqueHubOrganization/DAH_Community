@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 from django.utils.text import slugify
 from apps.common.mixins import TimestampMixin
 
@@ -10,6 +11,17 @@ class ArticleCategory(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class ArticleQuerySet(models.QuerySet):
+    def live(self):
+        """Visibles sur le site : publiés, ou programmés dont la date est passée —
+        sans tâche planifiée, la publication programmée se fait à la lecture."""
+        now = timezone.now()
+        return self.filter(
+            models.Q(status=Article.STATUS_PUBLISHED)
+            | models.Q(status=Article.STATUS_SCHEDULED, published_at__lte=now)
+        )
 
 
 class Article(TimestampMixin):
@@ -35,6 +47,8 @@ class Article(TimestampMixin):
     published_at = models.DateTimeField(null=True, blank=True)
     seo_title = models.CharField(max_length=70, blank=True)
     seo_description = models.CharField(max_length=160, blank=True)
+
+    objects = ArticleQuerySet.as_manager()
 
     class Meta:
         ordering = ["-published_at", "-created_at"]

@@ -1,4 +1,6 @@
+from django.db.models import Count
 from django.shortcuts import get_object_or_404
+from django.utils.text import slugify
 from django.utils import timezone
 from rest_framework import generics
 from rest_framework.exceptions import PermissionDenied
@@ -22,8 +24,7 @@ class ArticleListView(generics.ListAPIView):
 
     def get_queryset(self):
         return (
-            Article.objects
-            .filter(status=Article.STATUS_PUBLISHED)
+            Article.objects.live()
             .select_related("author", "category")
             .order_by("-published_at")
         )
@@ -35,22 +36,31 @@ class ArticleDetailView(generics.RetrieveAPIView):
     lookup_field = "slug"
 
     def get_queryset(self):
-        return (
-            Article.objects
-            .filter(status=Article.STATUS_PUBLISHED)
-            .select_related("author", "category")
-        )
+        return Article.objects.live().select_related("author", "category")
 
 
-class ArticleCategoryListView(generics.ListAPIView):
+class ArticleCategoryListView(generics.ListCreateAPIView):
+    """Catégories : liste et création depuis l'éditeur d'article (bureau)."""
     queryset = ArticleCategory.objects.order_by("name")
     serializer_class = ArticleCategorySerializer
     permission_classes = [IsAuthenticated, IsAdminOrBureau]
     pagination_class = None
 
+    def perform_create(self, serializer):
+        base = slugify(serializer.validated_data["name"]) or "categorie"
+        slug, n = base, 1
+        while ArticleCategory.objects.filter(slug=slug).exists():
+            n += 1
+            slug = f"{base}-{n}"
+        serializer.save(slug=slug)
+
 
 class ArticleAdminViewSet(ModelViewSet):
-    queryset = Article.objects.select_related("author", "category").order_by("-created_at")
+    queryset = (
+        Article.objects.select_related("author", "category")
+        .annotate(likes_count=Count("likes", distinct=True), comments_count=Count("comments", distinct=True))
+        .order_by("-created_at")
+    )
     serializer_class = ArticleAdminSerializer
     permission_classes = [IsAuthenticated, IsAdminOrBureau]
 
@@ -69,7 +79,7 @@ class ArticleAdminViewSet(ModelViewSet):
 
 
 def _get_published_article(slug):
-    return get_object_or_404(Article, slug=slug, status=Article.STATUS_PUBLISHED)
+    return get_object_or_404(Article.objects.live(), slug=slug)
 
 
 class ArticleCommentListCreateView(generics.ListCreateAPIView):

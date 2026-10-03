@@ -109,7 +109,7 @@ export default function ArticlePage({ params }: { params: Promise<{ slug: string
 
             {/* Contenu */}
             <div
-              className="prose prose-lg prose-gray max-w-none prose-headings:text-fg prose-a:text-brand-blue prose-strong:text-fg"
+              className="rich-content text-[17px]"
               dangerouslySetInnerHTML={{ __html: article.content }}
             />
 

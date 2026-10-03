@@ -10,6 +10,7 @@ export const blogService = {
 
   categories: {
     list: () => api.get<ArticleCategory[]>("/blog/manage/categories/"),
+    create: (name: string) => api.post<ArticleCategory>("/blog/manage/categories/", { name }),
   },
 
   comments: {
@@ -25,7 +26,7 @@ export const blogService = {
   },
 
   manage: {
-    list: () => api.get<ArticleAdmin[] | { results: ArticleAdmin[] }>("/blog/manage/articles/"),
+    list: () => api.get<ArticleAdmin[] | { results: ArticleAdmin[] }>("/blog/manage/articles/", { params: { page_size: 100 } }),
     get: (id: number) => api.get<ArticleAdmin>(`/blog/manage/articles/${id}/`),
     create: (data: ArticleWritePayload | FormData) =>
       api.post<ArticleAdmin>("/blog/manage/articles/", data, {

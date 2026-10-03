@@ -55,6 +55,8 @@ export interface ArticleAdmin {
   published_at: string | null;
   seo_title: string;
   seo_description: string;
+  likes_count: number;
+  comments_count: number;
   created_at: string;
 }
 

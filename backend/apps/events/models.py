@@ -93,3 +93,22 @@ class EventSpeaker(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class EventReminder(models.Model):
+    """Rappel envoyé par le bureau aux inscrits d'un événement (historique)."""
+
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="reminders")
+    subject = models.CharField(max_length=150)
+    message = models.TextField()
+    sent_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
+    sent_at = models.DateTimeField(auto_now_add=True)
+    recipients = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["-sent_at"]
+        verbose_name = "Rappel d'événement"
+        verbose_name_plural = "Rappels d'événements"
+
+    def __str__(self):
+        return f"{self.event.title} — {self.sent_at:%d/%m/%Y} ({self.recipients})"

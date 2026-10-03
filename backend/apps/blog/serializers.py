@@ -7,6 +7,7 @@ class ArticleCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = ArticleCategory
         fields = ["id", "name", "slug"]
+        read_only_fields = ["id", "slug"]
 
 
 class ArticleListSerializer(serializers.ModelSerializer):
@@ -45,13 +46,16 @@ class ArticleAdminSerializer(serializers.ModelSerializer):
     en écriture, contrairement aux serializers publics (lecture seule, publiés)."""
     author_name = serializers.SerializerMethodField()
     category_name = serializers.CharField(source="category.name", read_only=True, default=None)
+    # Annotés par ArticleAdminViewSet (0 après une création, avant rechargement).
+    likes_count = serializers.IntegerField(read_only=True, default=0)
+    comments_count = serializers.IntegerField(read_only=True, default=0)
 
     class Meta:
         model = Article
         fields = [
             "id", "slug", "title", "content", "excerpt", "cover_image",
             "author_name", "category", "category_name", "tags", "status",
-            "published_at", "seo_title", "seo_description", "created_at",
+            "published_at", "seo_title", "seo_description", "likes_count", "comments_count", "created_at",
         ]
         read_only_fields = ["id", "slug", "created_at"]
 

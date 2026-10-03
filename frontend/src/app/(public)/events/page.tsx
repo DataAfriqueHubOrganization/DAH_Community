@@ -4,7 +4,7 @@ import { NetworkPattern } from "@/components/ui/NetworkPattern";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { CalendarDays, MapPin, Users, Search, Filter, Video } from "lucide-react";
+import { CalendarDays, MapPin, Search, Filter, Video } from "lucide-react";
 import { eventsService } from "@/services/events.service";
 import { eventTypeBadgeVariant } from "@/lib/utils";
 import { useI18n } from "@/i18n/I18nProvider";
@@ -177,21 +177,15 @@ export default function EventsPage() {
                           <span className="line-clamp-1">{event.location}</span>
                         </div>
                       )}
-                      <div className="flex items-center gap-2">
-                        <Users size={14} className="shrink-0 text-fg-subtle" />
-                        <span>{t.events.registered(event.participant_count)}</span>
-                        {event.max_participants && (
-                          <span className="text-fg-subtle">/ {event.max_participants}</span>
-                        )}
-                        {event.is_full ? (
-                          <Badge variant="red" className="ml-auto">{t.events.full}</Badge>
-                        ) : (
-                          !isRegistrationOpen(event) &&
-                          !eventIsPast && (
-                            <Badge variant="gray" className="ml-auto">{t.events.registrationClosed}</Badge>
-                          )
-                        )}
-                      </div>
+                      {/* Pas de nombre d'inscrits sur le site public (réservé au back office). */}
+                      {event.is_full ? (
+                        <div><Badge variant="red">{t.events.full}</Badge></div>
+                      ) : (
+                        !isRegistrationOpen(event) &&
+                        !eventIsPast && (
+                          <div><Badge variant="gray">{t.events.registrationClosed}</Badge></div>
+                        )
+                      )}
                     </div>
                   </div>
                 </Link>

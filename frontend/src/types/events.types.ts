@@ -80,3 +80,26 @@ export interface ParticipantLookupResult {
   organisation: string;
   profession: string;
 }
+
+export interface EventReminder {
+  id: number;
+  subject: string;
+  message: string;
+  sent_by_name: string | null;
+  sent_at: string;
+  recipients: number;
+}
+
+/** Inscription vue depuis la liste de tous les participants. */
+export interface ParticipantWithEvent extends EventParticipant {
+  event_id: string;
+  event_title: string;
+  event_start_date: string;
+}
+
+export interface ParticipantsFilter {
+  date_from?: string;
+  date_to?: string;
+  events?: string; // ids séparés par des virgules
+  group?: "registration" | "person";
+}
