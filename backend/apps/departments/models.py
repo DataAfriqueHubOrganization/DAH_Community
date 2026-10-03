@@ -1,6 +1,6 @@
 from django.conf import settings
 from django.db import models
-from apps.common.mixins import TimestampMixin
+from apps.common.mixins import ReviewableTaskMixin, TimestampMixin
 
 
 class Department(TimestampMixin):
@@ -84,11 +84,12 @@ class DepartmentSession(TimestampMixin):
         return f"{self.department.name} — {self.date}"
 
 
-class DepartmentTask(TimestampMixin):
+class DepartmentTask(ReviewableTaskMixin, TimestampMixin):
     STATUS_CHOICES = [
         ("todo", "À faire"),
         ("in_progress", "En cours"),
-        ("done", "Terminée"),
+        ("submitted", "À valider"),
+        ("done", "Validée"),
         ("blocked", "Bloquée"),
     ]
 

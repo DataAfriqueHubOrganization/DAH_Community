@@ -104,6 +104,8 @@ export interface PublicProfile {
   department: PublicProfileDepartment | null;
   experiences: MemberExperience[];
   certifications: MemberCertification[];
+  /** Distinctions « Membre du mois / de l'année ». */
+  awards?: { kind: "month" | "year"; period_start: string }[];
 }
 
 export interface MemberProfileUpdatePayload {

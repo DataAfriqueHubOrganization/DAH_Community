@@ -1,5 +1,6 @@
 "use client";
 
+import { AwardBadges } from "@/features/engagement/AwardBadges";
 import { use } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { membersService } from "@/services/members.service";
@@ -44,6 +45,7 @@ export default function PortfolioPage({ params }: { params: Promise<{ slug: stri
             </div>
             <div className="text-center sm:text-left pb-1">
               <h1 className="text-3xl sm:text-4xl font-bold">{fullName}</h1>
+              <AwardBadges awards={profile.awards} />
               {currentJob && (
                 <p className="text-white/90 mt-1 text-lg">
                   {currentJob.title}

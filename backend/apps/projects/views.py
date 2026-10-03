@@ -1,13 +1,15 @@
 from django.db.models import Q
 from rest_framework import status
 from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import NotFound, PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
 from apps.common.permissions import IsOwnerOrAdmin, is_bureau
 from apps.departments.services import get_user_department_ids
+from apps.engagement.serializers import ReturnTaskSerializer, SubmitTaskSerializer, ValidateTaskSerializer
+from apps.engagement import services as engagement
 from .models import Project, ProjectTask
 from .serializers import (
     ProjectSerializer, ProjectWriteSerializer,
@@ -97,6 +99,8 @@ class ProjectViewSet(ModelViewSet):
             return Response(status=status.HTTP_204_NO_CONTENT)
 
         if self._can_manage_project(project):
+            if "status" in request.data:
+                engagement.check_free_status_change(task, request.data["status"])
             serializer = ProjectTaskWriteSerializer(
                 task, data=request.data, partial=True, context={"request": request, "project": project},
             )
@@ -105,9 +109,42 @@ class ProjectViewSet(ModelViewSet):
         elif task.assigned_to_id == request.user.id:
             serializer = ProjectTaskStatusUpdateSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
+            engagement.check_free_status_change(task, serializer.validated_data["status"])
             task.status = serializer.validated_data["status"]
             task.save(update_fields=["status"])
         else:
             raise PermissionDenied("Vous ne pouvez modifier que vos propres tâches.")
 
+        return Response(ProjectTaskSerializer(task).data)
+
+    # ── Cycle de validation (points accordés à la validation) ───────────
+    def _get_task(self, pk, task_id):
+        project = self.get_object()
+        try:
+            return project.tasks.select_related("project__department", "assigned_to").get(pk=task_id)
+        except ProjectTask.DoesNotExist:
+            raise NotFound("Tâche introuvable.")
+
+    @action(detail=True, methods=["post"], url_path="tasks/(?P<task_id>[^/.]+)/submit")
+    def submit_task(self, request, pk=None, task_id=None):
+        task = self._get_task(pk, task_id)
+        serializer = SubmitTaskSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        engagement.submit_task(task, request.user, serializer.validated_data["note"])
+        return Response(ProjectTaskSerializer(task).data)
+
+    @action(detail=True, methods=["post"], url_path="tasks/(?P<task_id>[^/.]+)/validate")
+    def validate_task(self, request, pk=None, task_id=None):
+        task = self._get_task(pk, task_id)
+        serializer = ValidateTaskSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        engagement.validate_task(task, request.user, serializer.validated_data["outstanding"])
+        return Response(ProjectTaskSerializer(task).data)
+
+    @action(detail=True, methods=["post"], url_path="tasks/(?P<task_id>[^/.]+)/return")
+    def return_task(self, request, pk=None, task_id=None):
+        task = self._get_task(pk, task_id)
+        serializer = ReturnTaskSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        engagement.return_task(task, request.user, serializer.validated_data["reason"])
         return Response(ProjectTaskSerializer(task).data)

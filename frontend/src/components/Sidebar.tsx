@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { LayoutDashboard, Users, CalendarDays, FileText, Settings, ChevronLeft, ChevronRight, Home, CreditCard, Building2, Newspaper, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, Users, CalendarDays, FileText, Settings, ChevronLeft, ChevronRight, Home, CreditCard, Building2, Newspaper, ShieldCheck, Star, Trophy } from "lucide-react";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { Logo } from "@/components/ui/Logo";
 import { useI18n } from "@/i18n/I18nProvider";
@@ -19,6 +19,9 @@ const allNavItems = [
   { href: "/manage/departments", key: "departments", icon: Building2, roles: "bureau" },
   { href: "/manage/actualites", key: "news", icon: Newspaper, roles: "bureau" },
   { href: "/my-department", key: "myDepartment", icon: Building2, roles: "all" },
+  { href: "/my-points", key: "myPoints", icon: Star, roles: "all" },
+  // Classement : responsables de département et bureau — jamais les simples membres.
+  { href: "/ranking", key: "ranking", icon: Trophy, roles: "managers" },
   { href: "/memberships", key: "applications", icon: FileText, roles: "admin_president" },
   { href: "/manage/access", key: "access", icon: ShieldCheck, roles: "admin" },
   { href: "/member-card", key: "memberCard", icon: CreditCard, roles: "all" },
@@ -33,6 +36,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: { mobileOpen?: bo
   const navItems = allNavItems.filter(item => {
     if (item.roles === "all") return true;
     if (item.roles === "bureau") return isBureau(user);
+    if (item.roles === "managers") return isBureau(user) || user?.role === "responsable";
     if (item.roles === "admin") return !!user && isAdmin(user.role);
     if (item.roles === "admin_president") return user && (isAdmin(user.role) || user.poste === "president");
     return true;

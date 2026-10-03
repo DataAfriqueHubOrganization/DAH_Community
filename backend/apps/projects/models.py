@@ -1,6 +1,6 @@
 from django.conf import settings
 from django.db import models
-from apps.common.mixins import TimestampMixin
+from apps.common.mixins import ReviewableTaskMixin, TimestampMixin
 
 
 class Project(TimestampMixin):
@@ -28,11 +28,12 @@ class Project(TimestampMixin):
         return self.title
 
 
-class ProjectTask(TimestampMixin):
+class ProjectTask(ReviewableTaskMixin, TimestampMixin):
     STATUS_CHOICES = [
         ("todo", "À faire"),
         ("in_progress", "En cours"),
-        ("done", "Terminée"),
+        ("submitted", "À valider"),
+        ("done", "Validée"),
         ("blocked", "Bloquée"),
     ]
 

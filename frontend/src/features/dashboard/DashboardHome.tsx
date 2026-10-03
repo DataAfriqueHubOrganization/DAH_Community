@@ -6,7 +6,8 @@ import { useQuery } from "@tanstack/react-query";
 import { eventsService } from "@/services/events.service";
 import { membersService } from "@/services/members.service";
 import { membershipsService } from "@/services/memberships.service";
-import { Users, CalendarDays, Award, FileText, ArrowRight, Clock, CheckCircle2 } from "lucide-react";
+import { engagementService } from "@/services/engagement.service";
+import { Users, CalendarDays, Award, FileText, ArrowRight, Clock, CheckCircle2, ClipboardList } from "lucide-react";
 import { isAdmin, isBureau } from "@/types/auth.types";
 import { avatarUrl } from "@/lib/utils";
 import { useI18n } from "@/i18n/I18nProvider";
@@ -43,6 +44,13 @@ export function DashboardHome() {
     retry: false,
   });
 
+  const { data: myPoints } = useQuery({
+    queryKey: ["my-points", "month", "dashboard"],
+    queryFn: () => engagementService.myPoints({ period: "month" }).then((r) => r.data),
+    enabled: !!user,
+  });
+  const pendingCheckins = myPoints?.checkins.filter((c) => c.status === "pending") ?? [];
+
   if (isLoading) return <DashboardSkeleton />;
 
   const allEvents: Event[] = eventsData?.results ?? eventsData ?? [];
@@ -73,6 +81,19 @@ export function DashboardHome() {
           />
         </div>
       </div>
+
+      {/* Point d'étape à remplir */}
+      {pendingCheckins.map((c) => (
+        <Link key={c.id} href={`/checkins/${c.id}`}
+          className="flex items-center gap-4 rounded-xl border border-brand-orange/40 bg-brand-orange/10 px-5 py-4 hover:bg-brand-orange/15 transition-colors">
+          <ClipboardList size={20} className="text-orange-700 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-fg text-sm">{t.points.checkinTodo}</p>
+            <p className="text-xs text-fg-muted">{c.department_name} · {c.period_label}</p>
+          </div>
+          <span className="text-xs font-semibold text-orange-800 shrink-0">{t.points.fill} →</span>
+        </Link>
+      ))}
 
       {/* Stats cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

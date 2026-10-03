@@ -15,7 +15,9 @@ import {
   ArrowLeft, Users, UserPlus, CircleX, Trash2, FolderKanban, Plus, X,
   CalendarDays, GitBranch, ListChecks, Pencil, ChevronDown, ArrowUpDown,
 } from "lucide-react";
-import type { Project, ProjectStatus, ProjectTask, ProjectTaskStatus, ProjectWritePayload, ProjectTaskWritePayload } from "@/types/projects.types";
+import type { Project, ProjectStatus, ProjectTask, ProjectWritePayload, ProjectTaskWritePayload, TaskSize } from "@/types/projects.types";
+import { TaskReviewControls } from "@/features/tasks/TaskReviewControls";
+import { DepartmentCheckIns } from "@/features/engagement/DepartmentCheckIns";
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
@@ -101,10 +103,7 @@ const PROJECT_STATUS_VARIANT: Record<ProjectStatus, "blue" | "orange" | "green" 
   idea: "gray", active: "blue", paused: "orange", completed: "green", archived: "gray",
 };
 
-const TASK_STATUS_OPTIONS: ProjectTaskStatus[] = ["todo", "in_progress", "done", "blocked"];
-const TASK_STATUS_VARIANT: Record<ProjectTaskStatus, "blue" | "green" | "red" | "gray"> = {
-  todo: "gray", in_progress: "blue", done: "green", blocked: "red",
-};
+
 
 export default function DepartmentWorkspacePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -336,6 +335,14 @@ export default function DepartmentWorkspacePage({ params }: { params: Promise<{ 
         </section>
       )}
 
+      {/* Points d'étape — lancés et confirmés par le responsable */}
+      {viewerMode === "manager" && (
+        <DepartmentCheckIns
+          departmentId={departmentId}
+          members={assignees.filter((a) => a.id !== currentUser?.id)}
+        />
+      )}
+
       {/* Projets — visibles uniquement par les membres du département et le bureau */}
       {viewerMode === "visiteur" ? (
         <section className="bg-surface rounded-2xl border border-line-soft p-5 flex items-center gap-3 text-sm text-fg-muted">
@@ -438,29 +445,23 @@ export default function DepartmentWorkspacePage({ params }: { params: Promise<{ 
 function MyTaskRow({ task }: { task: ProjectTask }) {
   const qc = useQueryClient();
   const { t: tr, fmt } = useI18n();
-  const updateStatus = useMutation({
-    mutationFn: (taskStatus: ProjectTaskStatus) => projectsService.tasks.updateStatus(task.project, task.id, taskStatus),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["projects", "my-tasks"] }),
-  });
 
   return (
-    <div className="flex items-center gap-4 px-5 py-4">
+    <div className="flex items-start gap-4 px-5 py-4">
       <div className="flex-1 min-w-0">
         <p className="font-medium text-fg text-sm">{task.title}</p>
         <p className="text-fg-subtle text-xs mt-0.5">
           {task.project_title}
           {task.due_date && ` · ${tr.deptDetail.dueLower} ${fmt.date(task.due_date)}`}
+          {` · ${tr.tasks.size[task.size]}`}
         </p>
       </div>
-      <select
-        value={task.status}
-        onChange={(e) => updateStatus.mutate(e.target.value as ProjectTaskStatus)}
-        className={`text-xs font-medium rounded-full px-3 py-1.5 border-0 focus:outline-none focus:ring-2 focus:ring-brand-blue/20 shrink-0 ${
-          { todo: "bg-surface-strong text-fg-soft", in_progress: "bg-blue-50 text-brand-blue", done: "bg-green-50 text-green-600", blocked: "bg-red-50 text-red-500" }[task.status]
-        }`}
-      >
-        {TASK_STATUS_OPTIONS.map((o) => <option key={o} value={o}>{tr.deptDetail.taskStatus[o]}</option>)}
-      </select>
+      <TaskReviewControls
+        task={task}
+        canValidate={false}
+        isAssignee
+        onChanged={() => qc.invalidateQueries({ queryKey: ["projects", "my-tasks"] })}
+      />
     </div>
   );
 }
@@ -500,11 +501,8 @@ function ProjectDetailPanel({
     onSuccess: invalidateTasks,
   });
 
-  const updateTaskStatus = useMutation({
-    mutationFn: ({ taskId, taskStatus }: { taskId: number; taskStatus: ProjectTaskStatus }) =>
-      projectsService.tasks.updateStatus(project.id, taskId, taskStatus),
-    onSuccess: invalidateTasks,
-  });
+  // Validation des tâches : responsable du département (vue « manager ») ou bureau.
+  const canValidateTasks = isBureauUser || viewerMode === "manager";
 
   function toggleDesc(taskId: number) {
     setExpandedDesc((prev) => {
@@ -557,8 +555,6 @@ function ProjectDetailPanel({
           )}
           <div className="divide-y divide-line-soft">
           {sortByDueDate(filterByDateRange(tasks, dateRange), sortDir).map((t) => {
-            const canSetAnyStatus = canManageProject;
-            const canSetOwnStatus = t.assigned_to === currentUserId;
             const isExpanded = expandedDesc.has(t.id);
             return (
               <div key={t.id} className="flex items-start gap-4 px-5 py-4">
@@ -576,21 +572,15 @@ function ProjectDetailPanel({
                   <p className="text-fg-subtle text-xs mt-1">
                     {t.assigned_to_name ?? d.unassigned} · {d.assignedOn} {fmt.date(t.created_at)}
                     {t.due_date && ` · ${d.dueLower} ${fmt.date(t.due_date)}`}
+                    {` · ${tr.tasks.size[t.size]}`}
                   </p>
                 </div>
-                {canSetAnyStatus || canSetOwnStatus ? (
-                  <select
-                    value={t.status}
-                    onChange={(e) => updateTaskStatus.mutate({ taskId: t.id, taskStatus: e.target.value as ProjectTaskStatus })}
-                    className={`text-xs font-medium rounded-full px-3 py-1.5 border-0 focus:outline-none focus:ring-2 focus:ring-brand-blue/20 shrink-0 ${
-                      { todo: "bg-surface-strong text-fg-soft", in_progress: "bg-blue-50 text-brand-blue", done: "bg-green-50 text-green-600", blocked: "bg-red-50 text-red-500" }[t.status]
-                    }`}
-                  >
-                    {TASK_STATUS_OPTIONS.map((o) => <option key={o} value={o}>{tr.deptDetail.taskStatus[o]}</option>)}
-                  </select>
-                ) : (
-                  <Badge variant={TASK_STATUS_VARIANT[t.status]}>{tr.deptDetail.taskStatus[t.status]}</Badge>
-                )}
+                <TaskReviewControls
+                  task={t}
+                  canValidate={canValidateTasks && t.assigned_to !== currentUserId}
+                  isAssignee={t.assigned_to === currentUserId}
+                  onChanged={invalidateTasks}
+                />
                 {canManageProject && (
                   <button
                     onClick={() => { if (confirm(d.confirmDeleteTask)) deleteTask.mutate(t.id); }}
@@ -645,6 +635,7 @@ function AssignTaskForm({
   const [description, setDescription] = useState("");
   const [assignedTo, setAssignedTo] = useState<string>("");
   const [dueDate, setDueDate] = useState("");
+  const [size, setSize] = useState<TaskSize>("medium");
 
   const createTask = useMutation({
     mutationFn: () => {
@@ -653,6 +644,7 @@ function AssignTaskForm({
         description,
         assigned_to: assignedTo ? Number(assignedTo) : null,
         due_date: dueDate || null,
+        size,
       };
       return projectsService.tasks.create(projectId, payload);
     },
@@ -690,6 +682,13 @@ function AssignTaskForm({
         <div>
           <label className="block text-xs text-fg-muted mb-1">{d.deadlineOptional}</label>
           <input type="date" aria-label={d.deadlineOptional} value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="w-full border border-line rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue/20" />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="block text-xs text-fg-muted mb-1">{tr.tasks.sizeLabel}</label>
+          <select aria-label={tr.tasks.sizeLabel} value={size} onChange={(e) => setSize(e.target.value as TaskSize)} className="w-full border border-line rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue/20 bg-surface">
+            {(["small", "medium", "large"] as TaskSize[]).map((v) => <option key={v} value={v}>{tr.tasks.sizeOption[v]}</option>)}
+          </select>
+          <p className="text-[11px] text-fg-subtle mt-1">{tr.tasks.sizeHint}</p>
         </div>
       </div>
       {createTask.isError && (

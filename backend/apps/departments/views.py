@@ -1,11 +1,13 @@
 from rest_framework import status
 from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import NotFound, PermissionDenied
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
 from apps.common.permissions import IsAdminOrBureau, is_bureau
+from apps.engagement import services as engagement
+from apps.engagement.serializers import ReturnTaskSerializer, SubmitTaskSerializer, ValidateTaskSerializer
 from .models import Department, DepartmentMembership, DepartmentAnnouncement, DepartmentSession, DepartmentTask
 from .serializers import (
     DepartmentListSerializer, DepartmentDetailSerializer, DepartmentWriteSerializer,
@@ -278,6 +280,7 @@ class DepartmentViewSet(ModelViewSet):
             assigned_to=serializer.validated_data.get("assigned_to"),
             due_date=serializer.validated_data.get("due_date"),
             status=serializer.validated_data.get("status", "todo"),
+            size=serializer.validated_data.get("size", "medium"),
         )
         return Response(DepartmentTaskSerializer(task).data, status=status.HTTP_201_CREATED)
 
@@ -296,6 +299,8 @@ class DepartmentViewSet(ModelViewSet):
             return Response(status=status.HTTP_204_NO_CONTENT)
 
         if can_manage_department(request.user, department):
+            if "status" in request.data:
+                engagement.check_free_status_change(task, request.data["status"])
             serializer = TaskWriteSerializer(data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)
             for field, value in serializer.validated_data.items():
@@ -304,11 +309,44 @@ class DepartmentViewSet(ModelViewSet):
         elif task.assigned_to_id == request.user.id:
             serializer = TaskStatusUpdateSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
+            engagement.check_free_status_change(task, serializer.validated_data["status"])
             task.status = serializer.validated_data["status"]
             task.save(update_fields=["status"])
         else:
             raise PermissionDenied("Vous ne pouvez modifier que vos propres tâches.")
 
+        return Response(DepartmentTaskSerializer(task).data)
+
+    # ── Cycle de validation des tâches (points accordés à la validation) ──
+    def _get_task(self, task_id):
+        department = self.get_object()
+        try:
+            return department.tasks.select_related("department", "assigned_to").get(pk=task_id)
+        except DepartmentTask.DoesNotExist:
+            raise NotFound("Tâche introuvable.")
+
+    @action(detail=True, methods=["post"], url_path="tasks/(?P<task_id>[^/.]+)/submit")
+    def submit_task(self, request, pk=None, task_id=None):
+        task = self._get_task(task_id)
+        serializer = SubmitTaskSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        engagement.submit_task(task, request.user, serializer.validated_data["note"])
+        return Response(DepartmentTaskSerializer(task).data)
+
+    @action(detail=True, methods=["post"], url_path="tasks/(?P<task_id>[^/.]+)/validate")
+    def validate_task(self, request, pk=None, task_id=None):
+        task = self._get_task(task_id)
+        serializer = ValidateTaskSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        engagement.validate_task(task, request.user, serializer.validated_data["outstanding"])
+        return Response(DepartmentTaskSerializer(task).data)
+
+    @action(detail=True, methods=["post"], url_path="tasks/(?P<task_id>[^/.]+)/return")
+    def return_task(self, request, pk=None, task_id=None):
+        task = self._get_task(task_id)
+        serializer = ReturnTaskSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        engagement.return_task(task, request.user, serializer.validated_data["reason"])
         return Response(DepartmentTaskSerializer(task).data)
 
     # ── Liste publique (id + nom) : filtre de l'annuaire public des membres ──

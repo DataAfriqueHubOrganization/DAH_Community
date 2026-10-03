@@ -268,13 +268,15 @@ def send_session_reminder(session) -> None:
     )
 
 
-def create_task(department, created_by, title, description="", assigned_to=None, due_date=None, status="todo") -> "DepartmentTask":
+def create_task(
+    department, created_by, title, description="", assigned_to=None, due_date=None, status="todo", size="medium",
+) -> "DepartmentTask":
     from .models import DepartmentTask
     from .tasks import send_task_assigned_email
 
     task = DepartmentTask.objects.create(
         department=department, created_by=created_by, title=title, description=description,
-        assigned_to=assigned_to, due_date=due_date, status=status,
+        assigned_to=assigned_to, due_date=due_date, status=status, size=size,
     )
     if assigned_to:
         fire_and_forget(

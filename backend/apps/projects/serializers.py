@@ -60,12 +60,15 @@ class ProjectTaskSerializer(serializers.ModelSerializer):
     assigned_to_name = serializers.CharField(source="assigned_to.full_name", read_only=True, default=None)
     project_title = serializers.CharField(source="project.title", read_only=True)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
+    validated_by_name = serializers.CharField(source="validated_by.full_name", read_only=True, default=None)
 
     class Meta:
         model = ProjectTask
         fields = [
             "id", "project", "project_title", "title", "description",
-            "assigned_to", "assigned_to_name", "due_date", "status", "status_display", "created_at",
+            "assigned_to", "assigned_to_name", "due_date", "status", "status_display", "size",
+            "submitted_at", "submission_note", "return_reason",
+            "validated_at", "validated_by_name", "is_outstanding", "points_awarded", "created_at",
         ]
         read_only_fields = ["id", "project", "project_title", "created_at"]
 
@@ -73,7 +76,13 @@ class ProjectTaskSerializer(serializers.ModelSerializer):
 class ProjectTaskWriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProjectTask
-        fields = ["title", "description", "assigned_to", "due_date", "status"]
+        fields = ["title", "description", "assigned_to", "due_date", "status", "size"]
+
+    def validate_status(self, value):
+        # « À valider » et « Validée » passent par les actions submit / validate.
+        if value not in ProjectTask.FREE_STATUSES:
+            raise serializers.ValidationError("Statut non modifiable directement.")
+        return value
 
     def validate_assigned_to(self, value):
         if value is None:

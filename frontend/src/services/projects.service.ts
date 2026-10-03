@@ -1,5 +1,5 @@
 import { api } from "@/lib/axios";
-import type { Project, ProjectWritePayload, ProjectTask, ProjectTaskWritePayload, ProjectTaskStatus } from "@/types/projects.types";
+import type { Project, ProjectWritePayload, ProjectTask, ProjectTaskWritePayload, FreeTaskStatus } from "@/types/projects.types";
 
 interface PaginatedResponse<T> { count: number; results: T[]; next: string | null; previous: string | null; }
 
@@ -28,8 +28,18 @@ export const projectsService = {
     update: (projectId: number, taskId: number, data: Partial<ProjectTaskWritePayload>) =>
       api.patch<ProjectTask>(`/projects/${projectId}/tasks/${taskId}/`, data),
 
-    updateStatus: (projectId: number, taskId: number, taskStatus: ProjectTaskStatus) =>
+    updateStatus: (projectId: number, taskId: number, taskStatus: FreeTaskStatus) =>
       api.patch<ProjectTask>(`/projects/${projectId}/tasks/${taskId}/`, { status: taskStatus }),
+
+    /** Cycle de validation : l'assigné soumet, le responsable valide ou renvoie. */
+    submit: (projectId: number, taskId: number, note = "") =>
+      api.post<ProjectTask>(`/projects/${projectId}/tasks/${taskId}/submit/`, { note }),
+
+    validate: (projectId: number, taskId: number, outstanding: boolean) =>
+      api.post<ProjectTask>(`/projects/${projectId}/tasks/${taskId}/validate/`, { outstanding }),
+
+    sendBack: (projectId: number, taskId: number, reason: string) =>
+      api.post<ProjectTask>(`/projects/${projectId}/tasks/${taskId}/return/`, { reason }),
 
     delete: (projectId: number, taskId: number) => api.delete(`/projects/${projectId}/tasks/${taskId}/`),
   },

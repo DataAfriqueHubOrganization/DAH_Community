@@ -52,6 +52,7 @@ class PublicMemberProfileSerializer(serializers.ModelSerializer):
     role = serializers.CharField(source="user.role", read_only=True)
     poste = serializers.CharField(source="user.poste", read_only=True)
     department = serializers.SerializerMethodField()
+    awards = serializers.SerializerMethodField()
 
     class Meta:
         model = MemberProfile
@@ -59,12 +60,16 @@ class PublicMemberProfileSerializer(serializers.ModelSerializer):
             "slug", "bio", "skills",
             "github_url", "linkedin_url", "website_url",
             "first_name", "last_name", "avatar", "role", "poste", "department",
-            "experiences", "certifications", "social_links",
+            "experiences", "certifications", "social_links", "awards",
         ]
 
     def get_department(self, obj):
         from apps.departments.services import get_department_dict
         return get_department_dict(obj.user)
+
+    def get_awards(self, obj):
+        """Distinctions « Membre du mois / de l'année » (badges du profil public)."""
+        return list(obj.user.awards.order_by("-period_start").values("kind", "period_start"))
 
 
 class MemberListSerializer(serializers.ModelSerializer):

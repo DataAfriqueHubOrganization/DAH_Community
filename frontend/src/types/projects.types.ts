@@ -26,7 +26,11 @@ export interface ProjectWritePayload {
   members?: number[];
 }
 
-export type ProjectTaskStatus = "todo" | "in_progress" | "done" | "blocked";
+/** « submitted » = À valider, « done » = Validée par le responsable. */
+export type ProjectTaskStatus = "todo" | "in_progress" | "submitted" | "done" | "blocked";
+/** Statuts modifiables librement ; les autres passent par soumettre / valider. */
+export type FreeTaskStatus = "todo" | "in_progress" | "blocked";
+export type TaskSize = "small" | "medium" | "large";
 
 export interface ProjectTask {
   id: number;
@@ -39,6 +43,14 @@ export interface ProjectTask {
   due_date: string | null;
   status: ProjectTaskStatus;
   status_display: string;
+  size: TaskSize;
+  submitted_at: string | null;
+  submission_note: string;
+  return_reason: string;
+  validated_at: string | null;
+  validated_by_name: string | null;
+  is_outstanding: boolean;
+  points_awarded: number | null;
   created_at: string;
 }
 
@@ -47,5 +59,6 @@ export interface ProjectTaskWritePayload {
   description?: string;
   assigned_to?: number | null;
   due_date?: string | null;
-  status?: ProjectTaskStatus;
+  status?: FreeTaskStatus;
+  size?: TaskSize;
 }
