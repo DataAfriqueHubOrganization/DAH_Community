@@ -59,6 +59,18 @@ export function isBureau(user: Pick<User, "role" | "poste"> | null | undefined):
   return user.poste !== null || user.role === "admin";
 }
 
+/** Trésorerie : trésorier, trésorier adjoint ou admin. */
+export function isTreasurer(user: Pick<User, "role" | "poste"> | null | undefined): boolean {
+  if (!user) return false;
+  return user.role === "admin" || user.poste === "tresorier" || user.poste === "tresorier_adj";
+}
+
+/** Soumis à cotisation : membres, responsables et membres du bureau. */
+export function isContributor(user: Pick<User, "role" | "poste"> | null | undefined): boolean {
+  if (!user) return false;
+  return user.role === "membre" || user.role === "responsable" || user.poste !== null;
+}
+
 export function isAdmin(role: Role): boolean {
   return role === "admin";
 }

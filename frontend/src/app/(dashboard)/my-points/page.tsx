@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { CheckCircle2, ClipboardList, Clock, MessageSquareText, Sparkles, Trophy } from "lucide-react";
+import { CheckCircle2, ClipboardList, Clock, MessageSquareText, Sparkles, Trophy, Wallet } from "lucide-react";
 import { engagementService } from "@/services/engagement.service";
 import { useI18n } from "@/i18n/I18nProvider";
 import { PeriodSelector } from "@/features/engagement/PeriodSelector";
@@ -109,14 +109,20 @@ export default function MyPointsPage() {
 }
 
 function EntryRow({ entry }: { entry: PointEntry }) {
-  const { t, fmt } = useI18n();
+  const { t, fmt, intl } = useI18n();
   const x = t.points;
   const icon = entry.source === "checkin"
     ? <ClipboardList size={16} className="text-brand-blue" />
+    : entry.source === "contribution"
+      ? <Wallet size={16} className="text-brand-blue" />
     : entry.on_time === false
       ? <Clock size={16} className="text-orange-600" />
       : <CheckCircle2 size={16} className="text-green-600" />;
-  const label = entry.source === "checkin" ? x.checkinLine : entry.source === "adjustment" ? x.adjustmentLine : entry.label;
+  const label = entry.source === "checkin" ? x.checkinLine
+    : entry.source === "adjustment" ? x.adjustmentLine
+      : entry.source === "contribution"
+        ? `${x.contributionLine} · ${new Date(entry.awarded_at).toLocaleDateString(intl, { month: "long", year: "numeric" })}`
+        : entry.label;
 
   return (
     <li className="flex items-center gap-3 px-5 py-3.5">

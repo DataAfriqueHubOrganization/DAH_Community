@@ -11,10 +11,10 @@ services:
     plan: free
     rootDir: backend
     # Seed des données de démo (seed_dah) retiré du build : il ne doit plus tourner en prod.
-    # TEMPORAIRE — seed_engagement : démo des points / points d'étape / classement.
+    # TEMPORAIRE — seed_engagement / seed_treasury : démo des points, du classement et de la trésorerie.
     # Ne s'exécute réellement qu'une fois (garde-fou interne), n'envoie aucun email.
     # À retirer une fois la démo validée.
-    buildCommand: "pip install -r requirements/prod.txt && python manage.py migrate && python manage.py seed_engagement && python manage.py collectstatic --noinput"
+    buildCommand: "pip install -r requirements/prod.txt && python manage.py migrate && python manage.py seed_engagement && python manage.py seed_treasury && python manage.py collectstatic --noinput"
     startCommand: "gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --timeout 60"
     healthCheckPath: /admin/login/
     envVars:

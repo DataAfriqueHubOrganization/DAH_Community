@@ -118,6 +118,7 @@ export default function RankingPage() {
               <th className="px-4 py-3 text-right">{x.total}</th>
               <th className="px-4 py-3 text-right hidden md:table-cell">{x.tasks}</th>
               <th className="px-4 py-3 text-right hidden md:table-cell">{x.checkins}</th>
+              <th className="px-4 py-3 text-right hidden lg:table-cell">{x.contributions}</th>
               <th className="px-4 py-3 text-right hidden lg:table-cell">{x.validated}</th>
               <th className="px-4 py-3 text-right hidden lg:table-cell">{x.onTime}</th>
               {data?.scopes.global && <th className="px-4 py-3 w-px"><span className="sr-only">{t.common.actions}</span></th>}
@@ -154,6 +155,7 @@ export default function RankingPage() {
                     <td className="px-4 py-3 text-right font-display text-base font-bold text-brand-deep">{row.total}</td>
                     <td className="px-4 py-3 text-right text-fg-soft hidden md:table-cell">{row.task_points}</td>
                     <td className="px-4 py-3 text-right text-fg-soft hidden md:table-cell">{row.checkin_points}</td>
+                    <td className="px-4 py-3 text-right text-fg-soft hidden lg:table-cell">{row.contribution_points}</td>
                     <td className="px-4 py-3 text-right text-fg-soft hidden lg:table-cell">{row.tasks_validated}</td>
                     <td className="px-4 py-3 text-right text-fg-soft hidden lg:table-cell">{row.on_time_rate === null ? "—" : `${row.on_time_rate} %`}</td>
                     {data.scopes.global && (

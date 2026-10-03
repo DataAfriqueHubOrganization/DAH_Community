@@ -30,6 +30,9 @@ class Command(BaseCommand):
         # si la démo existe déjà. À retirer une fois la démo validée en prod.
         from django.core.management import call_command
         call_command("seed_engagement", stdout=self.stdout._out)
+        # TEMPORAIRE aussi — démo de la trésorerie (cotisations + caisse), comptes
+        # @dah.com uniquement, sans email. À retirer avec seed_engagement.
+        call_command("seed_treasury", stdout=self.stdout._out)
 
     def _create_users(self):
         self.stdout.write("  → Création des utilisateurs...")

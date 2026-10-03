@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { LayoutDashboard, Users, CalendarDays, FileText, Settings, ChevronLeft, ChevronRight, Home, CreditCard, Building2, Newspaper, ShieldCheck, Star, Trophy } from "lucide-react";
+import { LayoutDashboard, Users, CalendarDays, FileText, Settings, ChevronLeft, ChevronRight, Home, CreditCard, Building2, Newspaper, ShieldCheck, Star, Trophy, Wallet, Landmark } from "lucide-react";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { Logo } from "@/components/ui/Logo";
 import { useI18n } from "@/i18n/I18nProvider";
 import { PreferencesToggle } from "@/components/PreferencesToggle";
-import { isAdmin, isBureau } from "@/types/auth.types";
+import { isAdmin, isBureau, isContributor, isTreasurer } from "@/types/auth.types";
 
 const allNavItems = [
   { href: "/dashboard", key: "dashboard", icon: LayoutDashboard, roles: "all" },
@@ -20,6 +20,8 @@ const allNavItems = [
   { href: "/manage/actualites", key: "news", icon: Newspaper, roles: "bureau" },
   { href: "/my-department", key: "myDepartment", icon: Building2, roles: "all" },
   { href: "/my-points", key: "myPoints", icon: Star, roles: "all" },
+  { href: "/my-contributions", key: "myContributions", icon: Wallet, roles: "contributors" },
+  { href: "/treasury", key: "treasury", icon: Landmark, roles: "treasury" },
   // Classement : responsables de département et bureau — jamais les simples membres.
   { href: "/ranking", key: "ranking", icon: Trophy, roles: "managers" },
   { href: "/memberships", key: "applications", icon: FileText, roles: "admin_president" },
@@ -38,6 +40,8 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: { mobileOpen?: bo
     if (item.roles === "bureau") return isBureau(user);
     if (item.roles === "managers") return isBureau(user) || user?.role === "responsable";
     if (item.roles === "admin") return !!user && isAdmin(user.role);
+    if (item.roles === "contributors") return isContributor(user);
+    if (item.roles === "treasury") return isTreasurer(user);
     if (item.roles === "admin_president") return user && (isAdmin(user.role) || user.poste === "president");
     return true;
   });

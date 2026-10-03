@@ -226,6 +226,7 @@ def build_ranking(start: date, end: date, department=None) -> list[dict]:
             task_points=Sum("points", filter=Q(source=PointEntry.SOURCE_TASK)),
             checkin_points=Sum("points", filter=Q(source=PointEntry.SOURCE_CHECKIN)),
             adjustment_points=Sum("points", filter=Q(source=PointEntry.SOURCE_ADJUSTMENT)),
+            contribution_points=Sum("points", filter=Q(source=PointEntry.SOURCE_CONTRIBUTION)),
             tasks_validated=Count("id", filter=Q(source=PointEntry.SOURCE_TASK)),
             tasks_on_time=Count("id", filter=Q(on_time=True)),
             tasks_with_deadline=Count("id", filter=Q(on_time__isnull=False)),
@@ -251,6 +252,7 @@ def build_ranking(start: date, end: date, department=None) -> list[dict]:
             "task_points": s.get("task_points") or 0,
             "checkin_points": s.get("checkin_points") or 0,
             "adjustment_points": s.get("adjustment_points") or 0,
+            "contribution_points": s.get("contribution_points") or 0,
             "tasks_validated": s.get("tasks_validated") or 0,
             "on_time_rate": round(100 * s.get("tasks_on_time", 0) / with_deadline) if with_deadline else None,
         })

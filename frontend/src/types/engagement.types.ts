@@ -6,7 +6,7 @@ export interface Period {
   end: string; // exclusif
 }
 
-export type PointSource = "task" | "checkin" | "adjustment";
+export type PointSource = "task" | "checkin" | "adjustment" | "contribution";
 
 export interface PointEntry {
   id: number;
@@ -75,6 +75,7 @@ export interface RankingRow {
   task_points: number;
   checkin_points: number;
   adjustment_points: number;
+  contribution_points: number;
   tasks_validated: number;
   on_time_rate: number | null;
 }

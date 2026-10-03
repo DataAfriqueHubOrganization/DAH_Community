@@ -17,10 +17,12 @@ class PointEntry(TimestampMixin):
     SOURCE_TASK = "task"
     SOURCE_CHECKIN = "checkin"
     SOURCE_ADJUSTMENT = "adjustment"
+    SOURCE_CONTRIBUTION = "contribution"
     SOURCE_CHOICES = [
         (SOURCE_TASK, "Tâche validée"),
         (SOURCE_CHECKIN, "Point d'étape"),
         (SOURCE_ADJUSTMENT, "Ajustement"),
+        (SOURCE_CONTRIBUTION, "Cotisation"),
     ]
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="point_entries")
@@ -38,6 +40,10 @@ class PointEntry(TimestampMixin):
     )
     checkin = models.ForeignKey(
         "engagement.CheckIn", on_delete=models.SET_NULL, null=True, blank=True, related_name="+",
+    )
+    # Mois de cotisation réglé : supprimer le paiement (erreur de saisie) retire ses points.
+    contribution_month = models.OneToOneField(
+        "payments.ContributionMonth", on_delete=models.CASCADE, null=True, blank=True, related_name="point_entry",
     )
     # Libellé figé à l'attribution (le titre de la tâche peut changer ou disparaître).
     label = models.CharField(max_length=300)
