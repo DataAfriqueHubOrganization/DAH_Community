@@ -1,5 +1,6 @@
 "use client";
 
+import { isAxiosError } from "axios";
 import { useI18n } from "@/i18n/I18nProvider";
 import { cn } from "@/lib/utils";
 import type { ContributionMonthInfo, MonthStatus } from "@/types/treasury.types";
@@ -23,6 +24,11 @@ export const MONTH_STYLE: Record<MonthStatus, { cell: string; dot: string; text:
     cell: "bg-green-50 border-green-300 dark:bg-green-500/10 dark:border-green-500/40",
     dot: "bg-green-600",
     text: "text-green-700 dark:text-green-300",
+  },
+  pending: {
+    cell: "bg-brand-blue/[0.06] border-brand-blue/40 border-dashed",
+    dot: "bg-brand-blue/35",
+    text: "text-brand-deep",
   },
   late: {
     cell: "bg-brand-orange/10 border-brand-orange/55",
@@ -63,11 +69,13 @@ export function MonthDots({ months }: { months: ContributionMonthInfo[] }) {
   );
 }
 
-export function MonthLegend({ withNotDue = false }: { withNotDue?: boolean }) {
+export function MonthLegend({ withNotDue = false, withPending = true }: { withNotDue?: boolean; withPending?: boolean }) {
   const { t } = useI18n();
   const x = t.treasury;
   const items: [MonthStatus, string][] = [
-    ["paid", x.legendPaid], ["late", x.legendLate], ["due", x.legendDue], ["upcoming", x.legendUpcoming],
+    ["paid", x.legendPaid],
+    ...(withPending ? [["pending", x.legendPending] as [MonthStatus, string]] : []),
+    ["late", x.legendLate], ["due", x.legendDue], ["upcoming", x.legendUpcoming],
     ...(withNotDue ? [["not_due", x.legendNotDue] as [MonthStatus, string]] : []),
   ];
   return (
@@ -100,4 +108,17 @@ export function yearOptions(): number[] {
   const years: number[] = [];
   for (let y = now + 1; y >= 2025; y -= 1) years.push(y);
   return years;
+}
+
+/** Erreur de l'API ({ error, status_code, detail }) → message lisible. */
+export function apiError(error: unknown, fallback: string): string {
+  if (!isAxiosError(error)) return fallback;
+  const detail = (error.response?.data as { detail?: unknown } | undefined)?.detail;
+  if (typeof detail === "string") return detail;
+  if (detail && typeof detail === "object") {
+    const first = Object.values(detail as Record<string, unknown>)[0];
+    if (Array.isArray(first) && typeof first[0] === "string") return first[0];
+    if (typeof first === "string") return first;
+  }
+  return fallback;
 }

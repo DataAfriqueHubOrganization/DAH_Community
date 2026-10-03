@@ -6,6 +6,7 @@ import { useI18n } from "@/i18n/I18nProvider";
 import { cn } from "@/lib/utils";
 import { Avatar, FilterChip, Pagination, inputClass, paginate } from "@/features/departments/workspace/shared";
 import type { ContributionsOverview, MemberStatus } from "@/types/treasury.types";
+import { DeclarationsPanel, ReminderCard } from "./DeclarationsPanel";
 import { PaymentModal } from "./PaymentModal";
 import { MonthDots, MonthLegend, monthName } from "./shared";
 
@@ -44,6 +45,8 @@ export function ContributionsTab({ data, isLoading }: { data: ContributionsOverv
 
   return (
     <div className="space-y-4">
+      <DeclarationsPanel />
+
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <Kpi label={x.kpiCollected(data.year)} value={x.fcfa(data.collected)} />
         <Kpi label={x.kpiExpected} value={x.fcfa(data.expected_to_date)} />
@@ -57,6 +60,8 @@ export function ContributionsTab({ data, isLoading }: { data: ContributionsOverv
         <Kpi label={x.kpiLate} value={String(data.late_count)} tone={data.late_count > 0 ? "orange" : "default"}
           sub={data.late_count > 0 ? x.kpiLateAmount(x.fcfa(data.late_amount)) : undefined} />
       </div>
+
+      <ReminderCard />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">

@@ -1,16 +1,20 @@
 "use client";
 
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Wallet } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { AlertCircle, ImagePlus, Send, Wallet, X } from "lucide-react";
 import { treasuryService } from "@/services/treasury.service";
 import { useI18n } from "@/i18n/I18nProvider";
 import { cn } from "@/lib/utils";
-import { MONTH_STYLE, MonthLegend, YearSelect, monthName, yearOptions } from "@/features/treasury/shared";
-import type { MemberContributions } from "@/types/treasury.types";
-import { todayIso } from "@/features/engagement/period";
+import { inputClass } from "@/features/departments/workspace/shared";
+import { MONTH_STYLE, MonthLegend, YearSelect, apiError, monthName, shiftMonth, yearOptions } from "@/features/treasury/shared";
+import type { MonthStatus, MyContributionsData, PaymentMethod } from "@/types/treasury.types";
 
-/** Le membre suit ses cotisations : situation, mois de l'année, historique. */
+const METHODS: PaymentMethod[] = ["mobile_money", "transfer", "cash", "other"];
+const MAX_PROOF = 5 * 1024 * 1024;
+
+/** Le membre voit ses mois (payé ou non, point du mois) et déclare ses paiements
+ *  avec une capture de la preuve — pas de récapitulatif de ce qu'il a payé. */
 export default function MyContributionsPage() {
   const { t } = useI18n();
   const x = t.treasury;
@@ -25,8 +29,7 @@ export default function MyContributionsPage() {
     return (
       <div className="space-y-5 animate-pulse">
         <div className="h-9 w-64 bg-surface-strong rounded-lg" />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">{[0, 1, 2].map((i) => <div key={i} className="h-32 bg-surface rounded-2xl border border-line-soft" />)}</div>
-        <div className="h-64 bg-surface rounded-2xl border border-line-soft" />
+        <div className="h-72 bg-surface rounded-2xl border border-line-soft" />
       </div>
     );
   }
@@ -43,17 +46,24 @@ export default function MyContributionsPage() {
     );
   }
 
-  return <MyContributionsView data={data} year={year} onYear={setYear} />;
+  return <MyMonths data={data} year={year} onYear={setYear} />;
 }
 
-function MyContributionsView({ data, year, onYear }: { data: MemberContributions; year: number; onYear: (y: number) => void }) {
-  const { t, fmt, intl } = useI18n();
+function MyMonths({ data, year, onYear }: { data: MyContributionsData; year: number; onYear: (y: number) => void }) {
+  const { t, intl } = useI18n();
   const x = t.treasury;
-  const fcfa = x.fcfa;
-  const isLead = data.rate >= 1000;
-  // Mois dus : retards + mois en cours s'il n'est pas réglé (indépendant de l'année affichée).
-  const currentMonthDue = data.owed > data.late_months.length * data.rate;
-  const owedMonths = [...data.late_months, ...(currentMonthDue ? [`${todayIso().slice(0, 7)}-01`] : [])];
+  const [declaring, setDeclaring] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const rejected = data.declarations.filter((d) => d.status === "rejected");
+
+  const monthText = (status: MonthStatus) => ({
+    paid: x.monthPaid(data.points_per_month),
+    pending: x.monthPending,
+    late: x.monthUnpaid,
+    due: x.monthDue,
+    upcoming: x.monthUpcoming,
+    not_due: x.monthNotDue,
+  })[status];
 
   return (
     <div className="space-y-6">
@@ -61,106 +71,198 @@ function MyContributionsView({ data, year, onYear }: { data: MemberContributions
         <div>
           <h1 className="text-2xl font-bold text-fg">{x.myTitle}</h1>
           <p className="text-sm text-fg-muted mt-1">
-            {x.rateLine(fcfa(data.rate))} <span className="text-fg-subtle">({isLead ? x.rateKind.lead : x.rateKind.member})</span>
-            {" · "}{x.pointsRule(data.points_per_month)}
+            {x.rateLine(x.fcfa(data.rate))} · {x.pointsRule(data.points_per_month)}
           </p>
         </div>
-        <YearSelect value={year} onChange={onYear} years={yearOptions()} />
+        <div className="flex flex-wrap items-center gap-2">
+          <YearSelect value={year} onChange={onYear} years={yearOptions()} />
+          <button onClick={() => { setDeclaring(true); setNotice(null); }}
+            className="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-brand-blue text-white text-sm font-semibold hover:bg-brand-deep">
+            <Send size={15} /> {x.declare}
+          </button>
+        </div>
       </div>
 
-      {/* Situation */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr_1fr] gap-4">
-        <section className="bg-univers-brand text-white rounded-2xl p-6 flex flex-col gap-3">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-white/80">{x.mySituation}</p>
-          <p className="font-display text-2xl font-extrabold">
-            {data.paid_until ? x.upToDateUntil(monthName(data.paid_until, intl)) : x.neverPaid}
-          </p>
-          <p className="inline-flex items-center gap-2 text-sm bg-white/15 rounded-xl px-3 py-2 w-fit">
-            <span className={cn("w-2 h-2 rounded-[2px]", data.owed > 0 ? "bg-brand-orange" : "bg-green-400")} aria-hidden="true" />
-            {data.owed > 0
-              ? x.owedLine(fcfa(data.owed), owedMonths.map((m) => monthName(m, intl, "long", false)).join(", "))
-              : x.nothingOwed}
-          </p>
-        </section>
-        <section className="bg-surface rounded-2xl border border-line-soft p-5">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-fg-muted">{x.paidInYear(year)}</p>
-          <p className="font-display text-3xl font-extrabold text-fg mt-2">{fcfa(data.paid_in_year)}</p>
-          <p className="text-sm text-fg-muted mt-1">{x.monthsPaid(data.months_paid_in_year)}</p>
-        </section>
-        <section className="bg-surface rounded-2xl border border-line-soft p-5">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-fg-muted">{x.contributionPoints}</p>
-          <p className="font-display text-3xl font-extrabold text-brand-deep mt-2">+{data.points_in_year} <span className="text-base font-semibold text-fg-muted">pts</span></p>
-          <p className="text-sm text-fg-muted mt-1">{x.pointsHint}</p>
-        </section>
-      </div>
+      {notice && <p className="text-sm text-green-600" role="status">{notice}</p>}
 
-      {/* Mois de l'année */}
+      {rejected.map((d) => (
+        <p key={d.id} className="flex gap-3 rounded-2xl border border-red-200 bg-red-50 dark:bg-red-500/10 dark:border-red-500/30 px-4 py-3 text-sm text-red-700 dark:text-red-300">
+          <AlertCircle size={18} className="shrink-0 mt-0.5" />
+          <span>
+            <b className="block">{x.rejectedTitle}</b>
+            <span>
+              {x.rejectedText(
+                d.months > 1 ? `${monthName(d.period_start, intl)} → ${monthName(d.period_end, intl)}` : monthName(d.period_start, intl),
+                d.rejection_reason,
+              )}
+            </span>
+          </span>
+        </p>
+      ))}
+
       <section className="bg-surface rounded-2xl border border-line-soft p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="font-display font-bold text-fg">{x.myMonths(year)}</h2>
+          <h2 className="font-display font-bold text-fg flex items-center gap-3">
+            {x.myMonths(year)}
+            {data.late_count > 0 && (
+              <span className="text-xs font-semibold rounded-full px-2.5 py-1 bg-brand-orange/15 text-orange-800 dark:text-orange-300">
+                {x.lateBanner(data.late_count)}
+              </span>
+            )}
+          </h2>
           <MonthLegend withNotDue={data.months.some((m) => m.status === "not_due")} />
         </div>
         <ul className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2.5 mt-4">
           {data.months.map((m) => {
             const style = MONTH_STYLE[m.status];
             return (
-              <li key={m.month} className={cn("rounded-xl border p-3 min-h-[84px] flex flex-col gap-1", style.cell)}>
+              <li key={m.month} className={cn("rounded-xl border p-3 min-h-[76px] flex flex-col gap-1", style.cell)}>
                 <span className={cn("font-display font-bold text-sm capitalize", m.status === "upcoming" || m.status === "not_due" ? "text-fg-muted" : "text-fg")}>
                   {monthName(m.month, intl, "long", false)}
                 </span>
-                <span className={cn("text-xs font-semibold", style.text)}>{x.status[m.status]}</span>
-                {m.status !== "not_due" && (
-                  <span className="text-[11px] text-fg-muted">
-                    {fcfa(m.amount)}{m.status === "paid" && ` · +${data.points_per_month} pts`}
-                  </span>
-                )}
+                <span className={cn("text-xs font-semibold", style.text)}>{monthText(m.status)}</span>
               </li>
             );
           })}
         </ul>
-        <p className="text-sm text-fg-muted mt-4">{x.howToPay}</p>
+        <p className="text-sm text-fg-muted mt-4">{x.declareIntro}</p>
       </section>
 
-      {/* Historique */}
-      <section className="bg-surface rounded-2xl border border-line-soft overflow-hidden">
-        <h2 className="font-display font-bold text-fg px-5 py-4">{x.history}</h2>
-        {data.history.length === 0 ? (
-          <p className="px-5 pb-6 text-sm text-fg-subtle">{x.noHistory}</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-surface-muted text-left text-[11px] uppercase tracking-wider text-fg-muted">
-                <tr>
-                  <th scope="col" className="px-5 py-2.5 font-bold">{x.colDate}</th>
-                  <th scope="col" className="px-5 py-2.5 font-bold">{x.colPeriod}</th>
-                  <th scope="col" className="px-5 py-2.5 font-bold text-right">{x.colAmount}</th>
-                  <th scope="col" className="px-5 py-2.5 font-bold hidden sm:table-cell">{x.colMethod}</th>
-                  <th scope="col" className="px-5 py-2.5 font-bold hidden md:table-cell">{x.colRecordedBy}</th>
-                  <th scope="col" className="px-5 py-2.5 font-bold text-right">{x.colPoints}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.history.map((c) => (
-                  <tr key={c.id} className="border-t border-line-soft">
-                    <td className="px-5 py-3 text-fg-muted whitespace-nowrap">{fmt.date(c.paid_on)}</td>
-                    <td className="px-5 py-3 font-medium text-fg">
-                      <span className="capitalize">{monthName(c.period_start, intl)}</span>
-                      {c.months > 1 && <> → <span>{monthName(c.period_end, intl)}</span></>}
-                      <span className="text-fg-muted font-normal"> ({x.monthsCount(c.months)})</span>
-                    </td>
-                    <td className="px-5 py-3 text-right font-display font-bold whitespace-nowrap">{fcfa(c.amount)}</td>
-                    <td className="px-5 py-3 hidden sm:table-cell">
-                      <span className="text-xs font-medium rounded-full px-2.5 py-1 bg-surface-strong text-fg-soft">{x.methods[c.method]}</span>
-                    </td>
-                    <td className="px-5 py-3 text-fg-muted hidden md:table-cell">{c.recorded_by_name ?? "—"}</td>
-                    <td className="px-5 py-3 text-right font-semibold text-brand-deep whitespace-nowrap">+{c.points} pts</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      {declaring && (
+        <DeclareModal
+          data={data}
+          onClose={() => setDeclaring(false)}
+          onDone={() => { setDeclaring(false); setNotice(x.declared); }}
+        />
+      )}
+    </div>
+  );
+}
+
+function DeclareModal({ data, onClose, onDone }: { data: MyContributionsData; onClose: () => void; onDone: () => void }) {
+  const { t, intl } = useI18n();
+  const x = t.treasury;
+  const qc = useQueryClient();
+  const [start, setStart] = useState(data.next_unpaid.slice(0, 7));
+  const [months, setMonths] = useState(1);
+  const [method, setMethod] = useState<PaymentMethod>("mobile_money");
+  const [reference, setReference] = useState("");
+  const [proof, setProof] = useState<File | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const preview = useMemo(() => (proof ? URL.createObjectURL(proof) : null), [proof]);
+  useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const covered = Array.from({ length: months }, (_, i) => shiftMonth(start, i));
+
+  const send = useMutation({
+    mutationFn: () => {
+      const form = new FormData();
+      form.append("period_start", start);
+      form.append("months", String(months));
+      form.append("method", method);
+      form.append("reference", reference);
+      form.append("proof", proof as File);
+      return treasuryService.declare(form);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["my-contributions"] });
+      onDone();
+    },
+  });
+
+  const pick = (file: File | undefined) => {
+    setFileError(null);
+    if (!file) return;
+    if (!/\.(jpe?g|png|webp)$/i.test(file.name)) { setFileError(x.proofHint); return; }
+    if (file.size > MAX_PROOF) { setFileError(x.proofHint); return; }
+    setProof(file);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-start justify-center p-4 overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="declare-title">
+      <div className="bg-surface rounded-2xl w-full max-w-lg my-8 shadow-2xl">
+        <header className="px-6 py-5 border-b border-line-soft flex items-start justify-between gap-3">
+          <div>
+            <h2 id="declare-title" className="font-display text-lg font-bold text-fg">{x.declareTitle}</h2>
+            <p className="text-sm text-fg-muted mt-1">{x.declareIntro}</p>
           </div>
-        )}
-      </section>
+          <button onClick={onClose} aria-label={t.common.close} className="text-fg-subtle hover:text-fg shrink-0"><X size={20} /></button>
+        </header>
+
+        <div className="px-6 py-5 space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="dec-start" className="block text-xs font-semibold text-fg-soft mb-1.5">{x.fromMonth}</label>
+              <input id="dec-start" type="month" value={start} min={data.joined_month.slice(0, 7)}
+                onChange={(e) => setStart(e.target.value)} className={cn(inputClass, "w-full")} />
+            </div>
+            <div>
+              <label htmlFor="dec-months" className="block text-xs font-semibold text-fg-soft mb-1.5">{x.monthsLabel}</label>
+              <input id="dec-months" type="number" min={1} max={12} value={months}
+                onChange={(e) => setMonths(Math.max(1, Math.min(12, Number(e.target.value) || 1)))} className={cn(inputClass, "w-full")} />
+            </div>
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-fg-soft mb-1.5">{x.declareMonths}</p>
+            <ul className="flex flex-wrap gap-1">
+              {covered.map((m) => (
+                <li key={m} className="h-9 min-w-[52px] px-2 rounded-lg bg-brand-blue text-white text-[11px] font-semibold flex flex-col items-center justify-center leading-tight">
+                  <span className="capitalize">{monthName(`${m}-01`, intl, "short", false).replace(".", "")}</span>
+                  <span className="font-normal opacity-80">{m.slice(0, 4)}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="text-sm text-fg mt-2">{x.amount} : <b className="font-display">{x.fcfa(data.rate * months)}</b> <span className="text-fg-muted text-xs">({x.amountCalc(months, x.fcfa(data.rate))})</span></p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="dec-method" className="block text-xs font-semibold text-fg-soft mb-1.5">{x.method}</label>
+              <select id="dec-method" value={method} onChange={(e) => setMethod(e.target.value as PaymentMethod)} className={cn(inputClass, "w-full")}>
+                {METHODS.map((m) => <option key={m} value={m}>{x.methods[m]}</option>)}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="dec-ref" className="block text-xs font-semibold text-fg-soft mb-1.5">{x.reference}</label>
+              <input id="dec-ref" value={reference} onChange={(e) => setReference(e.target.value)} maxLength={100} className={cn(inputClass, "w-full")} />
+            </div>
+          </div>
+
+          <div>
+            <p className="text-xs font-semibold text-fg-soft mb-1.5">{x.proofLabel}</p>
+            <label className={cn("flex items-center gap-4 rounded-xl border border-dashed p-3 cursor-pointer hover:bg-surface-muted",
+              proof ? "border-line" : "border-brand-blue/50")}>
+              {preview ? (
+                <img src={preview} alt="" className="w-20 h-20 rounded-lg object-cover border border-line-soft" />
+              ) : (
+                <span className="w-20 h-20 rounded-lg bg-brand-blue/10 text-brand-blue flex items-center justify-center"><ImagePlus size={26} /></span>
+              )}
+              <span className="text-sm">
+                <span className="font-semibold text-brand-blue">{proof ? x.proofChange : x.proofChoose}</span>
+                <span className="block text-xs text-fg-muted mt-0.5">{proof ? proof.name : x.proofHint}</span>
+              </span>
+              <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(e) => pick(e.target.files?.[0])} />
+            </label>
+            {fileError && <p className="text-xs text-red-600 mt-1">{fileError}</p>}
+          </div>
+
+          {send.isError && <p className="text-sm text-red-600" role="alert">{apiError(send.error, t.common.error)}</p>}
+        </div>
+
+        <footer className="px-6 py-4 border-t border-line-soft flex justify-end gap-2">
+          <button onClick={onClose} className="h-10 px-4 rounded-xl border border-line text-sm font-semibold text-fg-soft hover:bg-surface-muted">{t.common.cancel}</button>
+          <button onClick={() => send.mutate()} disabled={!proof || !start || send.isPending}
+            className="h-10 px-5 rounded-xl bg-brand-blue text-white text-sm font-semibold hover:bg-brand-deep disabled:opacity-50">
+            {send.isPending ? t.common.sending : x.declareSend}
+          </button>
+        </footer>
+      </div>
     </div>
   );
 }

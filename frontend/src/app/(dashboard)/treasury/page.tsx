@@ -55,9 +55,9 @@ export default function TreasuryPage() {
               className={cn("inline-flex items-center gap-2 py-3 text-sm border-b-[3px] transition-colors",
                 tab === key ? "border-brand-orange text-fg font-semibold" : "border-transparent text-fg-muted hover:text-fg font-medium")}>
               {x.tabs[key]}
-              {key === "contributions" && overview && overview.late_count > 0 && (
+              {key === "contributions" && overview && (overview.pending_declarations > 0 || overview.late_count > 0) && (
                 <span className="text-[11px] font-bold rounded-full px-2 py-0.5 bg-brand-orange/15 text-orange-800 dark:text-orange-300">
-                  {x.nLate(overview.late_count)}
+                  {overview.pending_declarations > 0 ? x.nToValidate(overview.pending_declarations) : x.nLate(overview.late_count)}
                 </span>
               )}
             </button>

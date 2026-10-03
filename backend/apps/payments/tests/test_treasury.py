@@ -10,7 +10,9 @@ from apps.engagement.models import PointEntry
 from apps.engagement.services import build_ranking
 from apps.members.models import MemberProfile
 from apps.payments import services
-from apps.payments.models import CashEntry, Contribution, ContributionMonth
+from django.core.files.uploadedfile import SimpleUploadedFile
+
+from apps.payments.models import CashEntry, Contribution, ContributionMonth, ContributionReminder, PaymentDeclaration
 
 User = get_user_model()
 
@@ -155,7 +157,10 @@ class TestSituation:
         pay(world, "member", date(world["today"].year, 1, 1), 1)
         r = api(world["member"]).get("/api/v1/payments/me/")
         assert r.status_code == 200 and r.data["liable"] is True
-        assert r.data["rate"] == 500 and len(r.data["history"]) == 1
+        assert r.data["rate"] == 500
+        # Pas de récapitulatif ni de détail des paiements côté membre
+        assert "history" not in r.data and "paid_in_year" not in r.data
+        assert r.data["months"][0]["status"] == "paid"
         assert api(world["visitor"]).get("/api/v1/payments/me/").data == {"liable": False}
 
     def test_tableau_tresorier(self, world):
@@ -197,3 +202,99 @@ class TestCash:
     def test_caisse_reservee(self, world):
         assert api(world["member"]).get("/api/v1/payments/cash/").status_code == 403
         assert api(world["president"]).get("/api/v1/payments/cash/summary/").status_code == 403
+
+
+def png():
+    import io
+
+    from PIL import Image
+
+    buffer = io.BytesIO()
+    Image.new("RGB", (4, 4), "#2F6FE0").save(buffer, format="PNG")
+    return SimpleUploadedFile("preuve.png", buffer.getvalue(), content_type="image/png")
+
+
+def declare(world, who="member", start=None, months=1):
+    start = start or date(world["today"].year, 1, 1)
+    return api(world[who]).post("/api/v1/payments/declarations/", {
+        "period_start": start.strftime("%Y-%m"), "months": months, "method": "mobile_money",
+        "reference": "OM-1", "proof": png(),
+    }, format="multipart")
+
+
+@pytest.mark.django_db
+class TestDeclarations:
+    def test_declaration_puis_validation(self, world):
+        r = declare(world, months=2)
+        assert r.status_code == 201, r.data
+        assert r.data["status"] == "pending" and r.data["amount"] == 1000
+        # Mois en attente côté membre, pas encore de points
+        me = api(world["member"]).get("/api/v1/payments/me/").data
+        assert [m["status"] for m in me["months"][:2]] == ["pending", "pending"]
+        assert not PointEntry.objects.filter(user=world["member"]).exists()
+        # Pas deux déclarations pour le même mois
+        assert declare(world, months=1).status_code == 400
+
+        assert api(world["member"]).post(f"/api/v1/payments/declarations/{r.data['id']}/approve/").status_code == 403
+        ok = api(world["treasurer"]).post(f"/api/v1/payments/declarations/{r.data['id']}/approve/")
+        assert ok.status_code == 200 and ok.data["status"] == "approved"
+        assert ContributionMonth.objects.filter(user=world["member"]).count() == 2
+        assert PointEntry.objects.filter(user=world["member"], source="contribution").count() == 2
+        # Déjà traitée
+        assert api(world["treasurer"]).post(f"/api/v1/payments/declarations/{r.data['id']}/approve/").status_code == 400
+
+    def test_refus_avec_motif(self, world):
+        r = declare(world)
+        bad = api(world["treasurer"]).post(f"/api/v1/payments/declarations/{r.data['id']}/reject/", {}, format="json")
+        assert bad.status_code == 400  # motif obligatoire
+        ok = api(world["treasurer"]).post(f"/api/v1/payments/declarations/{r.data['id']}/reject/", {"reason": "Capture illisible"}, format="json")
+        assert ok.data["status"] == "rejected"
+        assert not ContributionMonth.objects.exists()
+        # Le membre peut redéclarer
+        assert declare(world).status_code == 201
+
+    def test_liste_reservee_a_la_tresorerie(self, world):
+        declare(world)
+        assert api(world["member"]).get("/api/v1/payments/declarations/").status_code == 403
+        r = api(world["treasurer"]).get("/api/v1/payments/declarations/")
+        assert len(r.data) == 1 and r.data[0]["proof"]
+
+    def test_preuve_obligatoire(self, world):
+        r = api(world["member"]).post("/api/v1/payments/declarations/", {
+            "period_start": f"{world['today'].year}-01", "months": 1, "method": "cash",
+        }, format="multipart")
+        assert r.status_code == 400
+
+
+@pytest.mark.django_db
+class TestReminders:
+    def test_fenetre_des_10_derniers_jours(self):
+        opens, ends = services.reminder_window(date(2026, 10, 3))
+        assert opens == date(2026, 10, 22) and ends == date(2026, 10, 31)
+        opens, _ = services.reminder_window(date(2026, 2, 5))
+        assert opens == date(2026, 2, 19)
+
+    def test_envoi_unique_et_destinataires(self, world, monkeypatch):
+        today = date(world["today"].year, world["today"].month, 1)
+        last = services.reminder_window(today)[1]
+        current = today.replace(day=1)
+        # « member » a payé le mois en cours, « lead » l'a déclaré : ni l'un ni l'autre n'est relancé
+        services.record_contribution(member=world["member"], recorded_by=world["treasurer"], period_start=date(current.year, 1, 1),
+                                     months=current.month, paid_on=current, method="cash", notify=False)
+        declare(world, who="lead", start=current)
+        recipients = {u.email for u in services.reminder_recipients(last)}
+        assert "membre@dah.test" not in recipients and "lead@dah.test" not in recipients
+        assert "pdt@dah.test" in recipients
+
+        with pytest.raises(Exception):
+            services.send_monthly_reminder(world["treasurer"], today=current)  # trop tôt
+        count = services.send_monthly_reminder(world["treasurer"], today=last)
+        assert count == len(recipients)
+        assert ContributionReminder.objects.count() == 1
+        with pytest.raises(Exception):
+            services.send_monthly_reminder(world["treasurer"], today=last)  # une fois par mois
+
+    def test_reserve_a_la_tresorerie(self, world):
+        assert api(world["member"]).get("/api/v1/payments/reminders/").status_code == 403
+        r = api(world["treasurer"]).get("/api/v1/payments/reminders/")
+        assert r.status_code == 200 and "window_opens" in r.data

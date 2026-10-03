@@ -1,4 +1,4 @@
-export type MonthStatus = "paid" | "late" | "due" | "upcoming" | "not_due";
+export type MonthStatus = "paid" | "pending" | "late" | "due" | "upcoming" | "not_due";
 export type MemberStatus = "up_to_date" | "late" | "never_paid";
 export type PaymentMethod = "cash" | "mobile_money" | "transfer" | "other";
 
@@ -50,7 +50,51 @@ export interface MemberContributions extends MemberSituation {
   history: Contribution[];
 }
 
-export type MyContributions = ({ liable: true } & MemberContributions) | { liable: false };
+export type DeclarationStatus = "pending" | "approved" | "rejected";
+
+export interface PaymentDeclaration {
+  id: number;
+  user: number;
+  user_name: string;
+  period_start: string;
+  period_end: string;
+  months: number;
+  monthly_rate: number;
+  amount: number;
+  method: PaymentMethod;
+  method_display: string;
+  reference: string;
+  proof: string;
+  status: DeclarationStatus;
+  rejection_reason: string;
+  reviewed_by_name: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+}
+
+/** Vue membre : seulement les mois (payé ou non, point du mois) — pas de récapitulatif. */
+export interface MyContributionsData {
+  liable: true;
+  year: number;
+  rate: number;
+  points_per_month: number;
+  joined_month: string;
+  next_unpaid: string;
+  late_count: number;
+  months: ContributionMonthInfo[];
+  declarations: PaymentDeclaration[];
+}
+
+export type MyContributions = MyContributionsData | { liable: false };
+
+export interface ReminderStatus {
+  month: string;
+  window_opens: string;
+  window_ends: string;
+  is_open: boolean;
+  sent: { sent_at: string; sent_by: string | null; recipients: number } | null;
+  recipients: number;
+}
 
 export interface ContributionRow extends MemberSituation {
   user_id: number;
@@ -70,6 +114,7 @@ export interface ContributionsOverview {
   recovery_rate: number | null;
   late_count: number;
   late_amount: number;
+  pending_declarations: number;
 }
 
 export interface RecordContributionPayload {

@@ -14,9 +14,10 @@ from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet, GenericViewSet
 
 from . import services
-from .models import CashEntry, Contribution
+from .models import CashEntry, Contribution, PaymentDeclaration
 from .serializers import (
-    CashEntrySerializer, ContributionSerializer, RecordContributionSerializer, YearQuerySerializer,
+    CashEntrySerializer, ContributionSerializer, DeclarePaymentSerializer, PaymentDeclarationSerializer,
+    RecordContributionSerializer, RejectDeclarationSerializer, YearQuerySerializer,
 )
 
 
@@ -49,13 +50,30 @@ def _situation_payload(user, year):
 
 
 class MyContributionsView(APIView):
-    """Le membre suit ses cotisations (lecture seule)."""
+    """Le membre voit seulement, mois par mois, s'il a payé et s'il a eu le point —
+    pas de récapitulatif ni de détail de ses paiements."""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        if not services.is_liable(request.user):
+        user = request.user
+        if not services.is_liable(user):
             return Response({"liable": False})
-        return Response({"liable": True, **_situation_payload(request.user, _year(request))})
+        year = _year(request)
+        situation = services.member_situation(user, year)
+        declarations = PaymentDeclaration.objects.filter(user=user).exclude(
+            status=PaymentDeclaration.STATUS_APPROVED,
+        )[:5]
+        return Response({
+            "liable": True,
+            "year": year,
+            "rate": situation["rate"],
+            "points_per_month": services.POINTS_PER_MONTH,
+            "joined_month": situation["joined_month"],
+            "next_unpaid": situation["next_unpaid"],
+            "late_count": len(situation["late_months"]),
+            "months": situation["months"],
+            "declarations": PaymentDeclarationSerializer(declarations, many=True, context={"request": request}).data,
+        })
 
 
 class ContributionViewSet(GenericViewSet):
@@ -141,3 +159,52 @@ class CashEntryViewSet(ModelViewSet):
                 e.get_method_display(), e.reference, e.note, e.recorded_by.full_name if e.recorded_by else "",
             ])
         return response
+
+
+class PaymentDeclarationViewSet(GenericViewSet):
+    """Le membre déclare (avec preuve) ; la trésorerie valide ou refuse."""
+    queryset = PaymentDeclaration.objects.select_related("user", "reviewed_by")
+    serializer_class = PaymentDeclarationSerializer
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
+
+    def get_permissions(self):
+        if self.action == "create":
+            return [IsAuthenticated()]
+        return [IsAuthenticated(), IsTreasurer()]
+
+    def list(self, request):
+        status_filter = request.query_params.get("status", PaymentDeclaration.STATUS_PENDING)
+        queryset = self.get_queryset().filter(status=status_filter)
+        if status_filter == PaymentDeclaration.STATUS_PENDING:
+            queryset = queryset.order_by("created_at")  # les plus anciennes d'abord
+        return Response(self.get_serializer(queryset[:200], many=True).data)
+
+    def create(self, request):
+        serializer = DeclarePaymentSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        declaration = services.declare_payment(member=request.user, **serializer.validated_data)
+        return Response(self.get_serializer(declaration).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["post"])
+    def approve(self, request, pk=None):
+        services.approve_declaration(self.get_object(), request.user)
+        return Response(self.get_serializer(self.get_object()).data)
+
+    @action(detail=True, methods=["post"])
+    def reject(self, request, pk=None):
+        serializer = RejectDeclarationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        declaration = services.reject_declaration(self.get_object(), request.user, serializer.validated_data["reason"])
+        return Response(self.get_serializer(declaration).data)
+
+
+class ReminderView(APIView):
+    """Rappel mensuel de cotisation : état (GET) et envoi (POST)."""
+    permission_classes = [IsAuthenticated, IsTreasurer]
+
+    def get(self, request):
+        return Response(services.reminder_status())
+
+    def post(self, request):
+        count = services.send_monthly_reminder(request.user)
+        return Response({"sent": count, **services.reminder_status()})

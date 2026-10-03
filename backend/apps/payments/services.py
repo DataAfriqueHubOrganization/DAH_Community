@@ -8,9 +8,13 @@ Règles :
   * La cotisation est due à partir du mois d'adhésion. Un mois non réglé est « en
     retard » une fois terminé ; pendant le mois, il est « à régler ».
   * Chaque mois réglé rapporte POINTS_PER_MONTH points, comptés dans ce mois-là.
-  * Seuls le trésorier, son adjoint et l'admin enregistrent des paiements et
-    tiennent la caisse.
+  * Le membre déclare son paiement (capture de la preuve) ; le trésorier, son
+    adjoint ou l'admin valide — ou enregistre directement un paiement remis en
+    main propre. Eux seuls tiennent la caisse.
+  * Rappel mensuel : envoyé par la trésorerie dans les 10 derniers jours du mois,
+    une fois par mois, aux membres qui n'ont ni payé ni déclaré le mois.
 """
+import calendar
 from datetime import date, datetime, time
 
 from django.contrib.auth import get_user_model
@@ -22,12 +26,14 @@ from rest_framework.exceptions import ValidationError
 from apps.common.background import fire_and_forget
 from apps.accounts.models import POSTES, ROLES
 
-from .models import CashEntry, Contribution, ContributionMonth
+from .models import CashEntry, Contribution, ContributionMonth, ContributionReminder, PaymentDeclaration
 
 MEMBER_RATE = 500
 LEAD_RATE = 1000
 POINTS_PER_MONTH = 5
 MAX_MONTHS_PER_PAYMENT = 24
+MAX_MONTHS_PER_DECLARATION = 12
+REMINDER_WINDOW_DAYS = 10
 
 TREASURY_POSTES = (POSTES.TRESORIER, POSTES.TRESORIER_ADJ)
 
@@ -108,14 +114,15 @@ def joined_month(user) -> date:
 # ── Situation d'un membre ───────────────────────────────────────────────────
 
 STATUS_PAID = "paid"
+STATUS_PENDING = "pending"    # déclaré par le membre, en attente de validation
 STATUS_LATE = "late"
 STATUS_DUE = "due"            # mois en cours, non réglé
 STATUS_UPCOMING = "upcoming"
 STATUS_NOT_DUE = "not_due"    # avant l'adhésion
 
 
-def member_situation(user, year: int, *, paid_months: dict | None = None, leads: set | None = None,
-                     today: date | None = None) -> dict:
+def member_situation(user, year: int, *, paid_months: dict | None = None, pending: set | None = None,
+                     leads: set | None = None, today: date | None = None) -> dict:
     """Mois de l'année (statut et montant), retard, reste dû, « à jour jusqu'à »."""
     today = today or timezone.localdate()
     current = month_start(today)
@@ -126,11 +133,16 @@ def member_situation(user, year: int, *, paid_months: dict | None = None, leads:
             ContributionMonth.objects.filter(user=user).values_list("month", "rate")
         )
 
+    if pending is None:
+        pending = pending_months(user)
+
     months = []
     for m in range(1, 13):
         month = date(year, m, 1)
         if month in paid_months:
             status, amount = STATUS_PAID, paid_months[month]
+        elif month in pending:
+            status, amount = STATUS_PENDING, rate
         elif month < joined:
             status, amount = STATUS_NOT_DUE, 0
         elif month < current:
@@ -142,13 +154,14 @@ def member_situation(user, year: int, *, paid_months: dict | None = None, leads:
         months.append({"month": month, "status": status, "amount": amount})
 
     # Retard et reste dû : sur toute la période depuis l'adhésion, pas seulement l'année affichée.
+    # Un mois déclaré (en attente de validation) n'est ni en retard ni dû.
     late = []
     cursor = joined
     while cursor < current:
-        if cursor not in paid_months:
+        if cursor not in paid_months and cursor not in pending:
             late.append(cursor)
         cursor = add_months(cursor, 1)
-    current_due = current >= joined and current not in paid_months
+    current_due = current >= joined and current not in paid_months and current not in pending
     owed = (len(late) + (1 if current_due else 0)) * rate
 
     # « À jour jusqu'à » : dernier mois d'une suite ininterrompue depuis l'adhésion.
@@ -158,7 +171,7 @@ def member_situation(user, year: int, *, paid_months: dict | None = None, leads:
         paid_until = cursor
         cursor = add_months(cursor, 1)
 
-    if not paid_months and (late or current_due):
+    if not paid_months and not pending and (late or current_due):
         overall = "never_paid"
     elif late:
         overall = "late"
@@ -172,7 +185,7 @@ def member_situation(user, year: int, *, paid_months: dict | None = None, leads:
         "late_months": late,
         "owed": owed,
         "paid_until": paid_until,
-        "next_unpaid": first_unpaid_month(user, paid_months, joined),
+        "next_unpaid": first_unpaid_month(user, {**paid_months, **{m: 0 for m in pending}}, joined),
         "status": overall,
         "paid_in_year": sum(a for mo, a in paid_months.items() if mo.year == year),
         "months_paid_in_year": sum(1 for mo in paid_months if mo.year == year),
@@ -249,6 +262,158 @@ def delete_contribution(contribution: Contribution) -> None:
     contribution.delete()
 
 
+# ── Déclarations de paiement (membre → trésorier) ──────────────────────────
+
+def pending_months(user) -> set:
+    months = set()
+    for start, count in PaymentDeclaration.objects.filter(
+        user=user, status=PaymentDeclaration.STATUS_PENDING,
+    ).values_list("period_start", "months"):
+        months.update(add_months(start, i) for i in range(count))
+    return months
+
+
+def treasurer_emails() -> list[str]:
+    User = get_user_model()
+    return list(
+        User.objects.filter(is_active=True)
+        .filter(Q(role=ROLES.ADMIN) | Q(poste__in=TREASURY_POSTES))
+        .values_list("email", flat=True)
+    )
+
+
+@transaction.atomic
+def declare_payment(*, member, period_start: date, months: int, method: str, proof, reference: str = "") -> PaymentDeclaration:
+    if not is_liable(member):
+        raise ValidationError({"detail": "Votre compte n'est pas soumis à cotisation."})
+    if not 1 <= months <= MAX_MONTHS_PER_DECLARATION:
+        raise ValidationError({"months": f"Entre 1 et {MAX_MONTHS_PER_DECLARATION} mois par déclaration."})
+    start = month_start(period_start)
+    if start < joined_month(member):
+        raise ValidationError({"period_start": "La cotisation n'est due qu'à partir du mois d'adhésion."})
+    covered = {add_months(start, i) for i in range(months)}
+    paid = set(ContributionMonth.objects.filter(user=member, month__in=covered).values_list("month", flat=True))
+    if paid:
+        raise ValidationError({"period_start": "Déjà réglé : " + ", ".join(month_label(m) for m in sorted(paid)) + "."})
+    waiting = covered & pending_months(member)
+    if waiting:
+        raise ValidationError({"period_start": "Déjà déclaré, en attente de validation : "
+                               + ", ".join(month_label(m) for m in sorted(waiting)) + "."})
+
+    rate = monthly_rate(member)
+    declaration = PaymentDeclaration.objects.create(
+        user=member, period_start=start, months=months, monthly_rate=rate, amount=rate * months,
+        method=method, reference=reference, proof=proof,
+    )
+    from .tasks import send_declaration_to_treasury
+    transaction.on_commit(lambda: fire_and_forget(
+        send_declaration_to_treasury.delay, declaration.pk,
+        error_message=f"Notification de déclaration impossible ({declaration.pk})",
+    ))
+    return declaration
+
+
+def _check_pending(declaration):
+    if declaration.status != PaymentDeclaration.STATUS_PENDING:
+        raise ValidationError({"detail": "Cette déclaration a déjà été traitée."})
+
+
+@transaction.atomic
+def approve_declaration(declaration: PaymentDeclaration, reviewer) -> Contribution:
+    """Valide : le paiement est enregistré (mois, points, caisse) et le reçu envoyé."""
+    _check_pending(declaration)
+    contribution = record_contribution(
+        member=declaration.user, recorded_by=reviewer, period_start=declaration.period_start,
+        months=declaration.months, paid_on=timezone.localtime(declaration.created_at).date(),
+        method=declaration.method, reference=declaration.reference, note="Déclaré par le membre",
+    )
+    declaration.status = PaymentDeclaration.STATUS_APPROVED
+    declaration.reviewed_by = reviewer
+    declaration.reviewed_at = timezone.now()
+    declaration.contribution = contribution
+    declaration.save(update_fields=["status", "reviewed_by", "reviewed_at", "contribution", "updated_at"])
+    return contribution
+
+
+@transaction.atomic
+def reject_declaration(declaration: PaymentDeclaration, reviewer, reason: str) -> PaymentDeclaration:
+    _check_pending(declaration)
+    declaration.status = PaymentDeclaration.STATUS_REJECTED
+    declaration.rejection_reason = reason
+    declaration.reviewed_by = reviewer
+    declaration.reviewed_at = timezone.now()
+    declaration.save(update_fields=["status", "rejection_reason", "reviewed_by", "reviewed_at", "updated_at"])
+    from .tasks import send_declaration_rejected
+    transaction.on_commit(lambda: fire_and_forget(
+        send_declaration_rejected.delay, declaration.pk,
+        error_message=f"Email de refus impossible ({declaration.pk})",
+    ))
+    return declaration
+
+
+# ── Rappel mensuel ──────────────────────────────────────────────────────────
+
+def reminder_window(today: date | None = None) -> tuple[date, date]:
+    """(ouverture, fin du mois) : le rappel s'envoie dans les 10 derniers jours du mois."""
+    today = today or timezone.localdate()
+    last_day = calendar.monthrange(today.year, today.month)[1]
+    end = today.replace(day=last_day)
+    return end.replace(day=last_day - REMINDER_WINDOW_DAYS + 1), end
+
+
+def reminder_recipients(today: date | None = None) -> list:
+    """Membres qui n'ont ni payé ni déclaré le mois en cours (et qui le doivent)."""
+    current = month_start(today or timezone.localdate())
+    paid = set(ContributionMonth.objects.filter(month=current).values_list("user_id", flat=True))
+    declared = set()
+    for user_id, start, count in PaymentDeclaration.objects.filter(
+        status=PaymentDeclaration.STATUS_PENDING,
+    ).values_list("user_id", "period_start", "months"):
+        if start <= current <= add_months(start, count - 1):
+            declared.add(user_id)
+    members = liable_members().select_related("member_profile", "candidature").exclude(id__in=paid | declared)
+    return [user for user in members if joined_month(user) <= current]
+
+
+def reminder_status(today: date | None = None) -> dict:
+    today = today or timezone.localdate()
+    opens, ends = reminder_window(today)
+    sent = ContributionReminder.objects.filter(month=month_start(today)).select_related("sent_by").first()
+    return {
+        "month": month_start(today),
+        "window_opens": opens,
+        "window_ends": ends,
+        "is_open": opens <= today <= ends,
+        "sent": {
+            "sent_at": sent.sent_at,
+            "sent_by": sent.sent_by.full_name if sent.sent_by else None,
+            "recipients": sent.recipients,
+        } if sent else None,
+        "recipients": len(reminder_recipients(today)),
+    }
+
+
+@transaction.atomic
+def send_monthly_reminder(sender, today: date | None = None) -> int:
+    today = today or timezone.localdate()
+    opens, ends = reminder_window(today)
+    if not opens <= today <= ends:
+        raise ValidationError({"detail": f"Le rappel s'envoie à partir du {opens:%d/%m/%Y} (10 derniers jours du mois)."})
+    month = month_start(today)
+    if ContributionReminder.objects.filter(month=month).exists():
+        raise ValidationError({"detail": "Le rappel de ce mois a déjà été envoyé."})
+    recipients = reminder_recipients(today)
+    ContributionReminder.objects.create(month=month, sent_by=sender, recipients=len(recipients))
+
+    from .tasks import send_contribution_reminder
+    ids = [u.pk for u in recipients]
+    transaction.on_commit(lambda: fire_and_forget(
+        lambda: [send_contribution_reminder(pk, month.isoformat()) for pk in ids],
+        error_message="Envoi des rappels de cotisation interrompu",
+    ))
+    return len(recipients)
+
+
 # ── Caisse ──────────────────────────────────────────────────────────────────
 
 def cash_summary(year: int) -> dict:
@@ -288,12 +453,19 @@ def contributions_overview(year: int, today: date | None = None) -> dict:
     paid = {}
     for user_id, month, rate in ContributionMonth.objects.filter(user__in=members).values_list("user_id", "month", "rate"):
         paid.setdefault(user_id, {})[month] = rate
+    pending = {}
+    for user_id, start, count in PaymentDeclaration.objects.filter(
+        status=PaymentDeclaration.STATUS_PENDING,
+    ).values_list("user_id", "period_start", "months"):
+        pending.setdefault(user_id, set()).update(add_months(start, i) for i in range(count))
 
     from apps.departments.services import get_department_dict
     rows, expected_to_date = [], 0
     current = month_start(today)
     for user in members:
-        situation = member_situation(user, year, paid_months=paid.get(user.id, {}), leads=leads, today=today)
+        situation = member_situation(
+            user, year, paid_months=paid.get(user.id, {}), pending=pending.get(user.id, set()), leads=leads, today=today,
+        )
         # Attendu à ce jour sur l'année : mois échus ou en cours depuis l'adhésion.
         expected_to_date += sum(
             m["amount"] for m in situation["months"]
@@ -320,4 +492,5 @@ def contributions_overview(year: int, today: date | None = None) -> dict:
         "recovery_rate": round(100 * collected / expected_to_date) if expected_to_date else None,
         "late_count": sum(1 for r in rows if r["status"] in ("late", "never_paid")),
         "late_amount": sum(r["owed"] for r in rows if r["status"] in ("late", "never_paid")),
+        "pending_declarations": PaymentDeclaration.objects.filter(status=PaymentDeclaration.STATUS_PENDING).count(),
     }

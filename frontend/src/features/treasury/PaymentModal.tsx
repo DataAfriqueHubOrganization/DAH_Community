@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { isAxiosError } from "axios";
 import { Search, Trash2, X } from "lucide-react";
 import { treasuryService } from "@/services/treasury.service";
 import { useI18n } from "@/i18n/I18nProvider";
@@ -10,23 +9,10 @@ import { cn } from "@/lib/utils";
 import { todayIso } from "@/features/engagement/period";
 import { Avatar, inputClass } from "@/features/departments/workspace/shared";
 import type { ContributionRow, PaymentMethod } from "@/types/treasury.types";
-import { monthName, shiftMonth } from "./shared";
+import { apiError, monthName, shiftMonth } from "./shared";
 
 const METHODS: PaymentMethod[] = ["cash", "mobile_money", "transfer", "other"];
 type Quick = "one" | "three" | "yearEnd" | "twelve" | "custom";
-
-/** Erreur de l'API ({ error, status_code, detail }) → message lisible. */
-function apiError(error: unknown, fallback: string): string {
-  if (!isAxiosError(error)) return fallback;
-  const detail = (error.response?.data as { detail?: unknown } | undefined)?.detail;
-  if (typeof detail === "string") return detail;
-  if (detail && typeof detail === "object") {
-    const first = Object.values(detail as Record<string, unknown>)[0];
-    if (Array.isArray(first) && typeof first[0] === "string") return first[0];
-    if (typeof first === "string") return first;
-  }
-  return fallback;
-}
 
 /** Enregistrer un paiement de cotisation (trésorier / admin). */
 export function PaymentModal({

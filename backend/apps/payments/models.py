@@ -166,3 +166,64 @@ class CashEntry(TimestampMixin):
     @property
     def signed_amount(self) -> int:
         return self.amount if self.kind == self.KIND_INCOME else -self.amount
+
+
+class PaymentDeclaration(TimestampMixin):
+    """Le membre déclare avoir payé un ou plusieurs mois, avec une capture de la
+    preuve de paiement ; le trésorier valide (le paiement est alors enregistré,
+    avec ses points) ou refuse avec un motif."""
+
+    STATUS_PENDING = "pending"
+    STATUS_APPROVED = "approved"
+    STATUS_REJECTED = "rejected"
+    STATUS_CHOICES = [
+        (STATUS_PENDING, "À valider"),
+        (STATUS_APPROVED, "Validée"),
+        (STATUS_REJECTED, "Refusée"),
+    ]
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="payment_declarations")
+    period_start = models.DateField(verbose_name="Premier mois déclaré")
+    months = models.PositiveSmallIntegerField(default=1)
+    monthly_rate = models.PositiveIntegerField()
+    amount = models.PositiveIntegerField()
+    method = models.CharField(max_length=20, choices=Contribution.METHOD_CHOICES, default=Contribution.METHOD_MOBILE_MONEY)
+    reference = models.CharField(max_length=100, blank=True)
+    proof = models.ImageField(
+        upload_to="payment_proofs/",
+        validators=[FileExtensionValidator(["jpg", "jpeg", "png", "webp"])],
+        verbose_name="Preuve de paiement",
+    )
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=STATUS_PENDING, db_index=True)
+    rejection_reason = models.TextField(blank=True)
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+",
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    contribution = models.OneToOneField(
+        Contribution, on_delete=models.SET_NULL, null=True, blank=True, related_name="declaration",
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Déclaration de paiement"
+        verbose_name_plural = "Déclarations de paiement"
+
+    def __str__(self):
+        return f"{self.user.full_name} — {self.months} mois dès {self.period_start:%m/%Y} ({self.get_status_display()})"
+
+
+class ContributionReminder(models.Model):
+    """Rappel de cotisation envoyé par la trésorerie — un par mois au plus."""
+
+    month = models.DateField(unique=True)
+    sent_at = models.DateTimeField(auto_now_add=True)
+    sent_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
+    recipients = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["-month"]
+        verbose_name = "Rappel de cotisation"
+
+    def __str__(self):
+        return f"Rappel {self.month:%m/%Y} ({self.recipients} membres)"

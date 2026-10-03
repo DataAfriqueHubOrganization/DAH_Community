@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
-from .models import CashEntry, Contribution
+from .models import CashEntry, Contribution, PaymentDeclaration
 
 
 class MonthField(serializers.DateField):
@@ -80,3 +80,45 @@ class CashEntrySerializer(serializers.ModelSerializer):
 
 class YearQuerySerializer(serializers.Serializer):
     year = serializers.IntegerField(min_value=2000, max_value=2100, required=False)
+
+
+class PaymentDeclarationSerializer(serializers.ModelSerializer):
+    user_name = serializers.CharField(source="user.full_name", read_only=True)
+    method_display = serializers.CharField(source="get_method_display", read_only=True)
+    reviewed_by_name = serializers.CharField(source="reviewed_by.full_name", read_only=True, default=None)
+    period_end = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PaymentDeclaration
+        fields = [
+            "id", "user", "user_name", "period_start", "period_end", "months", "monthly_rate", "amount",
+            "method", "method_display", "reference", "proof", "status", "rejection_reason",
+            "reviewed_by_name", "reviewed_at", "created_at",
+        ]
+
+    def get_period_end(self, obj):
+        from .services import add_months
+        return add_months(obj.period_start, obj.months - 1)
+
+
+MAX_PROOF_SIZE = 5 * 1024 * 1024
+
+
+class DeclarePaymentSerializer(serializers.Serializer):
+    period_start = MonthField()
+    months = serializers.IntegerField(min_value=1, default=1)
+    method = serializers.ChoiceField(choices=Contribution.METHOD_CHOICES)
+    reference = serializers.CharField(max_length=100, required=False, allow_blank=True, default="")
+    proof = serializers.ImageField()
+
+    def validate_proof(self, value):
+        if value.size > MAX_PROOF_SIZE:
+            raise serializers.ValidationError("Image trop lourde (5 Mo maximum).")
+        ext = value.name.rsplit(".", 1)[-1].lower()
+        if ext not in ("jpg", "jpeg", "png", "webp"):
+            raise serializers.ValidationError("Formats acceptés : JPG, PNG ou WebP.")
+        return value
+
+
+class RejectDeclarationSerializer(serializers.Serializer):
+    reason = serializers.CharField(max_length=500)
