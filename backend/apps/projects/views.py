@@ -57,6 +57,29 @@ class ProjectViewSet(ModelViewSet):
     def _can_manage_project(self, project) -> bool:
         return is_bureau(self.request.user) or project.owner_id == self.request.user.id
 
+    # ── Toutes les tâches d'un département (ses membres, son responsable, le bureau)
+    @action(detail=False, methods=["get"], url_path="department-tasks")
+    def department_tasks(self, request):
+        from apps.departments.models import Department
+        from apps.departments.services import can_manage_department
+
+        try:
+            department = Department.objects.get(pk=request.query_params.get("department"))
+        except (Department.DoesNotExist, ValueError, TypeError):
+            return Response({"detail": "Département requis."}, status=status.HTTP_400_BAD_REQUEST)
+        if not (
+            can_manage_department(request.user, department)
+            or department.id in get_user_department_ids(request.user)
+        ):
+            raise PermissionDenied("Vous ne faites pas partie de ce département.")
+        queryset = (
+            ProjectTask.objects
+            .filter(project__department=department)
+            .select_related("project", "assigned_to", "validated_by")
+            .order_by("due_date")
+        )
+        return Response(ProjectTaskSerializer(queryset, many=True).data)
+
     # ── Mes tâches (tous projets confondus) ───────────────────────────
     @action(detail=False, methods=["get"], url_path="my-tasks")
     def my_tasks(self, request):

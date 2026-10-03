@@ -24,7 +24,7 @@ class CheckInMemberSerializer(serializers.ModelSerializer):
     class Meta:
         model = CheckIn
         fields = [
-            "id", "department_name", "period_label", "due_date", "status",
+            "id", "department_name", "period_start", "period_label", "due_date", "status",
             "self_scores", "improve_self", "department_help", "remark", "submitted_at",
             "feedback", "confirmed_at", "created_at",
         ]
@@ -45,7 +45,7 @@ class CheckInManagerSerializer(serializers.ModelSerializer):
         model = CheckIn
         fields = [
             "id", "department", "department_name", "member_id", "member_name",
-            "launched_by_name", "period_label", "due_date", "status",
+            "launched_by_name", "period_start", "period_label", "due_date", "status",
             "self_scores", "improve_self", "department_help", "remark", "submitted_at",
             "final_scores", "feedback", "points", "confirmed_by_name", "confirmed_at", "created_at",
         ]
@@ -55,8 +55,14 @@ class LaunchCheckInSerializer(serializers.Serializer):
     department = serializers.PrimaryKeyRelatedField(queryset=Department.objects.all())
     # Vide = tous les membres du département (hors la personne qui lance).
     members = serializers.ListField(child=serializers.IntegerField(), required=False, default=list)
-    period_label = serializers.CharField(max_length=100)
+    # Mois évalué : n'importe quel jour du mois (ex. 2026-09-01).
+    month = serializers.DateField()
     due_date = serializers.DateField(required=False, allow_null=True)
+
+
+class RemindCheckInSerializer(serializers.Serializer):
+    department = serializers.PrimaryKeyRelatedField(queryset=Department.objects.all())
+    month = serializers.DateField()
 
 
 class ScoresField(serializers.DictField):

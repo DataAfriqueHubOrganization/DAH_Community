@@ -207,10 +207,11 @@ class Command(BaseCommand):
                         defaults=dict(
                             user=member, points=points, source=PointEntry.SOURCE_TASK, department=department,
                             label=f"{project.title} — {task.title}", on_time=punctual,
-                            awarded_by=reviewer, awarded_at=_aware(validated_on, 17),
+                            # Comptée au mois de soumission (règle du classement mensuel).
+                            awarded_by=reviewer, awarded_at=_aware(submitted_on, 9),
                         ),
                     )
-                    task.validated_at = entry.awarded_at
+                    task.validated_at = _aware(validated_on, 17)
                     task.validated_by = reviewer
                     task.is_outstanding = outstanding
                     task.points_awarded = entry.points
@@ -253,34 +254,36 @@ class Command(BaseCommand):
                     task.return_reason = "Il manque la partie sur la sauvegarde des données — peux-tu la compléter ?"
                     task.save(update_fields=["return_reason"])
 
-    # ── Points d'étape ────────────────────────────────────────────────
+    # ── Points d'étape (mensuels) ─────────────────────────────────────
     def _checkins(self):
         from apps.engagement.models import CheckIn, PointEntry
-        from apps.engagement.services import checkin_points
+        from apps.engagement.services import checkin_points, checkin_points_date, month_label
 
-        self.stdout.write("  → Points d'étape (T1 à T3 2026 confirmés, trimestre en cours ouvert)...")
-        # (libellé, date de confirmation) — fin de chaque trimestre écoulé de 2026
-        past_quarters = [("T1 2026", date(2026, 3, 26)), ("T2 2026", date(2026, 6, 25)), ("T3 2026", date(2026, 9, 25))]
-        current_label = _quarter_label(self.today)
+        self.stdout.write("  → Points d'étape mensuels (janvier à septembre 2026 confirmés, mois en cours ouvert)...")
+        current_month = self.today.replace(day=1)
 
         for department, _project, members in self._department_people():
             manager = department.lead or department.co_lead
             for i, member in enumerate(m for m in members if m.id != (manager.id if manager else None)):
                 base = 3 + (ACTIVITY[member.email] >= 9)
                 self_scores = {}
-                for q, (label, confirmed_on) in enumerate(past_quarters):
-                    if label == current_label:
+                for month_start in AWARD_MONTHS:
+                    if month_start >= current_month:
                         continue
                     self_scores = {k: max(1, min(5, base + self.rng.choice([-1, 0, 0, 1]))) for k in CRITERIA}
                     final_scores = {k: max(1, min(5, v + self.rng.choice([-1, 0, 0, 0, 1]))) for k, v in self_scores.items()}
+                    # Rempli fin de mois, confirmé début du mois suivant.
+                    confirmed_on = (month_start + timedelta(days=32)).replace(day=3)
                     checkin, _ = CheckIn.objects.get_or_create(
-                        department=department, member=member, period_label=label,
+                        department=department, member=member, period_start=month_start,
                         defaults=dict(
-                            launched_by=manager, status=CheckIn.STATUS_CONFIRMED, self_scores=self_scores,
+                            period_label=month_label(month_start), launched_by=manager,
+                            status=CheckIn.STATUS_CONFIRMED, self_scores=self_scores,
                             improve_self="Être plus régulier dans le suivi de mes tâches.",
                             department_help="Des points d'équipe plus courts mais plus fréquents.",
                             submitted_at=_aware(confirmed_on - timedelta(days=4)),
-                            final_scores=final_scores, feedback=FEEDBACKS[(i + q) % len(FEEDBACKS)],
+                            final_scores=final_scores,
+                            feedback=FEEDBACKS[(i + month_start.month) % len(FEEDBACKS)],
                             confirmed_by=manager, confirmed_at=_aware(confirmed_on, 18),
                             points=checkin_points(final_scores),
                         ),
@@ -290,17 +293,18 @@ class Command(BaseCommand):
                             checkin=checkin,
                             defaults=dict(
                                 user=member, points=checkin.points, source=PointEntry.SOURCE_CHECKIN,
-                                department=department, label=f"Point d'étape — {label}",
-                                awarded_by=manager, awarded_at=checkin.confirmed_at,
+                                department=department, label=f"Point d'étape — {checkin.period_label}",
+                                awarded_by=manager, awarded_at=checkin_points_date(checkin),
                             ),
                         )
 
-                # Trimestre en cours : un sur deux rempli (à confirmer), les autres à remplir.
+                # Mois en cours : un sur deux rempli (à confirmer), les autres à remplir.
                 submitted = i % 2 == 0
                 CheckIn.objects.get_or_create(
-                    department=department, member=member, period_label=current_label,
+                    department=department, member=member, period_start=current_month,
                     defaults=dict(
-                        launched_by=manager, due_date=self.today + timedelta(days=10),
+                        period_label=month_label(current_month), launched_by=manager,
+                        due_date=self.today + timedelta(days=10),
                         status=CheckIn.STATUS_SUBMITTED if submitted else CheckIn.STATUS_PENDING,
                         self_scores=self_scores if submitted else {},
                         improve_self="Prendre davantage la parole en réunion." if submitted else "",

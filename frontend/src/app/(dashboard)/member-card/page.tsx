@@ -3,12 +3,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { membersService } from "@/services/members.service";
-import { avatarUrl, qrCodeUrl } from "@/lib/utils";
+import { avatarUrl } from "@/lib/utils";
 import { useI18n } from "@/i18n/I18nProvider";
-import { Download, Share2, ExternalLink, Shield, CalendarDays } from "lucide-react";
+import { Download, Share2, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { Logo } from "@/components/ui/Logo";
 import { NetworkPattern } from "@/components/ui/NetworkPattern";
+import { engagementService } from "@/services/engagement.service";
+import { Award as AwardIcon } from "lucide-react";
 
 export default function MemberCardPage() {
   const { data: user } = useCurrentUser();
@@ -22,12 +24,19 @@ export default function MemberCardPage() {
     retry: false,
   });
 
+  // Dernière distinction « meilleur général » (membre du mois / de l'année).
+  const { data: myPoints } = useQuery({
+    queryKey: ["my-points", "month", "member-card"],
+    queryFn: () => engagementService.myPoints({ period: "month" }).then((r) => r.data),
+    enabled: !!user,
+  });
+  const latestAward = myPoints?.awards?.[0] ?? null;
+
   const fullName = user ? `${user.first_name} ${user.last_name}` : "";
   const avatar = user?.avatar ?? avatarUrl(fullName, 120);
   const memberSince = profile?.created_at ? fmt.date(profile.created_at) : "—";
   const memberNumber = profile?.member_number ?? null;
   const publicUrl = profile?.slug ? `/portfolio/${profile.slug}` : null;
-  const absolutePublicUrl = publicUrl && typeof window !== "undefined" ? window.location.origin + publicUrl : null;
 
   const handlePrint = () => window.print();
 
@@ -50,9 +59,16 @@ export default function MemberCardPage() {
       {/* Print styles */}
       <style>{`
         @media print {
+          @page { margin: 12mm; }
           body * { visibility: hidden; }
-          #member-card, #member-card * { visibility: visible; }
-          #member-card { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+          #member-card, #member-card * {
+            visibility: visible;
+            /* Sans ça, le navigateur supprime les fonds : texte blanc sur blanc. */
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          #member-card { position: fixed; top: 0; left: 50%; transform: translateX(-50%); width: 440px; max-width: none; }
+          #member-card .card-face { box-shadow: none; border: 1px solid #E4E4E7; }
           .no-print { display: none !important; }
         }
       `}</style>
@@ -88,9 +104,8 @@ export default function MemberCardPage() {
             email={user.email}
             memberNumber={memberNumber}
             memberSince={memberSince}
-            skills={profile?.skills ?? []}
             publicUrl={publicUrl}
-            absolutePublicUrl={absolutePublicUrl}
+            award={latestAward}
           />
         </div>
 
@@ -118,100 +133,84 @@ export default function MemberCardPage() {
   );
 }
 
-function MemberCard({ fullName, avatar, role, poste, email, memberNumber, memberSince, skills, publicUrl, absolutePublicUrl }: {
+function MemberCard({ fullName, avatar, role, poste, email, memberNumber, memberSince, publicUrl, award }: {
   fullName: string; avatar: string; role: string; poste: string | null; email: string;
-  memberNumber: string | null; memberSince: string; skills: string[];
-  publicUrl: string | null; absolutePublicUrl: string | null;
+  memberNumber: string | null; memberSince: string; publicUrl: string | null;
+  award: { kind: "month" | "year"; period_start: string } | null;
 }) {
-  const { t, label } = useI18n();
+  const { t, label, intl } = useI18n();
+  const m = t.memberCard;
+  // La carte est un objet physique : couleurs fixes (pas de tokens de thème),
+  // identiques en clair, en sombre et à l'impression.
   return (
-    <div id="member-card" className="w-full max-w-[420px] select-none">
-      {/* Front */}
-      <div className="relative rounded-3xl overflow-hidden shadow-2xl bg-univers-brand text-white"
-        style={{ aspectRatio: "1.586/1" }}>
-
-        {/* Motif réseau de la charte */}
-        <NetworkPattern className="opacity-70" />
-
-        <div className="relative h-full p-7 flex flex-col justify-between">
-          {/* Header */}
-          <div className="flex items-start justify-between">
-            <div>
-              <Logo variant="dah" tone="white" height={49} />
-            </div>
-            <div className="text-right">
-              {memberNumber ? (
-                <div>
-                  <p className="text-white/80 text-[10px] font-semibold tracking-[0.14em] uppercase">{t.memberCard.cardLabel}</p>
-                  <p className="font-mono font-bold text-white text-sm">{memberNumber}</p>
-                </div>
-              ) : (
-                <div className="flex items-center gap-1 bg-white/10 px-2.5 py-1 rounded-full">
-                  <div className="w-1.5 h-1.5 rounded-full bg-brand-orange animate-pulse" />
-                  <p className="text-xs text-white/85">{t.memberCard.pending}</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Main content */}
-          <div className="flex items-end gap-5">
-            {/* Avatar */}
-            <div className="relative shrink-0">
-              <div className="w-20 h-20 rounded-2xl border-2 border-white overflow-hidden bg-white/20 shadow-lg">
-                <img src={avatar} alt={fullName} className="w-full h-full object-cover" />
-              </div>
-              <div className="absolute -bottom-1.5 -right-1.5 w-6 h-6 bg-brand-orange rounded-[6px] border-2 border-white flex items-center justify-center shadow">
-                <Shield size={11} className="text-fg" />
-              </div>
-            </div>
-
-            {/* Info */}
-            <div className="flex-1 min-w-0 pb-1">
-              <h2 className="text-xl font-bold leading-tight truncate">{fullName}</h2>
-              <p className="text-white font-semibold text-sm mt-0.5">{label.position({ role, poste })}</p>
-              <p className="text-white/80 text-xs mt-1 truncate">{email}</p>
-
-              {/* Skills preview */}
-              {skills.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mt-2.5">
-                  {skills.slice(0, 3).map((s) => (
-                    <span key={s} className="text-xs bg-white/15 px-2 py-0.5 rounded-full text-white/90">
-                      {s}
-                    </span>
-                  ))}
-                  {skills.length > 3 && (
-                    <span className="text-xs bg-white/15 px-2 py-0.5 rounded-full text-white/80">
-                      +{skills.length - 3}
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div className="flex items-end justify-between">
-            <div>
-              <div className="flex items-center gap-1.5 text-white/85 text-xs">
-                <CalendarDays size={11} />
-                <span>{t.memberCard.memberSince} {memberSince}</span>
-              </div>
-              {publicUrl && (
-                <p className="text-white/90 text-xs font-mono mt-1">dataafrique.hub{publicUrl}</p>
-              )}
-            </div>
-            {absolutePublicUrl && (
-              <div className="shrink-0 bg-white rounded-lg p-1.5">
-                <img src={qrCodeUrl(absolutePublicUrl, 64)} alt={t.memberCard.qrAlt} className="w-14 h-14 block" />
-              </div>
+    <div id="member-card" className="w-full max-w-[440px] select-none">
+      <div
+        className="card-face relative rounded-3xl overflow-hidden bg-white text-[#111114] shadow-2xl ring-1 ring-black/5 flex flex-col"
+        style={{ aspectRatio: "1.586/1" }}
+      >
+        {/* Bandeau marque */}
+        <div className="relative h-[34%] shrink-0 bg-univers-brand px-6 flex items-center justify-between">
+          <NetworkPattern className="opacity-60" />
+          <Logo variant="dah" tone="white" height={38} className="relative" />
+          <div className="relative text-right text-white">
+            <p className="text-[10px] font-semibold tracking-[0.16em] uppercase text-white/80">{m.cardLabel}</p>
+            {memberNumber ? (
+              <p className="font-mono font-bold text-[15px] leading-tight">{memberNumber}</p>
+            ) : (
+              <p className="inline-flex items-center gap-1.5 text-xs mt-0.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-brand-orange" aria-hidden="true" />
+                {m.pending}
+              </p>
             )}
           </div>
         </div>
+
+        {/* Identité */}
+        <div className="relative flex-1 px-6 flex gap-4">
+          <div className="-mt-9 shrink-0">
+            <div className="w-[84px] h-[84px] rounded-2xl overflow-hidden border-[3px] border-white bg-[#EEF0F3] shadow-md">
+              <img src={avatar} alt={fullName} className="w-full h-full object-cover" />
+            </div>
+          </div>
+          <div className="min-w-0 flex-1 pt-3">
+            <h2 className="font-display text-[19px] font-bold leading-tight truncate">{fullName}</h2>
+            <p className="text-[13px] font-semibold text-[#1E4FAF] mt-0.5 truncate">{label.position({ role, poste })}</p>
+            <p className="text-[11px] text-[#71717A] mt-0.5 truncate">{email}</p>
+            {award && (
+              <p className="inline-flex items-center gap-1 mt-2 rounded-full bg-brand-orange text-[#111114] text-[10.5px] font-bold px-2 py-0.5">
+                <AwardIcon size={11} aria-hidden="true" />
+                {award.kind === "month" ? t.ranking.memberOfMonth : t.ranking.memberOfYear} ·{" "}
+                {award.kind === "month"
+                  ? new Date(`${award.period_start}T00:00:00`).toLocaleDateString(intl, { month: "long", year: "numeric" })
+                  : award.period_start.slice(0, 4)}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Pied : infos clés */}
+        <div className="px-6 pb-4 grid grid-cols-2 gap-4 text-[11px]">
+          <div className="min-w-0">
+            <p className="text-[9.5px] font-semibold tracking-[0.12em] uppercase text-[#71717A]">{m.memberSince}</p>
+            <p className="font-semibold mt-0.5 truncate">{memberSince}</p>
+          </div>
+          {publicUrl && (
+            <div className="min-w-0 text-right">
+              <p className="text-[9.5px] font-semibold tracking-[0.12em] uppercase text-[#71717A]">{m.profileLabel}</p>
+              <p className="font-mono font-semibold text-[#1E4FAF] mt-0.5 truncate">dataafrique.hub{publicUrl}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Liseré charte : orange + bleu */}
+        <div className="h-1.5 shrink-0 flex" aria-hidden="true">
+          <span className="w-1/3 bg-brand-orange" />
+          <span className="flex-1 bg-[#1E4FAF]" />
+        </div>
       </div>
 
-      <p className="text-xs text-fg-subtle mt-4 text-center max-w-[340px] mx-auto">
-        {t.memberCard.attestation}
+      <p className="text-xs text-fg-subtle mt-4 text-center max-w-[340px] mx-auto print:text-[#71717A]">
+        {m.attestation}
       </p>
     </div>
   );
@@ -222,7 +221,7 @@ function CardSkeleton() {
     <div className="space-y-6">
       <div className="h-8 w-48 bg-surface-strong rounded-xl animate-pulse" />
       <div className="flex justify-center">
-        <div className="w-full max-w-[420px] rounded-3xl bg-surface-strong animate-pulse" style={{ aspectRatio: "1.586/1" }} />
+        <div className="w-full max-w-[440px] rounded-3xl bg-surface-strong animate-pulse" style={{ aspectRatio: "1.586/1" }} />
       </div>
     </div>
   );

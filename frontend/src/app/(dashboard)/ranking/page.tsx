@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Award as AwardIcon, Medal, SlidersHorizontal, X } from "lucide-react";
 import { engagementService } from "@/services/engagement.service";
@@ -18,7 +19,12 @@ export default function RankingPage() {
   const x = t.ranking;
   const qc = useQueryClient();
   const [query, setQuery] = useState<{ period: PeriodType; date: string }>({ period: "month", date: todayIso() });
-  const [department, setDepartment] = useState<number | undefined>(undefined);
+  // ?department=<id> : arrivée depuis l'espace d'un département.
+  const searchParams = useSearchParams();
+  const [department, setDepartment] = useState<number | undefined>(() => {
+    const fromUrl = Number(searchParams.get("department"));
+    return fromUrl > 0 ? fromUrl : undefined;
+  });
   const [adjusting, setAdjusting] = useState<RankingRow | null>(null);
 
   const { data, isLoading, isError } = useQuery({
@@ -82,6 +88,25 @@ export default function RankingPage() {
             <span className="text-fg-soft">{x.awardHint(awardKind === "month" ? x.memberOfMonth : x.memberOfYear, periodName)}</span>
           )}
         </div>
+      )}
+
+      {/* Vue communauté : le meilleur de chaque département sur la période */}
+      {data && !data.department && data.department_leaders.length > 0 && (
+        <section>
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-fg-muted mb-2">{x.departmentLeaders}</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {data.department_leaders.map((l) => (
+              <div key={l.department_id} className="bg-surface rounded-2xl border border-line-soft p-4 flex items-center gap-3">
+                <img src={l.avatar ?? avatarUrl(l.full_name, 40)} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs text-fg-muted truncate">{l.department_name}</p>
+                  <p className="font-medium text-fg truncate">{l.full_name}{l.tied && <span className="text-xs text-fg-subtle font-normal"> · {x.tie}</span>}</p>
+                </div>
+                <span className="font-display font-bold text-brand-deep shrink-0">{l.total}</span>
+              </div>
+            ))}
+          </div>
+        </section>
       )}
 
       <div className="bg-surface rounded-2xl border border-line-soft overflow-x-auto">

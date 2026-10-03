@@ -44,3 +44,10 @@ export function periodTitle(period: PeriodType, startIso: string, intl: string):
 export function monthShort(month: number, intl: string): string {
   return new Date(2026, month - 1, 1).toLocaleDateString(intl, { month: "short" }).replace(".", "");
 }
+
+/** Période d'un point d'étape : « septembre 2026 » / « September 2026 ».
+ *  Repli sur le libellé stocké pour les anciens points d'étape. */
+export function checkinPeriod(checkin: { period_start: string | null; period_label: string }, intl: string): string {
+  if (!checkin.period_start) return checkin.period_label;
+  return parseIso(checkin.period_start).toLocaleDateString(intl, { month: "long", year: "numeric" });
+}

@@ -99,7 +99,7 @@ def send_task_returned_email(self, model_label: str, task_pk: int):
 
 
 @shared_task(bind=True, max_retries=3)
-def send_checkin_launched_email(self, checkin_pk: int):
+def send_checkin_launched_email(self, checkin_pk: int, reminder: bool = False):
     from .models import CheckIn
 
     try:
@@ -108,10 +108,13 @@ def send_checkin_launched_email(self, checkin_pk: int):
         return
 
     send_branded_email(
-        subject=f"Point d'étape — {checkin.department.name}",
+        subject=(
+            f"Rappel : point d'étape — {checkin.department.name}" if reminder
+            else f"Point d'étape — {checkin.department.name}"
+        ),
         recipient_list=[checkin.member.email],
         preheader="Quelques minutes pour faire le point sur votre implication.",
-        title="Faisons le point ensemble",
+        title="Petit rappel : votre point d'étape" if reminder else "Faisons le point ensemble",
         greeting=f"Bonjour {checkin.member.first_name},",
         paragraphs=[
             f"Votre responsable du département « {checkin.department.name} » vous propose un point "

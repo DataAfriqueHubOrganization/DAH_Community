@@ -104,6 +104,9 @@ class CheckIn(TimestampMixin):
     launched_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+",
     )
+    # Mois évalué (1er jour du mois) : les points du point d'étape comptent dans
+    # ce mois, quelle que soit la date de confirmation.
+    period_start = models.DateField(null=True, blank=True, verbose_name="Mois évalué")
     period_label = models.CharField(max_length=100, verbose_name="Période")
     due_date = models.DateField(null=True, blank=True, verbose_name="À remplir avant le")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)

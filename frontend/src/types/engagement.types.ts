@@ -26,6 +26,8 @@ export const CRITERIA: CriterionKey[] = ["participation", "follow_up", "quality"
 export interface CheckInMember {
   id: number;
   department_name: string;
+  /** Mois évalué (1er du mois) — null pour d'anciens points d'étape. */
+  period_start: string | null;
   period_label: string;
   due_date: string | null;
   status: CheckInStatus;
@@ -60,6 +62,7 @@ export interface MyPoints {
   entries: PointEntry[];
   monthly: { month: number; total: number }[];
   checkins: CheckInMember[];
+  awards: { kind: AwardKind; period_start: string }[];
 }
 
 export interface RankingRow {
@@ -88,10 +91,22 @@ export interface Award {
   created_at: string;
 }
 
+/** Meilleur membre d'un département sur la période (vue communauté). */
+export interface DepartmentLeader {
+  department_id: number;
+  department_name: string;
+  user_id: number;
+  full_name: string;
+  avatar: string | null;
+  total: number;
+  tied: boolean;
+}
+
 export interface Ranking {
   period: Period;
   department: { id: number; name: string } | null;
   scopes: { global: boolean; departments: { id: number; name: string }[] };
   rows: RankingRow[];
+  department_leaders: DepartmentLeader[];
   awards: Award[];
 }

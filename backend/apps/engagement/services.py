@@ -7,9 +7,10 @@ Règles (validées avec le bureau) :
 - Barème : petite 5, moyenne 10, grande 20 ; +20 % si soumise avant l'échéance,
   −25 % si soumise en retard ; +25 % si « travail remarquable ». La ponctualité
   se mesure à la date de SOUMISSION, pas de validation.
-- Point d'étape : seuls les scores finaux du responsable comptent ;
+- Point d'étape (mensuel) : seuls les scores finaux du responsable comptent ;
   points = moyenne des 5 scores (1 à 5) × 4, soit 20 points au maximum.
-- Points d'une période = tâches + points d'étape (+ ajustements du bureau).
+- Points d'un mois = tâches SOUMISES dans le mois (et validées) + point d'étape
+  DE ce mois (même confirmé plus tard) + ajustements du bureau.
 """
 from datetime import date, datetime, time
 from decimal import ROUND_HALF_UP, Decimal
@@ -129,7 +130,8 @@ def validate_task(task, validator, outstanding: bool = False):
                 defaults=dict(
                     user_id=task.assigned_to_id, points=points, source=PointEntry.SOURCE_TASK,
                     department=task_department(task), label=task_label(task), on_time=on_time,
-                    awarded_by=validator, awarded_at=task.validated_at,
+                    # Comptée au mois où le membre a rendu la tâche, pas au mois de validation.
+                    awarded_by=validator, awarded_at=task.submitted_at or task.validated_at,
                 ),
             )
         task.points_awarded = entry.points if entry else None
@@ -263,6 +265,26 @@ def build_ranking(start: date, end: date, department=None) -> list[dict]:
     return rows
 
 
+def department_leaders(start: date, end: date) -> list[dict]:
+    """Meilleur membre de chaque département sur la période (vue communauté).
+    Affiché dans le classement uniquement — le badge reste réservé au meilleur
+    général (désigné par le bureau)."""
+    from apps.departments.models import Department
+
+    leaders = []
+    for department in Department.objects.order_by("name"):
+        rows = build_ranking(start, end, department)
+        if rows and rows[0]["total"] > 0:
+            best = rows[0]
+            leaders.append({
+                "department_id": department.id, "department_name": department.name,
+                "user_id": best["user_id"], "full_name": best["full_name"], "avatar": best["avatar"],
+                "total": best["total"],
+                "tied": sum(1 for r in rows if r["total"] == best["total"]) > 1,
+            })
+    return leaders
+
+
 def my_points(user, period: str, ref: date) -> dict:
     """Vue « Mes points » : total, historique et totaux mensuels de l'année.
     Jamais de classement ni de scores de point d'étape — une ligne par point d'étape."""
@@ -328,31 +350,49 @@ def checkin_points(final_scores: dict) -> int:
     return _round(mean * 4)
 
 
-def launch_checkins(department, launched_by, member_ids, period_label: str, due_date=None) -> dict:
+MONTHS_FR = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet",
+             "août", "septembre", "octobre", "novembre", "décembre"]
+
+
+def month_label(month_start: date) -> str:
+    return f"{MONTHS_FR[month_start.month - 1]} {month_start.year}"
+
+
+def checkin_points_date(checkin) -> datetime:
+    """Date d'attribution des points d'un point d'étape : le 15 du mois évalué
+    (milieu de mois, à l'abri des décalages de fuseau), sinon la confirmation."""
+    if checkin.period_start:
+        return _aware(checkin.period_start.replace(day=15))
+    return checkin.confirmed_at
+
+
+def launch_checkins(department, launched_by, member_ids, month: date, due_date=None) -> dict:
+    """Point d'étape MENSUEL : un par membre, par département et par mois."""
     from django.contrib.auth import get_user_model
     User = get_user_model()
 
     if not can_manage_department(launched_by, department):
         raise PermissionDenied("Vous ne gérez pas ce département.")
-    if not period_label.strip():
-        raise ValidationError({"period_label": "Indiquez la période (ex. « T3 2026 »)."})
+    period_start = month.replace(day=1)
+    if period_start > timezone.localdate():
+        raise ValidationError({"month": "Le mois évalué ne peut pas être dans le futur."})
 
     allowed = get_department_member_ids(department) - {launched_by.id}
     requested = set(member_ids) if member_ids else allowed
     if requested - allowed:
         raise ValidationError({"members": "Certaines personnes ne font pas partie du département."})
 
-    already_open = set(
-        CheckIn.objects.filter(
-            department=department, member_id__in=requested,
-            status__in=[CheckIn.STATUS_PENDING, CheckIn.STATUS_SUBMITTED],
-        ).values_list("member_id", flat=True)
+    # Un seul point d'étape (non annulé) par membre et par mois.
+    already = set(
+        CheckIn.objects.filter(department=department, member_id__in=requested, period_start=period_start)
+        .exclude(status=CheckIn.STATUS_CANCELLED)
+        .values_list("member_id", flat=True)
     )
     created = []
-    for member in User.objects.filter(id__in=requested - already_open, is_active=True):
+    for member in User.objects.filter(id__in=requested - already, is_active=True):
         created.append(CheckIn.objects.create(
             department=department, member=member, launched_by=launched_by,
-            period_label=period_label.strip(), due_date=due_date,
+            period_start=period_start, period_label=month_label(period_start), due_date=due_date,
         ))
 
     from .tasks import send_checkin_launched_email
@@ -362,6 +402,23 @@ def launch_checkins(department, launched_by, member_ids, period_label: str, due_
             error_message=f"Notification de point d'étape impossible ({checkin.pk})",
         )
     return {"created": created, "skipped": len(requested) - len(created)}
+
+
+def remind_checkins(department, user, month: date) -> int:
+    """Relance par email les membres qui n'ont pas encore rempli le point d'étape du mois."""
+    if not can_manage_department(user, department):
+        raise PermissionDenied("Vous ne gérez pas ce département.")
+    pending = list(CheckIn.objects.filter(
+        department=department, period_start=month.replace(day=1), status=CheckIn.STATUS_PENDING,
+    ).values_list("pk", flat=True))
+
+    from .tasks import send_checkin_launched_email
+    for pk in pending:
+        fire_and_forget(
+            send_checkin_launched_email.delay, pk, True,
+            error_message=f"Relance de point d'étape impossible ({pk})",
+        )
+    return len(pending)
 
 
 def submit_checkin(checkin, user, *, self_scores, improve_self, department_help, remark=""):
@@ -410,7 +467,8 @@ def confirm_checkin(checkin, user, *, final_scores, feedback):
             defaults=dict(
                 user=checkin.member, points=points, source=PointEntry.SOURCE_CHECKIN,
                 department=checkin.department, label=f"Point d'étape — {checkin.period_label}",
-                awarded_by=user, awarded_at=checkin.confirmed_at,
+                # Compté dans le mois évalué, même si la confirmation arrive le mois suivant.
+                awarded_by=user, awarded_at=checkin_points_date(checkin),
             ),
         )
 

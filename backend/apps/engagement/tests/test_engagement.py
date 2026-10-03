@@ -216,7 +216,7 @@ class TestCheckIn:
 
     def launch(self, world, members=None):
         return api(world["lead"]).post(self.URL, {
-            "department": world["dept"].pk, "members": members or [], "period_label": "T3 2026",
+            "department": world["dept"].pk, "members": members or [], "month": world["today"].isoformat(),
         }, format="json")
 
     def test_parcours_complet(self, world):
@@ -259,7 +259,7 @@ class TestCheckIn:
         assert api(world["member"]).get(self.URL, {"department": world["dept"].pk}).status_code == 403
         # Un responsable ne lance pas pour un autre département
         response = api(world["lead"]).post(self.URL, {
-            "department": world["other"].pk, "period_label": "T3",
+            "department": world["other"].pk, "month": world["today"].isoformat(),
         }, format="json")
         assert response.status_code == 403
 
@@ -299,3 +299,88 @@ class TestAwardsAndAdjustments:
         assert api(world["president"]).post(url, {"user": world["member"].pk, "points": 5, "reason": " "}).status_code == 400
         assert api(world["president"]).post(url, {"user": world["member"].pk, "points": -3, "reason": "Doublon"}).status_code == 201
         assert PointEntry.objects.get(source="adjustment").points == -3
+
+
+# ── Règles de date du classement mensuel ──────────────────────────────────
+
+@pytest.mark.django_db
+class TestMonthlyRules:
+    def test_tache_comptee_au_mois_de_soumission(self, world):
+        submitted = timezone.now() - timedelta(days=40)
+        task = new_task(world, status="submitted", submitted_at=submitted)
+        api(world["lead"]).post(task_url(world, task, "validate"))
+        entry = PointEntry.objects.get(project_task=task)
+        assert timezone.localdate(entry.awarded_at) == timezone.localdate(submitted)
+
+    def test_point_d_etape_compte_dans_le_mois_evalue(self, world):
+        last_month = (world["today"].replace(day=1) - timedelta(days=1)).replace(day=1)
+        response = api(world["lead"]).post("/api/v1/engagement/checkins/", {
+            "department": world["dept"].pk, "members": [world["member"].pk], "month": last_month.isoformat(),
+        }, format="json")
+        assert response.data["created"] == 1
+        checkin = CheckIn.objects.get(member=world["member"])
+        assert checkin.period_start == last_month
+        url = f"/api/v1/engagement/checkins/{checkin.pk}/"
+        api(world["member"]).post(f"{url}submit/", {"self_scores": SCORES, "improve_self": "", "department_help": ""}, format="json")
+        api(world["lead"]).post(f"{url}confirm/", {"final_scores": SCORES, "feedback": "Merci"}, format="json")
+        # Confirmé ce mois-ci, mais compté le mois évalué
+        entry = PointEntry.objects.get(checkin=checkin)
+        assert timezone.localdate(entry.awarded_at).replace(day=1) == last_month
+        # Un seul point d'étape par membre et par mois
+        again = api(world["lead"]).post("/api/v1/engagement/checkins/", {
+            "department": world["dept"].pk, "members": [world["member"].pk], "month": last_month.isoformat(),
+        }, format="json")
+        assert again.data["created"] == 0
+
+    def test_pas_de_point_d_etape_pour_un_mois_futur(self, world):
+        future = (world["today"].replace(day=28) + timedelta(days=10)).isoformat()
+        response = api(world["lead"]).post("/api/v1/engagement/checkins/", {
+            "department": world["dept"].pk, "month": future,
+        }, format="json")
+        assert response.status_code == 400
+
+    def test_meilleur_par_departement_dans_la_vue_communaute(self, world):
+        award_points(world, world["member"], 12)
+        award_points(world, world["idle"], 5)
+        award_points(world, world["outsider"], 30, department=world["other"])
+        data = api(world["president"]).get("/api/v1/engagement/ranking/", {"period": "month"}).data
+        leaders = {l["department_name"]: (l["full_name"], l["total"]) for l in data["department_leaders"]}
+        assert leaders == {"Data Engineering": ("membre", 12), "Formation": ("autre", 30)}
+        # Pas de « meilleurs par département » dans la vue d'un département
+        dept_view = api(world["lead"]).get("/api/v1/engagement/ranking/", {"period": "month"}).data
+        assert dept_view["department_leaders"] == []
+
+
+@pytest.mark.django_db
+class TestDepartmentWorkspace:
+    def test_relance_des_points_d_etape_a_remplir(self, world, monkeypatch):
+        sent = []
+        monkeypatch.setattr("apps.engagement.services.fire_and_forget", lambda fn, *a, **k: sent.append(a))
+        month = world["today"].replace(day=1).isoformat()
+        api(world["lead"]).post("/api/v1/engagement/checkins/", {
+            "department": world["dept"].pk, "members": [], "month": month,
+        }, format="json")
+        CheckIn.objects.filter(member=world["member"]).update(status=CheckIn.STATUS_SUBMITTED)
+        sent.clear()
+
+        r = api(world["lead"]).post("/api/v1/engagement/checkins/remind/", {
+            "department": world["dept"].pk, "month": month,
+        }, format="json")
+        assert r.status_code == 200
+        assert r.data["reminded"] == 1  # seul « idle » n'a pas rempli
+        assert sent == [(CheckIn.objects.get(member=world["idle"]).pk, True)]
+
+        r = api(world["member"]).post("/api/v1/engagement/checkins/remind/", {
+            "department": world["dept"].pk, "month": month,
+        }, format="json")
+        assert r.status_code == 403
+
+    def test_taches_du_departement_reservees_au_departement(self, world):
+        new_task(world)
+        url = f"/api/v1/projects/department-tasks/?department={world['dept'].pk}"
+        r = api(world["lead"]).get(url)
+        assert r.status_code == 200
+        assert [t["title"] for t in r.data] == ["Écrire les tests"]
+        assert api(world["member"]).get(url).status_code == 200
+        assert api(world["outsider"]).get(url).status_code == 403
+        assert api(world["president"]).get(url).status_code == 200

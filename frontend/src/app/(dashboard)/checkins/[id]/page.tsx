@@ -1,44 +1,18 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, CheckCircle2, Clock, MessageSquareText } from "lucide-react";
 import { engagementService } from "@/services/engagement.service";
 import { useI18n } from "@/i18n/I18nProvider";
-import { CRITERIA, type CheckInDetail, type CriterionKey, type Scores } from "@/types/engagement.types";
-
-/** Note de 1 à 5 : boutons radio (accessibles au clavier). */
-function ScoreInput({
-  name, value, onChange, disabled = false, hint,
-}: {
-  name: string; value?: number; onChange?: (v: number) => void; disabled?: boolean; hint?: number;
-}) {
-  return (
-    <div role="radiogroup" aria-label={name} className="flex gap-1.5">
-      {[1, 2, 3, 4, 5].map((n) => (
-        <button
-          key={n} type="button" role="radio" aria-checked={value === n} disabled={disabled}
-          onClick={() => onChange?.(n)}
-          className={`w-9 h-9 rounded-lg text-sm font-semibold border transition-colors relative ${
-            value === n
-              ? "bg-brand-blue text-white border-brand-blue"
-              : "border-line text-fg-soft hover:bg-surface-muted disabled:hover:bg-transparent"
-          }`}
-        >
-          {n}
-          {hint === n && value !== n && (
-            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-[3px] bg-brand-orange" aria-hidden="true" />
-          )}
-        </button>
-      ))}
-    </div>
-  );
-}
+import { CRITERIA, type CheckInDetail, type Scores } from "@/types/engagement.types";
+import { CheckInReviewForm, ScoreInput } from "@/features/engagement/CheckInReview";
+import { checkinPeriod } from "@/features/engagement/period";
 
 export default function CheckInPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { t } = useI18n();
+  const { t, intl } = useI18n();
   const x = t.checkins;
 
   const { data: checkin, isLoading, isError } = useQuery({
@@ -62,7 +36,7 @@ export default function CheckInPage({ params }: { params: Promise<{ id: string }
         </Link>
         <h1 className="text-2xl font-bold text-fg">{x.pageTitle}</h1>
         <p className="text-fg-muted text-sm mt-1">
-          {checkin.department_name} · {checkin.period_label}
+          {checkin.department_name} · <span className="capitalize">{checkinPeriod(checkin, intl)}</span>
           {checkin.viewer === "manager" && ` · ${checkin.member_name}`}
         </p>
       </div>
@@ -159,86 +133,12 @@ function MemberView({ checkin }: { checkin: Extract<CheckInDetail, { viewer: "me
 }
 
 function ManagerView({ checkin }: { checkin: Extract<CheckInDetail, { viewer: "manager" }> }) {
-  const { t, fmt } = useI18n();
-  const x = t.checkins;
-  const qc = useQueryClient();
-  const confirmed = checkin.status === "confirmed";
-  // Scores pré-remplis avec ceux proposés par le membre ; le responsable confirme ou ajuste.
-  const [scores, setScores] = useState<Partial<Scores>>(confirmed ? checkin.final_scores : checkin.self_scores);
-  const [feedback, setFeedback] = useState(checkin.feedback || x.feedbackTemplate);
-
-  useEffect(() => {
-    if (confirmed) setScores(checkin.final_scores);
-  }, [confirmed, checkin.final_scores]);
-
-  const confirm = useMutation({
-    mutationFn: () => engagementService.checkins.confirm(checkin.id, { final_scores: scores as Scores, feedback }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["checkin", String(checkin.id)] });
-      qc.invalidateQueries({ queryKey: ["checkins", checkin.department] });
-    },
-  });
-
-  const complete = CRITERIA.every((k) => scores[k]);
-  const mean = complete ? CRITERIA.reduce((sum, k) => sum + (scores[k] ?? 0), 0) / CRITERIA.length : 0;
-  const preview = Math.round(mean * 4);
-
+  const { t } = useI18n();
   if (checkin.status === "pending") {
-    return <p className="bg-surface rounded-2xl border border-line-soft p-6 text-sm text-fg-muted">{x.waitingMember}</p>;
+    return <p className="bg-surface rounded-2xl border border-line-soft p-6 text-sm text-fg-muted">{t.checkins.waitingMember}</p>;
   }
   if (checkin.status === "cancelled") {
-    return <p className="text-fg-subtle text-sm">{x.cancelledText}</p>;
+    return <p className="text-fg-subtle text-sm">{t.checkins.cancelledText}</p>;
   }
-
-  return (
-    <div className="space-y-6">
-      <section className="bg-surface rounded-2xl border border-line-soft p-6 space-y-5">
-        <div>
-          <h2 className="font-semibold text-fg">{x.scoresTitle}</h2>
-          <p className="text-xs text-fg-muted mt-1">{confirmed ? x.scoresConfirmed : x.scoresHint}</p>
-        </div>
-        {CRITERIA.map((key: CriterionKey) => (
-          <div key={key} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div>
-              <p className="text-sm text-fg">{x.criteria[key]}</p>
-              <p className="text-xs text-fg-subtle">{x.memberProposed(checkin.self_scores[key] ?? "—")}</p>
-            </div>
-            <ScoreInput name={x.criteria[key]} value={scores[key]} hint={checkin.self_scores[key]} disabled={confirmed}
-              onChange={(v) => setScores((s) => ({ ...s, [key]: v }))} />
-          </div>
-        ))}
-        <p className="text-sm font-semibold text-brand-deep">{x.pointsPreview(confirmed ? checkin.points ?? preview : preview)}</p>
-      </section>
-
-      <section className="bg-surface rounded-2xl border border-line-soft p-6 space-y-4">
-        <h2 className="font-semibold text-fg">{x.answersTitle}</h2>
-        {[[x.improveSelf, checkin.improve_self], [x.departmentHelp, checkin.department_help], [x.remark, checkin.remark]].map(([label, value]) => (
-          <div key={label}>
-            <p className="text-xs text-fg-muted mb-1">{label}</p>
-            <p className="text-sm text-fg-soft whitespace-pre-line">{value || "—"}</p>
-          </div>
-        ))}
-        {checkin.submitted_at && <p className="text-xs text-fg-subtle">{x.submittedOn(fmt.date(checkin.submitted_at))}</p>}
-      </section>
-
-      <section className="bg-surface rounded-2xl border border-line-soft p-6 space-y-3">
-        <label htmlFor="ci-feedback" className="font-semibold text-fg block">{x.feedbackTitle}</label>
-        <p className="text-xs text-fg-muted">{x.feedbackHint}</p>
-        <textarea id="ci-feedback" value={feedback} onChange={(e) => setFeedback(e.target.value)} rows={8} disabled={confirmed}
-          className="w-full border border-line rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue/20 resize-y bg-surface" />
-      </section>
-
-      {confirm.isError && <p className="text-sm text-red-500">{t.common.error}</p>}
-      {confirmed ? (
-        <p className="text-sm text-green-600 flex items-center gap-2"><CheckCircle2 size={16} /> {x.confirmedText(checkin.confirmed_by_name ?? "")}</p>
-      ) : (
-        <div className="flex justify-end">
-          <button onClick={() => confirm.mutate()} disabled={!complete || !feedback.trim() || confirm.isPending}
-            className="px-6 py-2.5 bg-brand-blue text-white rounded-xl text-sm font-semibold hover:bg-brand-deep disabled:opacity-50 transition-colors">
-            {confirm.isPending ? t.common.sending : x.confirm}
-          </button>
-        </div>
-      )}
-    </div>
-  );
+  return <CheckInReviewForm key={`${checkin.id}-${checkin.status}`} checkin={checkin} />;
 }

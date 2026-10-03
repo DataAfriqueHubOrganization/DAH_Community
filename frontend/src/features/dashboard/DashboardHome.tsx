@@ -7,6 +7,7 @@ import { eventsService } from "@/services/events.service";
 import { membersService } from "@/services/members.service";
 import { membershipsService } from "@/services/memberships.service";
 import { engagementService } from "@/services/engagement.service";
+import { checkinPeriod } from "@/features/engagement/period";
 import { Users, CalendarDays, Award, FileText, ArrowRight, Clock, CheckCircle2, ClipboardList } from "lucide-react";
 import { isAdmin, isBureau } from "@/types/auth.types";
 import { avatarUrl } from "@/lib/utils";
@@ -16,7 +17,7 @@ import type { CandidatureList } from "@/types/memberships.types";
 
 export function DashboardHome() {
   const { data: user, isLoading } = useCurrentUser();
-  const { t, fmt, label } = useI18n();
+  const { t, fmt, label, intl } = useI18n();
   const d = t.dashboardHome;
 
   const { data: eventsData } = useQuery({
@@ -89,7 +90,7 @@ export function DashboardHome() {
           <ClipboardList size={20} className="text-orange-700 shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-fg text-sm">{t.points.checkinTodo}</p>
-            <p className="text-xs text-fg-muted">{c.department_name} · {c.period_label}</p>
+            <p className="text-xs text-fg-muted">{c.department_name} · <span className="capitalize">{checkinPeriod(c, intl)}</span></p>
           </div>
           <span className="text-xs font-semibold text-orange-800 shrink-0">{t.points.fill} →</span>
         </Link>

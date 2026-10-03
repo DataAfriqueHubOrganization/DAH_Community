@@ -7,7 +7,7 @@ import { CheckCircle2, ClipboardList, Clock, MessageSquareText, Sparkles, Trophy
 import { engagementService } from "@/services/engagement.service";
 import { useI18n } from "@/i18n/I18nProvider";
 import { PeriodSelector } from "@/features/engagement/PeriodSelector";
-import { monthShort, todayIso } from "@/features/engagement/period";
+import { checkinPeriod, monthShort, todayIso } from "@/features/engagement/period";
 import type { PeriodType, PointEntry } from "@/types/engagement.types";
 
 /** « Mes points » : total par période, historique, points d'étape et retours.
@@ -46,7 +46,7 @@ export default function MyPointsPage() {
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-fg text-sm">{c.status === "pending" ? x.checkinTodo : x.checkinSent}</p>
             <p className="text-xs text-fg-muted">
-              {c.department_name} · {c.period_label}
+              {c.department_name} · <span className="capitalize">{checkinPeriod(c, intl)}</span>
               {c.due_date && c.status === "pending" && ` · ${t.checkins.before} ${fmt.date(c.due_date)}`}
             </p>
           </div>
@@ -98,7 +98,7 @@ export default function MyPointsPage() {
           <h2 className="font-semibold text-fg flex items-center gap-2"><MessageSquareText size={16} className="text-brand-blue" /> {x.feedbacks}</h2>
           {feedbacks.map((c) => (
             <Link key={c.id} href={`/checkins/${c.id}`} className="block bg-surface rounded-2xl border border-line-soft p-5 hover:border-brand-blue/40 transition-colors">
-              <p className="text-xs text-fg-muted mb-2">{c.department_name} · {c.period_label}</p>
+              <p className="text-xs text-fg-muted mb-2">{c.department_name} · <span className="capitalize">{checkinPeriod(c, intl)}</span></p>
               <p className="text-sm text-fg-soft whitespace-pre-line line-clamp-4">{c.feedback}</p>
             </Link>
           ))}

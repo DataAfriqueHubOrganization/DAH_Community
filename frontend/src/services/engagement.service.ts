@@ -20,13 +20,17 @@ export const engagementService = {
     list: (departmentId: number) =>
       api.get<CheckInManager[]>("/engagement/checkins/", { params: { department: departmentId } }),
     get: (id: number | string) => api.get<CheckInDetail>(`/engagement/checkins/${id}/`),
-    launch: (data: { department: number; members: number[]; period_label: string; due_date?: string | null }) =>
+    /** month : n'importe quel jour du mois évalué (YYYY-MM-DD). */
+    launch: (data: { department: number; members: number[]; month: string; due_date?: string | null }) =>
       api.post<{ created: number; skipped: number }>("/engagement/checkins/", data),
     submit: (id: number, data: { self_scores: Scores; improve_self: string; department_help: string; remark?: string }) =>
       api.post<CheckInDetail>(`/engagement/checkins/${id}/submit/`, data),
     confirm: (id: number, data: { final_scores: Scores; feedback: string }) =>
       api.post<CheckInDetail>(`/engagement/checkins/${id}/confirm/`, data),
     cancel: (id: number) => api.post<CheckInDetail>(`/engagement/checkins/${id}/cancel/`),
+    /** Relance par email les points d'étape « à remplir » du mois. */
+    remind: (data: { department: number; month: string }) =>
+      api.post<{ reminded: number }>("/engagement/checkins/remind/", data),
   },
 
   awards: {

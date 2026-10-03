@@ -19,6 +19,10 @@ export const projectsService = {
 
   myTasks: () => api.get<ProjectTask[]>("/projects/my-tasks/"),
 
+  /** Toutes les tâches des projets d'un département (membres, responsable, bureau). */
+  departmentTasks: (departmentId: number) =>
+    api.get<ProjectTask[]>("/projects/department-tasks/", { params: { department: departmentId } }),
+
   tasks: {
     list: (projectId: number) => api.get<ProjectTask[]>(`/projects/${projectId}/tasks/`),
 

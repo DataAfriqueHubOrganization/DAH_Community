@@ -15,7 +15,7 @@ from .models import Award, CheckIn
 from .serializers import (
     AdjustmentSerializer, AwardSerializer, CheckInManagerSerializer, CheckInMemberSerializer,
     ConfirmCheckInSerializer, DesignateAwardSerializer, LaunchCheckInSerializer,
-    PeriodQuerySerializer, SubmitCheckInSerializer,
+    PeriodQuerySerializer, RemindCheckInSerializer, SubmitCheckInSerializer,
 )
 
 
@@ -55,6 +55,8 @@ class RankingView(APIView):
             "department": {"id": department.id, "name": department.name} if department else None,
             "scopes": scopes,
             "rows": services.build_ranking(start, end, department),
+            # Vue communauté : le meilleur de chaque département sur la période.
+            "department_leaders": services.department_leaders(start, end) if department is None else [],
             "awards": awards,
         })
 
@@ -68,8 +70,10 @@ class MyPointsView(APIView):
         data = services.my_points(request.user, period, ref)
         checkins = CheckIn.objects.filter(member=request.user).exclude(
             status=CheckIn.STATUS_CANCELLED,
-        ).select_related("department")
+        ).select_related("department").order_by("-period_start", "-created_at")
         data["checkins"] = CheckInMemberSerializer(checkins, many=True).data
+        # Distinctions « meilleur général » (badge de la carte de membre).
+        data["awards"] = list(request.user.awards.order_by("-period_start").values("kind", "period_start"))
         return Response(data)
 
 
@@ -115,13 +119,23 @@ class CheckInViewSet(GenericViewSet):
         serializer.is_valid(raise_exception=True)
         result = services.launch_checkins(
             serializer.validated_data["department"], request.user,
-            serializer.validated_data["members"], serializer.validated_data["period_label"],
+            serializer.validated_data["members"], serializer.validated_data["month"],
             serializer.validated_data.get("due_date"),
         )
         return Response(
             {"created": len(result["created"]), "skipped": result["skipped"]},
             status=status.HTTP_201_CREATED,
         )
+
+    @action(detail=False, methods=["post"])
+    def remind(self, request):
+        """Relance les points d'étape « à remplir » d'un mois."""
+        serializer = RemindCheckInSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        count = services.remind_checkins(
+            serializer.validated_data["department"], request.user, serializer.validated_data["month"],
+        )
+        return Response({"reminded": count})
 
     @action(detail=True, methods=["post"])
     def submit(self, request, pk=None):
