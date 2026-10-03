@@ -24,6 +24,13 @@ class Command(BaseCommand):
         self._create_articles()
         self.stdout.write(self.style.SUCCESS("✅ Seed terminé avec succès!"))
 
+        # TEMPORAIRE — le service Render exécute encore « seed_dah » dans sa commande
+        # de build (réglée dans le tableau de bord, pas via render.yaml) : on y greffe
+        # la démo engagement pour qu'elle passe au prochain déploiement. Ne fait rien
+        # si la démo existe déjà. À retirer une fois la démo validée en prod.
+        from django.core.management import call_command
+        call_command("seed_engagement", stdout=self.stdout._out)
+
     def _create_users(self):
         self.stdout.write("  → Création des utilisateurs...")
         self.users = {}
