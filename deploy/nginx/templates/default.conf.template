@@ -1,0 +1,89 @@
+# Généré au démarrage par l'image nginx (envsubst) : ${DOMAIN} est remplacé,
+# les variables nginx ($host, $remote_addr…) sont laissées telles quelles.
+
+upstream dah_backend  { server backend:8000; }
+upstream dah_frontend { server frontend:3000; }
+
+# HTTP : uniquement la validation Let's Encrypt et la redirection vers HTTPS.
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${DOMAIN} www.${DOMAIN};
+    server_tokens off;
+
+    location /.well-known/acme-challenge/ { root /var/www/certbot; }
+    location / { return 301 https://${DOMAIN}$request_uri; }
+}
+
+# www → domaine principal
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name www.${DOMAIN};
+    server_tokens off;
+    ssl_certificate     /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
+    return 301 https://${DOMAIN}$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name ${DOMAIN};
+    server_tokens off;
+
+    ssl_certificate     /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 1d;
+
+    # HSTS et autres en-têtes de sécurité : posés par Django et Next.js eux-mêmes.
+
+    # Même plafond que Django (MAX_REQUEST_BYTES) : 20 Mo par envoi.
+    client_max_body_size 20m;
+
+    # En-têtes transmis à Django et Next.js : l'IP réelle et le protocole sont
+    # posés par nginx (jamais ceux envoyés par le visiteur).
+    proxy_set_header Host              $host;
+    proxy_set_header X-Real-IP         $remote_addr;
+    proxy_set_header X-Forwarded-For   $remote_addr;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_read_timeout 90s;
+
+    # Fichiers publics (avatars, couvertures…) servis directement.
+    location /media/ {
+        alias /srv/media/;
+        add_header X-Content-Type-Options nosniff always;
+        expires 30d;
+        access_log off;
+    }
+
+    # Documents privés : uniquement via Django (lien signé), qui délègue l'envoi
+    # à nginx par X-Accel-Redirect. Jamais accessibles directement.
+    location /protected/ {
+        internal;
+        alias /srv/private_media/;
+    }
+
+    # API, administration Django et fichiers statiques de Django.
+    location ~ ^/(api|admin|static)/ {
+        proxy_pass http://dah_backend;
+    }
+
+    # Tout le reste : le site Next.js. (Un bloc qui définit ses propres en-têtes
+    # n'hérite plus de ceux du serveur : on les répète.)
+    location / {
+        proxy_pass http://dah_frontend;
+        proxy_http_version 1.1;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade           $http_upgrade;
+        proxy_set_header Connection        "upgrade";
+    }
+}

@@ -37,9 +37,6 @@ frontend/npm-debug.log*
 frontend/yarn-debug.log*
 frontend/yarn-error.log*
 
-# Docker
-.dockerignore
-
 # Env files (root)
 .env
 .env.local
@@ -63,3 +60,5 @@ logs/
 # Prototype legacy (référence métier locale uniquement, non versionné)
 backend_legacy/
 front_legacy/
+backend/private_media/
+deploy/.env.prod

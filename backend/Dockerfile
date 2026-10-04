@@ -10,4 +10,13 @@ RUN pip install --no-cache-dir -r requirements/prod.txt
 
 COPY . .
 
+# Utilisateur sans privilèges ; dossiers des fichiers envoyés (volumes persistants).
+RUN useradd --create-home --uid 1000 app \
+    && mkdir -p /app/media /app/private_media /app/staticfiles \
+    && chown -R app:app /app
+USER app
+
 EXPOSE 8000
+
+# Migrations + fichiers statiques au démarrage, puis Gunicorn.
+CMD ["sh", "-c", "python manage.py migrate --noinput && python manage.py collectstatic --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 60 --access-logfile -"]

@@ -8,3 +8,12 @@ def _reset_rate_limits():
     chaque test pour qu'ils ne débordent pas d'un test sur l'autre."""
     cache.clear()
     yield
+
+
+@pytest.fixture(autouse=True)
+def _isolated_media(settings, tmp_path):
+    """Fichiers envoyés pendant les tests : dossiers temporaires, jamais ceux du projet."""
+    settings.MEDIA_ROOT = str(tmp_path / "media")
+    settings.PRIVATE_MEDIA_ROOT = str(tmp_path / "private_media")
+    settings.PRIVATE_MEDIA_ACCEL_REDIRECT = ""
+    return tmp_path

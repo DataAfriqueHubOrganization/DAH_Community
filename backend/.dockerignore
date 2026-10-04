@@ -1,0 +1,11 @@
+# Jamais dans l'image : secrets, fichiers envoyés, caches.
+.env
+.env.*
+media/
+private_media/
+staticfiles/
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+htmlcov/

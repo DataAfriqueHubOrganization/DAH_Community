@@ -1,6 +1,5 @@
 import uuid
 from django.conf import settings
-from django.core.files.storage import FileSystemStorage
 from django.core.validators import FileExtensionValidator
 from django.db import models
 from apps.common.mixins import TimestampMixin
@@ -45,12 +44,15 @@ class Payment(TimestampMixin):
 # ── Cotisations mensuelles et caisse ─────────────────────────────────────────
 
 def _attachment_storage():
-    """Justificatifs (PDF ou photo) : stockage « raw » Cloudinary en prod, comme
-    les CV — le disque de Render n'est pas conservé entre deux déploiements."""
-    if settings.DEBUG:
-        return FileSystemStorage()
-    from cloudinary_storage.storage import RawMediaCloudinaryStorage
-    return RawMediaCloudinaryStorage()
+    """Justificatifs de caisse : documents privés (voir apps.common.storage)."""
+    from apps.common.storage import private_storage
+    return private_storage()
+
+
+def _proof_storage():
+    """Captures des preuves de paiement : documents privés."""
+    from apps.common.storage import private_storage
+    return private_storage()
 
 
 class Contribution(TimestampMixin):
@@ -191,7 +193,7 @@ class PaymentDeclaration(TimestampMixin):
     method = models.CharField(max_length=20, choices=Contribution.METHOD_CHOICES, default=Contribution.METHOD_MOBILE_MONEY)
     reference = models.CharField(max_length=100, blank=True)
     proof = models.ImageField(
-        upload_to="payment_proofs/",
+        upload_to="payment_proofs/", storage=_proof_storage,
         validators=[FileExtensionValidator(["jpg", "jpeg", "png", "webp"]), MaxFileSizeValidator(5)],
         verbose_name="Preuve de paiement",
     )
