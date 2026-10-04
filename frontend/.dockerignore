@@ -1,0 +1,8 @@
+# Jamais dans l'image : secrets, dépendances locales (réinstallées), builds.
+.env
+.env.*
+node_modules/
+.next/
+out/
+coverage/
+Dockerfile.dev

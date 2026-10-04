@@ -31,7 +31,6 @@ THIRD_PARTY_APPS = [
     "drf_spectacular",
     "django_celery_beat",
     "django_extensions",
-    "cloudinary",
 ]
 
 LOCAL_APPS = [
@@ -125,15 +124,15 @@ USE_TZ = True
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
+MEDIA_ROOT = config("MEDIA_ROOT", default=str(BASE_DIR / "media"))
 
-# Cloudinary (stockage média persistant en prod — le disque Render n'est pas
-# conservé entre deux redéploiements). Sans effet en dev (STORAGES par défaut).
-CLOUDINARY_STORAGE = {
-    "CLOUD_NAME": config("CLOUDINARY_CLOUD_NAME", default=""),
-    "API_KEY": config("CLOUDINARY_API_KEY", default=""),
-    "API_SECRET": config("CLOUDINARY_API_SECRET", default=""),
-}
+# Documents sensibles (CV, preuves de paiement, justificatifs) : hors de
+# MEDIA_ROOT, jamais servis directement — uniquement par lien signé.
+PRIVATE_MEDIA_ROOT = config("PRIVATE_MEDIA_ROOT", default=str(BASE_DIR / "private_media"))
+PRIVATE_MEDIA_URL_MAX_AGE = config("PRIVATE_MEDIA_URL_MAX_AGE", default=60 * 60 * 12, cast=int)  # 12 h
+# Avec nginx : préfixe d'un emplacement « internal » pointant sur PRIVATE_MEDIA_ROOT
+# (ex. /protected/) — nginx envoie alors le fichier lui-même (X-Accel-Redirect).
+PRIVATE_MEDIA_ACCEL_REDIRECT = config("PRIVATE_MEDIA_ACCEL_REDIRECT", default="")
 
 # ─── REST Framework ──────────────────────────────────────────────
 REST_FRAMEWORK = {

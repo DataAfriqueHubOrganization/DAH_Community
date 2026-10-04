@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.views.static import serve as static_serve
+from apps.common.views import private_file
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 
 urlpatterns = [
@@ -21,6 +22,8 @@ urlpatterns = [
     path("api/v1/blog/", include("apps.blog.urls")),
     path("api/v1/projects/", include("apps.projects.urls")),
     path("api/v1/engagement/", include("apps.engagement.urls")),
+    # Documents privés (CV, preuves, justificatifs) : liens signés et expirants.
+    path("api/v1/files/", private_file, name="private-file"),
 
     # Documentation API
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
@@ -28,9 +31,9 @@ urlpatterns = [
     path("api/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
 ]
 
-# Fichiers média (avatars, CV...) : servis par Django dans tous les environnements
-# (pas de CDN/nginx dédié pour l'instant). Sur Render, le disque n'étant pas
-# persistant, ces fichiers ne survivent pas à un redéploiement.
+# Fichiers publics (avatars, couvertures…) : servis par nginx en production
+# (emplacement /media/) ; Django prend le relais en développement ou sans nginx.
+# Les documents privés ne sont jamais ici (voir apps.common.storage).
 urlpatterns += [
     path(
         f"{settings.MEDIA_URL.lstrip('/')}<path:path>",

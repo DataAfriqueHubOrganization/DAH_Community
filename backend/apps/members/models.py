@@ -7,6 +7,12 @@ from apps.common.validators import MaxFileSizeValidator
 from django.core.validators import FileExtensionValidator
 
 
+def _cv_storage():
+    """CV du profil : document privé (voir apps.common.storage)."""
+    from apps.common.storage import private_storage
+    return private_storage()
+
+
 class MemberProfile(TimestampMixin):
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
@@ -19,7 +25,7 @@ class MemberProfile(TimestampMixin):
     linkedin_url = models.URLField(blank=True)
     website_url = models.URLField(blank=True)
     cv = models.FileField(
-        upload_to="cvs/", null=True, blank=True,
+        upload_to="cvs/", null=True, blank=True, storage=_cv_storage,
         validators=[FileExtensionValidator(["pdf"]), MaxFileSizeValidator(10)],
     )
     is_public = models.BooleanField(default=True)

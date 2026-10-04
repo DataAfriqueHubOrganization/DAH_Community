@@ -47,18 +47,12 @@ CSRF_TRUSTED_ORIGINS = [o for o in config("CSRF_TRUSTED_ORIGINS", default="", ca
 if RENDER_EXTERNAL_HOSTNAME:
     CSRF_TRUSTED_ORIGINS.append(f"https://{RENDER_EXTERNAL_HOSTNAME}")
 
-# WhiteNoise sert les fichiers statiques directement depuis Gunicorn (pas de Redis/nginx nécessaire).
-# Cloudinary sert les fichiers média : le disque de Render n'est pas persistant
-# (effacé à chaque redéploiement), ce qui rendait les fichiers uploadés (CV,
-# avatars...) inaccessibles après coup malgré leur référence en base.
+# WhiteNoise sert les fichiers statiques depuis Gunicorn ; les fichiers envoyés
+# restent sur le disque du serveur (volumes persistants, voir deploy/).
 STORAGES = {
-    "default": {"BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage"},
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
 }
-# django-cloudinary-storage fournit sa propre commande collectstatic qui lit
-# encore l'ancien setting STATICFILES_STORAGE (au lieu de STORAGES["staticfiles"])
-# — sans ça, `manage.py collectstatic` plante avec AttributeError au build.
-STATICFILES_STORAGE = STORAGES["staticfiles"]["BACKEND"]
 
 # Pas de worker Celery/Redis déployé sur ce plan gratuit : les tâches (emails)
 # s'exécutent de façon synchrone dans la requête, via l'API HTTP de Brevo.
