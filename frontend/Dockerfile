@@ -1,5 +1,11 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
+# Next.js inline les variables NEXT_PUBLIC_* dans le bundle au moment du build,
+# pas au démarrage du conteneur — elles doivent donc arriver en build args.
+ARG NEXT_PUBLIC_API_BASE_URL
+ARG NEXT_PUBLIC_APP_URL
+ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL \
+    NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
 COPY package*.json ./
 RUN npm ci
 COPY . .

@@ -5,7 +5,9 @@ ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV PUPPETEER_SKIP_DOWNLOAD=true
 
 # Mettre à jour npm pour éviter le bug "Exit handler never called!" de v10
-RUN npm install -g npm@latest
+# (pinné à v11 : `npm@latest` casse sur node:20-alpine, les versions récentes
+# de npm exigeant node >=22)
+RUN npm install -g npm@11
 
 # Installer les dépendances au build (pas au démarrage)
 COPY package.json package-lock.json ./
