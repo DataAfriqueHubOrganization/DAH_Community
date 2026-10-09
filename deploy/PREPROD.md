@@ -17,12 +17,16 @@ dépôt** (elle se règle dans le tableau de bord de Render). Fusionner `deploy`
 `main` n'apporte donc que du code.
 
 ```bash
-git checkout deploy             # les nouveautés arrivent ici d'abord
+git switch deploy               # les nouveautés arrivent ici d'abord
 git push origin deploy          # → Render + Vercel se mettent à jour : on teste
 # quand tout est bon :
-git checkout main && git merge deploy && git push origin main
+git switch main && git merge deploy && git push origin main
+git switch deploy               # on revient travailler sur la pré-production
 # puis, sur le serveur Contabo : cd /opt/dah && git pull && dah up -d --build
 ```
+
+> La branche `deploy` porte le même nom que le dossier `deploy/` : utiliser
+> `git switch` (et non `git checkout`), et `git log deploy --` pour l'historique.
 
 ## Réglages à faire une fois
 
