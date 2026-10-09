@@ -136,11 +136,11 @@ export const helpEn: HelpContent = {
       blocks: [
         { type: "p", text: "Your lead made you a project manager. You organise the work, but you do not validate tasks: validation and points stay with the lead." },
         { type: "steps", items: [
-          "**Projects → New project**: title, description, status, due date, repository link if needed.",
-          "Open the project, then **Assign a task**: describe it with the editor (bold, lists, links), pick the person, due date and points (1 to 5).",
+          "**Projects → New project**, in 3 steps: pick a template (data project, event, training or from scratch), the name and, if you wish, the goal and due date; list the first tasks with their person and points; review, then create.",
+          "In the project board, type a title in **+ Add a task…** and press Enter. Then click the card and **Edit task** to describe it with the editor and pick the person, due date and points (1 to 5).",
           "Save: the person gets an email with the description and a link to their tasks.",
         ] },
-        { type: "note", text: "The pencil next to a task lets you edit or reassign it. Your rights end if you leave the department or the lead removes them." },
+        { type: "note", text: "The board sorts tasks in four columns: To do, In progress, To validate, Validated. Your rights end if you leave the department or the lead removes them." },
       ],
     },
     {
@@ -149,12 +149,12 @@ export const helpEn: HelpContent = {
       summary: "Team, project managers, task validation, check-ins.",
       link: { href: "/my-department", label: "Open My department" },
       blocks: [
-        { type: "p", text: "The lead and co-lead run their department with four tabs: **Overview**, **Projects**, **Team** and **Check-ins**. They manage every project of the department, including those created by others." },
+        { type: "p", text: "The lead and co-lead run their department with three tabs: **Today** (everything waiting for action: tasks to validate, check-ins to confirm, late work), **Projects** and **Team**. They manage every project of the department, including those created by others." },
         { type: "list", items: [
           "**Team → Add a member**; **End membership** when someone leaves the department.",
           "**Project managers** (top of the Team tab): pick a member, then **Add**. They create projects and assign tasks, without validating them.",
           "**Validate a task**: the orange “To validate” group → **Validate** (tick “Outstanding work” for +1 point) or **Send back** with what is left to do. Nobody validates their own task.",
-          "**Check-ins → Start a check-in**: month reviewed, deadline, members. Then **Read and confirm**: adjust the scores (only yours count) and send feedback.",
+          "**Team → Check-ins → Start a check-in**: month reviewed, deadline, members. Then **Read and confirm**: adjust the scores (only yours count) and send feedback.",
           "**Ranking**: the most involved members of your department.",
         ] },
       ],

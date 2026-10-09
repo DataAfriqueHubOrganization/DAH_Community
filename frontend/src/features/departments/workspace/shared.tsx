@@ -7,7 +7,7 @@ import type { CheckInStatus } from "@/types/engagement.types";
 import type { ProjectTask } from "@/types/projects.types";
 import { todayIso } from "@/features/engagement/period";
 
-export type WorkspaceTab = "overview" | "projects" | "team" | "checkins" | "tasks";
+export type WorkspaceTab = "today" | "projects" | "team" | "tasks";
 export type ViewerMode = "manager" | "membre" | "visiteur";
 export interface Assignee { id: number; name: string }
 

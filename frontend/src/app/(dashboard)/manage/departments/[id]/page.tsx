@@ -23,7 +23,7 @@ import { MemberTasksTab } from "@/features/departments/workspace/MemberTasksTab"
 import type { Assignee, ViewerMode, WorkspaceTab } from "@/features/departments/workspace/shared";
 
 const TABS: Record<ViewerMode, WorkspaceTab[]> = {
-  manager: ["overview", "projects", "team", "checkins"],
+  manager: ["today", "projects", "team"],
   membre: ["tasks", "projects", "team"],
   visiteur: ["team"],
 };
@@ -76,15 +76,19 @@ export default function DepartmentWorkspacePage({ params }: { params: Promise<{ 
   });
 
   const tabs = TABS[viewerMode];
-  const requested = searchParams.get("tab") as WorkspaceTab | null;
+  // Anciennes adresses (?tab=overview / ?tab=checkins) : redirigées vers les nouveaux onglets.
+  const rawTab = searchParams.get("tab");
+  const requested = (rawTab === "overview" ? "today" : rawTab === "checkins" ? "team" : rawTab) as WorkspaceTab | null;
+  const teamView: "members" | "checkins" = rawTab === "checkins" || searchParams.get("view") === "checkins" ? "checkins" : "members";
   const tab: WorkspaceTab = requested && tabs.includes(requested) ? requested : tabs[0];
   const selectedProjectId = Number(searchParams.get("project")) || null;
 
   /** Onglet (et projet) dans l'URL : partageable et conservé au rechargement. */
-  const navigate = useCallback((next: WorkspaceTab, project?: number | null) => {
+  const navigate = useCallback((next: WorkspaceTab, project?: number | null, view?: "members" | "checkins") => {
     const sp = new URLSearchParams(window.location.search);
     sp.set("tab", next);
     if (project) sp.set("project", String(project)); else sp.delete("project");
+    if (view === "checkins") sp.set("view", "checkins"); else sp.delete("view");
     window.history.replaceState(null, "", `?${sp.toString()}`);
   }, []);
 
@@ -117,17 +121,16 @@ export default function DepartmentWorkspacePage({ params }: { params: Promise<{ 
   for (const [leadId, name] of [[department.lead_id, department.lead_name], [department.co_lead_id, department.co_lead_name]] as const) {
     if (leadId && !assignees.some((a) => a.id === leadId)) assignees.unshift({ id: leadId, name: name ?? d.lead });
   }
-  const teamSize = assignees.length;
   const toConfirm = checkins.filter((c) => c.status === "submitted").length;
   const myOpenTasks = viewerMode === "membre"
     ? tasks.filter((task) => task.assigned_to === currentUser?.id && task.status !== "done").length
     : 0;
 
+  // Compteurs d'onglet : uniquement ce qui demande une action.
+  const toAct = tasks.filter((task) => task.status === "submitted").length + toConfirm;
   const count: Partial<Record<WorkspaceTab, React.ReactNode>> = {
-    projects: projects.length,
-    team: teamSize,
+    today: toAct || undefined,
     tasks: myOpenTasks || undefined,
-    checkins: toConfirm > 0 ? w.toConfirm(toConfirm) : undefined,
   };
 
   return (
@@ -172,7 +175,7 @@ export default function DepartmentWorkspacePage({ params }: { params: Promise<{ 
                   {badge !== undefined && (
                     <span className={cn(
                       "text-[11px] font-bold rounded-full px-2 py-0.5",
-                      key === "checkins" ? "bg-brand-orange/15 text-orange-800 dark:text-orange-300" : "bg-surface-strong text-fg-soft",
+                      key === "today" ? "bg-brand-orange/15 text-orange-800 dark:text-orange-300" : "bg-surface-strong text-fg-soft",
                     )}>{badge}</span>
                   )}
                 </button>
@@ -190,16 +193,15 @@ export default function DepartmentWorkspacePage({ params }: { params: Promise<{ 
         </p>
       )}
 
-      {tab === "overview" && (
+      {tab === "today" && (
         loadingCheckins || loadingTasks ? <TabSkeleton /> : (
           <OverviewTab
             departmentId={departmentId}
-            memberCount={teamSize}
             tasks={tasks}
             checkins={checkins}
             ranking={ranking?.rows ?? []}
             currentUserId={currentUser?.id}
-            onNavigate={(next) => navigate(next)}
+            onNavigate={(next, view) => navigate(next, null, view)}
             onTasksChanged={onTasksChanged}
           />
         )
@@ -224,26 +226,44 @@ export default function DepartmentWorkspacePage({ params }: { params: Promise<{ 
       )}
 
       {tab === "team" && (
-        <TeamTab
-          department={department}
-          viewerMode={viewerMode}
-          currentUserId={currentUser?.id}
-          tasks={tasks}
-          checkins={checkins}
-          ranking={ranking?.rows ?? []}
-          canLaunchCheckins={manager}
-        />
-      )}
-
-      {tab === "checkins" && (
-        loadingCheckins ? <TabSkeleton /> : (
-          <CheckInsTab
-            departmentId={departmentId}
-            checkins={checkins}
-            members={assignees.filter((a) => a.id !== currentUser?.id)}
-            isLoading={loadingCheckins}
-          />
-        )
+        <div className="space-y-5">
+          {/* Responsable : l'équipe et ses points d'étape, sous le même onglet. */}
+          {manager && (
+            <div role="tablist" aria-label={w.tabs.team} className="inline-flex gap-1 p-1 bg-surface-strong rounded-xl">
+              {(["members", "checkins"] as const).map((v) => (
+                <button key={v} type="button" role="tab" aria-selected={teamView === v}
+                  onClick={() => navigate("team", null, v)}
+                  className={cn("h-9 px-4 rounded-lg text-sm transition-all",
+                    teamView === v ? "bg-surface shadow-sm font-semibold text-fg" : "text-fg-soft hover:text-fg")}>
+                  {v === "members" ? w.teamMembers : t.checkins.title}
+                  {v === "checkins" && toConfirm > 0 && (
+                    <span className="ml-2 text-[11px] font-bold rounded-full px-2 py-0.5 bg-brand-orange/15 text-orange-800 dark:text-orange-300">{toConfirm}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+          {manager && teamView === "checkins" ? (
+            loadingCheckins ? <TabSkeleton /> : (
+              <CheckInsTab
+                departmentId={departmentId}
+                checkins={checkins}
+                members={assignees.filter((a) => a.id !== currentUser?.id)}
+                isLoading={loadingCheckins}
+              />
+            )
+          ) : (
+            <TeamTab
+              department={department}
+              viewerMode={viewerMode}
+              currentUserId={currentUser?.id}
+              tasks={tasks}
+              checkins={checkins}
+              ranking={ranking?.rows ?? []}
+              canLaunchCheckins={manager}
+            />
+          )}
+        </div>
       )}
     </div>
   );

@@ -70,3 +70,22 @@ class TestDepartmentVisibility:
             {"id": setup["dept_a"].pk, "name": "Dept A"},
             {"id": setup["dept_b"].pk, "name": "Dept B"},
         ]
+
+
+@pytest.mark.django_db
+def test_liste_resume_l_activite():
+    from datetime import date, timedelta
+
+    from apps.projects.models import Project, ProjectTask
+    admin = User.objects.create_user(email="adm@dah.test", password="x", first_name="A", last_name="D", role="admin")
+    dept = Department.objects.create(name="Data")
+    p = Project.objects.create(title="P", department=dept)
+    Project.objects.create(title="Fini", department=dept, status="completed")
+    ProjectTask.objects.create(project=p, title="A", status="submitted")
+    ProjectTask.objects.create(project=p, title="B", status="todo", due_date=date.today() - timedelta(days=2))
+    ProjectTask.objects.create(project=p, title="C", status="todo")
+    client = APIClient()
+    client.force_authenticate(admin)
+    data = client.get("/api/v1/departments/").data
+    row = (data["results"] if isinstance(data, dict) else data)[0]
+    assert row["activity"] == {"active_projects": 1, "to_validate": 1, "late": 1}

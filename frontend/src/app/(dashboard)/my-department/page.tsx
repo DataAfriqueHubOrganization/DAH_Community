@@ -18,7 +18,8 @@ export default function MyDepartmentPage() {
 
   useEffect(() => {
     if (data?.department) {
-      router.replace(`/manage/departments/${data.department.id}`);
+      // On garde ?tab=… (lien « Voir mes tâches » des emails, page Aide).
+      router.replace(`/manage/departments/${data.department.id}${window.location.search}`);
     }
   }, [data, router]);
 

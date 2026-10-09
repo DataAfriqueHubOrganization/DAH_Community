@@ -140,11 +140,11 @@ export const helpFr: HelpContent = {
       blocks: [
         { type: "p", text: "Votre responsable vous a désigné gestionnaire de projets. Vous organisez le travail, mais vous ne validez pas les tâches : la validation et les points restent au responsable." },
         { type: "steps", items: [
-          "**Projets → Nouveau projet** : titre, description, statut, échéance, lien du dépôt si besoin.",
-          "Ouvrez le projet puis **Assigner une tâche** : décrivez-la avec l'éditeur (gras, listes, liens), choisissez la personne, l'échéance et les points (1 à 5).",
+          "**Projets → Nouveau projet**, en 3 étapes : choisissez un modèle (projet data, événement, formation ou de zéro), le nom et, si vous voulez, l'objectif et l'échéance ; listez les premières tâches avec leur personne et leurs points ; vérifiez, puis créez.",
+          "Dans le tableau du projet, tapez un titre dans **+ Ajouter une tâche…** puis Entrée. Cliquez ensuite sur la carte, puis **Modifier la tâche** pour la décrire avec l'éditeur, choisir la personne, l'échéance et les points (1 à 5).",
           "Enregistrez : la personne reçoit un email avec la description et un lien vers ses tâches.",
         ] },
-        { type: "note", text: "Le crayon à côté d'une tâche permet de la modifier ou de la réaffecter. Vos droits s'arrêtent si vous quittez le département ou si le responsable vous les retire." },
+        { type: "note", text: "Le tableau range les tâches en quatre colonnes : À faire, En cours, À valider, Validées. Vos droits s'arrêtent si vous quittez le département ou si le responsable vous les retire." },
       ],
     },
     {
@@ -153,12 +153,12 @@ export const helpFr: HelpContent = {
       summary: "Équipe, gestionnaires, validation des tâches, points d'étape.",
       link: { href: "/my-department", label: "Ouvrir Mon département" },
       blocks: [
-        { type: "p", text: "Le responsable et le co-responsable gèrent leur département avec quatre onglets : **Vue d'ensemble**, **Projets**, **Équipe** et **Points d'étape**. Ils gèrent tous les projets du département, y compris ceux créés par d'autres." },
+        { type: "p", text: "Le responsable et le co-responsable gèrent leur département avec trois onglets : **Aujourd'hui** (tout ce qui attend une action : tâches à valider, points d'étape à confirmer, retards), **Projets** et **Équipe**. Ils gèrent tous les projets du département, y compris ceux créés par d'autres." },
         { type: "list", items: [
           "**Équipe → Ajouter un membre** ; **Terminer l'adhésion** quand quelqu'un quitte le département.",
           "**Gestionnaires de projets** (haut de l'onglet Équipe) : choisissez un membre puis **Ajouter**. Il crée des projets et assigne des tâches, sans les valider.",
           "**Valider une tâche** : groupe « À valider » en orange → **Valider** (cochez « Travail remarquable » pour +1 point) ou **Renvoyer** avec ce qu'il reste à faire. Personne ne valide sa propre tâche.",
-          "**Points d'étape → Lancer un point d'étape** : mois évalué, date limite, membres concernés. Puis **Lire et confirmer** : ajustez les scores (seuls les vôtres comptent) et envoyez un retour.",
+          "**Équipe → Points d'étape → Lancer un point d'étape** : mois évalué, date limite, membres concernés. Puis **Lire et confirmer** : ajustez les scores (seuls les vôtres comptent) et envoyez un retour.",
           "**Classement** : les membres les plus impliqués de votre département.",
         ] },
       ],

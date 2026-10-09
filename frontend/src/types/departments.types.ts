@@ -19,6 +19,8 @@ export interface Department {
   member_count: number;
   can_manage: boolean;
   is_member: boolean;
+  /** Ce qui demande une action (liste des départements). */
+  activity?: { active_projects: number; to_validate: number; late: number };
   created_at: string;
 }
 

@@ -7,11 +7,18 @@ import { cn } from "@/lib/utils";
 
 /** Description d'une tâche (HTML de l'éditeur, nettoyé par le serveur, ou texte
  *  brut des anciennes tâches) : repliée sur une ligne, dépliable. */
-export function TaskDescription({ description }: { description: string }) {
+export function TaskDescription({ description, expanded = false }: {
+  description: string;
+  /** Affichée en entier (panneau de détail), sans repli. */
+  expanded?: boolean;
+}) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   if (!description) return null;
   const html = toHtml(description);
+  if (expanded) {
+    return <div className="rich-content text-sm text-fg-soft" dangerouslySetInnerHTML={{ __html: html }} />;
+  }
   const long = html.replace(/<[^>]*>/g, "").length > 80 || /<(ul|ol|h2|h3|blockquote)/.test(html) || (html.match(/<p>/g)?.length ?? 0) > 1;
   return (
     <div className="mt-1">

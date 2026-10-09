@@ -45,14 +45,27 @@ class DepartmentListSerializer(serializers.ModelSerializer):
     member_count = serializers.SerializerMethodField()
     can_manage = serializers.SerializerMethodField()
     is_member = serializers.SerializerMethodField()
+    # Résumé pour la liste : ce qui demande une action dans le département.
+    activity = serializers.SerializerMethodField()
 
     class Meta:
         model = Department
         fields = [
             "id", "name", "description",
             "lead_id", "lead_name", "co_lead_id", "co_lead_name",
-            "member_count", "can_manage", "is_member", "created_at",
+            "member_count", "can_manage", "is_member", "activity", "created_at",
         ]
+
+    def get_activity(self, obj) -> dict:
+        from apps.projects.models import Project, ProjectTask
+        today = timezone.now().date()
+        tasks = ProjectTask.objects.filter(project__department=obj)
+        return {
+            "active_projects": Project.objects.filter(department=obj).exclude(
+                status__in=["completed", "archived"]).count(),
+            "to_validate": tasks.filter(status="submitted").count(),
+            "late": tasks.filter(status__in=["todo", "in_progress", "blocked"], due_date__lt=today).count(),
+        }
 
     def get_lead_id(self, obj) -> int | None:
         return obj.lead_id
