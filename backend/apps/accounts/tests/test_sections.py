@@ -93,3 +93,20 @@ def test_migration_keeps_current_access():
     assert tres.sections == migration.BUREAU + ["treasury"]
     assert pdt.sections == migration.BUREAU + ["applications"]
     assert member.sections == []
+
+
+@pytest.mark.django_db
+def test_me_exposes_department_capabilities():
+    from datetime import date
+
+    from apps.departments.models import Department, DepartmentMembership
+    lead = make("lead@exemple.org", role="responsable")
+    pm = make("pm@exemple.org", role="membre")
+    plain = make("m@exemple.org", role="membre")
+    dept = Department.objects.create(name="Data", lead=lead)
+    DepartmentMembership.objects.create(department=dept, user=pm, start_date=date(2026, 1, 1))
+    dept.project_managers.add(pm)
+    caps = lambda u: api(u).get("/api/v1/auth/me/").data["capabilities"]  # noqa: E731
+    assert caps(lead) == {"leads_department": True, "manages_projects": False}
+    assert caps(pm) == {"leads_department": False, "manages_projects": True}
+    assert caps(plain) == {"leads_department": False, "manages_projects": False}

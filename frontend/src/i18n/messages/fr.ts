@@ -72,6 +72,7 @@ export const fr = {
     rights: "Tous droits réservés",
   },
   sidebar: {
+    help: "Aide",
     emails: "Emails",
     myContributions: "Mes cotisations",
     treasury: "Trésorerie",
@@ -1508,6 +1509,26 @@ export const fr = {
       failedList: "Échecs",
       checkAddress: "vérifiez leur adresse dans Gestion · Membres.",
     },
+  },
+  help: {
+    title: "Aide",
+    greeting: (name: string) => `Bonjour ${name}, voici comment utiliser votre espace.`,
+    intro: "Cette page ne montre que ce qui concerne votre compte. Elle s'adapte si vos rôles changent.",
+    yourRoles: "Votre compte",
+    roles: {
+      visitor: "Visiteur", candidate: "Candidat", member: "Membre", admin: "Administrateur",
+      lead: "Responsable de département", projectManager: "Gestionnaire de projets",
+    },
+    sectionsLabel: "Sections de gestion",
+    search: "Rechercher dans l'aide…",
+    noResult: "Aucun sujet ne correspond à votre recherche.",
+    contents: "Sommaire",
+    groups: {
+      account: "Votre compte", member: "Au quotidien", department: "Votre département",
+      management: "Vos sections de gestion", admin: "Administration",
+    },
+    faq: "Questions fréquentes",
+    contact: "Une question qui n'est pas ici ? Écrivez au bureau de Data Afrique Hub ou à l'administrateur.",
   },
   env: {
     preprod: "Pré-production",

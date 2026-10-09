@@ -34,6 +34,8 @@ export interface User {
   department: UserDepartment | null;
   /** Sections ouvertes à l'utilisateur (calculées par le serveur ; toutes pour l'admin). */
   sections: Section[];
+  /** Rôles dans les départements. */
+  capabilities?: { leads_department: boolean; manages_projects: boolean };
   email_verified: boolean;
   created_at: string;
 }

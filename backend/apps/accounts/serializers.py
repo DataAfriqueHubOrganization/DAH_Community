@@ -13,18 +13,32 @@ class UserSerializer(serializers.ModelSerializer):
     department = serializers.SerializerMethodField()
     # Sections de gestion ouvertes à l'utilisateur (toutes pour l'admin) : menu du site.
     sections = serializers.ListField(source="granted_sections", child=serializers.CharField(), read_only=True)
+    # Rôles dans les départements (page Aide, menus) : responsable / gestionnaire de projets.
+    capabilities = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = [
             "id", "email", "first_name", "last_name", "full_name",
-            "phone", "avatar", "role", "poste", "department", "sections", "email_verified", "created_at",
+            "phone", "avatar", "role", "poste", "department", "sections", "capabilities",
+            "email_verified", "created_at",
         ]
         read_only_fields = ["id", "email", "role", "poste", "department", "email_verified", "created_at"]
 
     def get_department(self, obj):
         from apps.departments.services import get_department_dict
         return get_department_dict(obj)
+
+    def get_capabilities(self, obj) -> dict:
+        from django.db.models import Q
+        from apps.departments.models import Department
+        from apps.departments.services import can_manage_projects
+
+        leads = Department.objects.filter(Q(lead=obj) | Q(co_lead=obj)).exists()
+        manages = not leads and any(
+            can_manage_projects(obj, d) for d in obj.managed_project_departments.all()
+        )
+        return {"leads_department": leads, "manages_projects": manages}
 
 
 class UserAdminSerializer(serializers.ModelSerializer):

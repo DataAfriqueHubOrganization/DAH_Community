@@ -71,6 +71,7 @@ export const en: Messages = {
     rights: "All rights reserved",
   },
   sidebar: {
+    help: "Help",
     emails: "Emails",
     myContributions: "My contributions",
     treasury: "Treasury",
@@ -1487,6 +1488,26 @@ export const en: Messages = {
       failedList: "Failures",
       checkAddress: "check their address in Management · Members.",
     },
+  },
+  help: {
+    title: "Help",
+    greeting: (name: string) => `Hello ${name}, here is how to use your space.`,
+    intro: "This page only shows what concerns your account. It adapts when your roles change.",
+    yourRoles: "Your account",
+    roles: {
+      visitor: "Visitor", candidate: "Applicant", member: "Member", admin: "Administrator",
+      lead: "Department lead", projectManager: "Project manager",
+    },
+    sectionsLabel: "Management sections",
+    search: "Search help…",
+    noResult: "No topic matches your search.",
+    contents: "Contents",
+    groups: {
+      account: "Your account", member: "Day to day", department: "Your department",
+      management: "Your management sections", admin: "Administration",
+    },
+    faq: "Frequently asked questions",
+    contact: "A question that isn't here? Write to the Data Afrique Hub board or the administrator.",
   },
   env: {
     preprod: "Pre-production",

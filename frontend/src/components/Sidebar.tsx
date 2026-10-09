@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { LayoutDashboard, Users, CalendarDays, FileText, Settings, ChevronLeft, ChevronRight, Home, CreditCard, Building2, Newspaper, ShieldCheck, Star, Trophy, Wallet, Landmark, Mail } from "lucide-react";
+import { LayoutDashboard, Users, CalendarDays, FileText, Settings, ChevronLeft, ChevronRight, Home, CreditCard, Building2, Newspaper, ShieldCheck, Star, Trophy, Wallet, Landmark, Mail, LifeBuoy } from "lucide-react";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { Logo } from "@/components/ui/Logo";
 import { useI18n } from "@/i18n/I18nProvider";
@@ -28,6 +28,7 @@ const allNavItems = [
   { href: "/memberships", key: "applications", icon: FileText, access: "applications" },
   { href: "/manage/access", key: "access", icon: ShieldCheck, access: "admin" },
   { href: "/member-card", key: "memberCard", icon: CreditCard, access: "all" },
+  { href: "/help", key: "help", icon: LifeBuoy, access: "all" },
 ] as const;
 
 export function Sidebar({ mobileOpen = false, onMobileClose }: { mobileOpen?: boolean; onMobileClose?: () => void }) {
