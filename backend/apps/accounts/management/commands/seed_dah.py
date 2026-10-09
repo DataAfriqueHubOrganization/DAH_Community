@@ -29,6 +29,10 @@ class Command(BaseCommand):
         self.password = demo_password()
         self.stdout.write("🌱 Début du seed DAH...")
         self._create_users()
+        # TEMPORAIRE — pré-production : remplace l'ancien mot de passe public des comptes
+        # de démo déjà présents sur Render, au prochain build (seed_dah --users-only).
+        # À commenter une fois la pré-production redéployée.
+        reset_passwords = True
         if reset_passwords:
             self._reset_passwords()
         if users_only:

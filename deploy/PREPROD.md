@@ -92,7 +92,9 @@ Les comptes du README (`admin@dah.com`, `president@dah.com`, `tresorier@dah.com`
 connu de tous et ne sert qu'en local.
 
 Si ces comptes existent déjà sur Render avec l'ancien mot de passe (anciens
-déploiements), le remplacer une fois — Render → `dah-backend` → **Shell** :
+déploiements), le remplacer une fois. Pour l'instant, c'est **automatique** au
+build (`seed_dah` force `--reset-passwords` ; ligne temporaire à commenter
+ensuite). Sinon, Render → `dah-backend` → **Shell** :
 
 ```bash
 python manage.py seed_dah --users-only --reset-passwords
