@@ -40,3 +40,18 @@ def test_comptes_de_demo_jamais_envoyes_via_brevo(settings, monkeypatch):
     assert sent == []
     send_branded_email(subject="Test", recipient_list=["alice@dah.com", "awa@exemple.org"], paragraphs=["x"])
     assert [r["email"] for r in sent[0]["to"]] == ["awa@exemple.org"]
+
+
+def test_comptes_de_demo_detournes(settings, monkeypatch):
+    settings.BREVO_API_KEY = "cle-test"
+    settings.EMAIL_REDIRECT_TO = []
+    settings.DEMO_EMAIL_REDIRECT_TO = ["moi@exemple.org"]
+    sent = []
+    monkeypatch.setattr("apps.common.email.requests.post",
+                        lambda url, json, **kw: sent.append(json) or type("R", (), {"raise_for_status": lambda self: None})())
+    send_branded_email(subject="Rappel", recipient_list=["alice@dah.com", "awa@exemple.org"], paragraphs=["x"])
+    assert len(sent) == 2
+    demo, real = sent
+    assert [r["email"] for r in demo["to"]] == ["moi@exemple.org"]
+    assert demo["subject"] == "[Démo → alice@dah.com] Rappel"
+    assert [r["email"] for r in real["to"]] == ["awa@exemple.org"] and real["subject"] == "Rappel"

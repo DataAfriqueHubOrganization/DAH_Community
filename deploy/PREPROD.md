@@ -57,7 +57,9 @@ Service `dah-backend` → **Settings** :
 - `CLIENT_IP_HEADER` = `HTTP_CF_CONNECTING_IP` (Render est derrière Cloudflare)
 - Emails : envoyés au destinataire concerné, comme en production — **ne pas
   définir** `EMAIL_REDIRECT_TO`. Les comptes de démo (`@dah.com`) ne reçoivent
-  jamais rien (adresses fictives).
+  jamais rien directement (adresses fictives) :
+- `DEMO_EMAIL_REDIRECT_TO` = votre boîte mail : les emails des comptes de démo y
+  sont détournés, objet `[Démo → alice@dah.com] …` (vide = ignorés).
   Options : `EMAIL_REDIRECT_TO` = une vraie boîte mail pour tout détourner vers
   elle (jamais l'identifiant SMTP `…@smtp-brevo.com`) ; `EMAIL_ENABLED` = `false`
   pour n'envoyer aucun email.

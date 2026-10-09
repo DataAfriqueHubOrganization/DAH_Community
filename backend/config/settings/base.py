@@ -262,6 +262,9 @@ BREVO_API_KEY = config("BREVO_API_KEY", default="")
 EMAIL_REDIRECT_TO = [a.strip() for a in config("EMAIL_REDIRECT_TO", default="").split(",") if a.strip()]
 # false : aucun email envoyé (seulement journalisé).
 EMAIL_ENABLED = config("EMAIL_ENABLED", default=True, cast=bool)
+# Emails des comptes de démo (@dah.com, adresses fictives) détournés vers ces
+# adresses (séparées par des virgules) ; vide = ignorés. Utile en pré-production.
+DEMO_EMAIL_REDIRECT_TO = [a.strip() for a in config("DEMO_EMAIL_REDIRECT_TO", default="").split(",") if a.strip()]
 
 # ─── Sécurité headers ────────────────────────────────────────────
 SECURE_BROWSER_XSS_FILTER = True

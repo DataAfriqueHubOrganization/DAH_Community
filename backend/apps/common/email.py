@@ -46,11 +46,23 @@ def send_transactional_email(
 
     if settings.BREVO_API_KEY:
         # Comptes de démo (@dah.com) : adresses fictives, un envoi réel rebondirait
-        # et nuirait à la réputation d'expéditeur. (En local, Mailpit les affiche.)
-        skipped = [addr for addr in recipient_list if addr.lower().endswith(DEMO_DOMAIN)]
-        if skipped:
-            logger.info("Comptes de démo ignorés : %s", ", ".join(skipped))
-            recipient_list = [addr for addr in recipient_list if addr not in skipped]
+        # et nuirait à la réputation d'expéditeur. Leurs emails sont détournés vers
+        # DEMO_EMAIL_REDIRECT_TO, ou ignorés s'il n'est pas défini. (En local,
+        # sans clé Brevo, Mailpit les affiche tels quels.)
+        demo = [addr for addr in recipient_list if addr.lower().endswith(DEMO_DOMAIN)]
+        if demo:
+            recipient_list = [addr for addr in recipient_list if addr not in demo]
+            demo_redirect = [a for a in getattr(settings, "DEMO_EMAIL_REDIRECT_TO", [])
+                             if not a.lower().endswith(DEMO_DOMAIN)]
+            if demo_redirect:
+                original = ", ".join(demo)
+                send_transactional_email(
+                    f"[Démo → {original}] {subject}",
+                    f"(Compte de démo — destinataire : {original})\n\n{message}",
+                    demo_redirect, html_message=html_message,
+                )
+            else:
+                logger.info("Comptes de démo ignorés : %s", ", ".join(demo))
             if not recipient_list:
                 return
 
