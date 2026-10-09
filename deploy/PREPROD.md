@@ -5,7 +5,7 @@
 | Hébergement | Render (API) + Vercel (site) | Contabo (tout, voir DEPLOY.md) |
 | Branche Git | `deploy` | `main` |
 | Adresse | `*.onrender.com` / `*.vercel.app` | `dataafriquehub.org` |
-| Données | démonstration (comptes `@dah.com`) | réelles |
+| Base de données | celle de Render, **séparée** | celle de Contabo, **séparée** |
 | Fichiers | Cloudinary (`MEDIA_STORAGE=cloudinary`, réglé dans Render) | disque du serveur |
 | Emails | tous détournés vers une boîte de test | envoyés aux membres |
 | Moteurs de recherche | exclue (`noindex`) | indexée |
@@ -47,9 +47,9 @@ Service `dah-backend` → **Settings** :
 - **Branch** : `deploy` (Render ne suit plus `main`)
 - **Build Command** :
   ```
-  pip install -r requirements/prod.txt && python manage.py migrate && python manage.py collectstatic --noinput && python manage.py seed_dah && python manage.py seed_engagement && python manage.py seed_treasury
+  pip install -r requirements/prod.txt && python manage.py migrate && python manage.py collectstatic --noinput
   ```
-  (données de démonstration ; sans effet si elles existent déjà)
+  (aucun seed : la base de Render garde ses propres données)
 
 **Environment** :
 - `MEDIA_STORAGE` = `cloudinary` (le disque de Render est effacé à chaque redémarrage)
@@ -62,21 +62,24 @@ Service `dah-backend` → **Settings** :
 - `ENV` = `prod`, `ALLOWED_HOSTS`, `DATABASE_URL`, `BREVO_API_KEY` : déjà en place.
 - `SECRET_KEY` : différente de celle de la production.
 
-### 3. Données de la pré-production
+### 3. Données : Render et Contabo ne se mélangent jamais
 
-La base Render contient aujourd'hui les **vraies données** (c'était la production).
-Une fois la production installée sur Contabo **et les données reprises** (DEPLOY.md, étape 5) :
+Chaque environnement a **sa propre base et ses propres fichiers** :
 
-1. Render → **New → PostgreSQL** (nouvelle base, plan gratuit).
-2. Service `dah-backend` → Environment → `DATABASE_URL` = l'*Internal Database URL* de la nouvelle base.
-3. Redéployer : la commande de build crée les tables et les données de démonstration.
-4. Supprimer l'ancienne base Render.
+| | Render (pré-production) | Contabo (production) |
+|---|---|---|
+| Base | PostgreSQL de Render (`DATABASE_URL` dans Render) | PostgreSQL du serveur (volume Docker) |
+| Fichiers | Cloudinary | disque du serveur |
+| `SECRET_KEY` | la sienne | une autre |
 
-Ainsi, la pré-production ne contient plus aucune donnée personnelle réelle.
+- Aucun transfert de données dans un sens ou dans l'autre (pas de `pg_dump` /
+  `pg_restore` entre les deux).
+- Fusionner `deploy` dans `main` ne déplace que du **code** ; les **migrations**
+  s'appliquent ensuite à chaque base, séparément.
+- Un compte créé sur l'une n'existe pas sur l'autre.
 
-> Les bases PostgreSQL gratuites de Render expirent au bout de 30 jours : recréer
-> la base (étapes 1 à 3) quand Render le signale — les données de démonstration
-> se régénèrent toutes seules.
+> Les bases PostgreSQL gratuites de Render expirent : penser à la sauvegarder
+> ou à passer sur un plan payant si ses données doivent être conservées.
 
 ### 4. GitHub (conseillé)
 
