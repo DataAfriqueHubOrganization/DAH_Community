@@ -34,11 +34,15 @@ class TestUserModel:
         )
         assert user.email == "Test@dah.com"
 
-    def test_is_bureau(self):
-        # Le bureau = un poste (président, trésorier…) ou le rôle admin.
+    def test_has_section(self):
+        # Plus d'accès automatique par poste : seulement les sections accordées.
         user = User(role="membre", poste="president")
-        assert user.is_bureau
-        user.poste = None
-        assert not user.is_bureau
-        user.role = "admin"
-        assert user.is_bureau
+        assert not user.has_section("events")
+        user.sections = ["events"]
+        assert user.has_section("events") and not user.has_section("treasury")
+        user.role = "candidat"
+        assert not user.has_section("events")  # jamais pour un non-membre
+        user.role, user.is_active = "membre", False
+        assert not user.has_section("events")  # ni pour un compte désactivé
+        admin = User(role="admin")
+        assert admin.has_section("treasury") and len(admin.granted_sections) == 8

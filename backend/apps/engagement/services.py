@@ -22,7 +22,7 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 
 from apps.common.background import fire_and_forget
 from apps.common.mixins import ReviewableTaskMixin
-from apps.common.permissions import is_bureau
+from apps.common.permissions import SECTIONS, has_section
 from apps.departments.services import (
     can_manage_department, get_department_dict, get_department_member_ids,
 )
@@ -60,12 +60,12 @@ def _task_fk(task) -> dict:
 
 
 def can_validate_task(user, task) -> bool:
-    """Responsable (lead/co-lead) du département de la tâche, ou bureau — jamais
+    """Responsable (lead/co-lead) du département de la tâche, ou section Départements — jamais
     l'assigné lui-même : personne ne valide sa propre tâche."""
     if task.assigned_to_id == user.id:
         return False
     department = task_department(task)
-    return is_bureau(user) or bool(department and can_manage_department(user, department))
+    return has_section(user, SECTIONS.DEPARTMENTS) or bool(department and can_manage_department(user, department))
 
 
 def compute_task_points(task, outstanding: bool) -> tuple[int, bool | None]:
@@ -201,15 +201,16 @@ def entries_in(start: date, end: date):
 # ── Classement ────────────────────────────────────────────────────────────
 
 def ranking_scopes(user) -> dict:
-    """Ce qu'un utilisateur peut consulter : classement global (bureau) et/ou
+    """Ce qu'un utilisateur peut consulter : classement global (section Classement) et/ou
     départements dont il est responsable. Un simple membre n'a accès à rien."""
     from apps.departments.models import Department
 
-    if is_bureau(user):
+    community = has_section(user, SECTIONS.RANKING)
+    if community:
         departments = Department.objects.order_by("name")
     else:
         departments = Department.objects.filter(Q(lead=user) | Q(co_lead=user)).order_by("name")
-    return {"global": is_bureau(user), "departments": list(departments.values("id", "name"))}
+    return {"global": community, "departments": list(departments.values("id", "name"))}
 
 
 def build_ranking(start: date, end: date, department=None) -> list[dict]:
@@ -316,8 +317,8 @@ def my_points(user, period: str, ref: date) -> dict:
 
 
 def adjust_points(user, points: int, reason: str, by, department=None) -> PointEntry:
-    if not is_bureau(by):
-        raise PermissionDenied("Seul le bureau peut ajuster des points.")
+    if not has_section(by, SECTIONS.RANKING):
+        raise PermissionDenied("Réservé à la section Classement.")
     if not reason.strip():
         raise ValidationError({"reason": "Le motif est obligatoire."})
     if points == 0:
@@ -499,8 +500,8 @@ def award_period_start(kind: str, ref: date) -> date:
 
 
 def designate_award(user, kind: str, ref: date, by, note: str = "") -> Award:
-    if not is_bureau(by):
-        raise PermissionDenied("Seul le bureau peut désigner le membre du mois ou de l'année.")
+    if not has_section(by, SECTIONS.RANKING):
+        raise PermissionDenied("Réservé à la section Classement.")
     if kind not in dict(Award.KIND_CHOICES):
         raise ValidationError({"kind": "Type de distinction inconnu."})
     period_start = award_period_start(kind, ref)

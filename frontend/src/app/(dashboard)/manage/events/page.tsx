@@ -6,7 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarDays, Download, Eye, EyeOff, Mail, MoreHorizontal, Plus, Search, Trash2, Users } from "lucide-react";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { eventsService } from "@/services/events.service";
-import { isBureau } from "@/types/auth.types";
+import { hasSection } from "@/types/auth.types";
 import { useI18n } from "@/i18n/I18nProvider";
 import { cn } from "@/lib/utils";
 import { NetworkPattern } from "@/components/ui/NetworkPattern";
@@ -30,10 +30,10 @@ export default function EventsManagePage() {
   const { data, isLoading } = useQuery({
     queryKey: ["events", "manage"],
     queryFn: () => eventsService.list({ page_size: "100", ordering: "start_date" }).then((r) => r.data),
-    enabled: isBureau(user),
+    enabled: hasSection(user, "events"),
   });
 
-  if (!loadingUser && !isBureau(user)) return <p className="text-fg-muted">{t.manageEvents.restricted}</p>;
+  if (!loadingUser && !hasSection(user, "events")) return <p className="text-fg-muted">{t.manageEvents.restricted}</p>;
 
   const all: Event[] = Array.isArray(data) ? data : data?.results ?? [];
   const now = Date.now();

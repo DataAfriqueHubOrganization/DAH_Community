@@ -4,7 +4,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
-from apps.common.permissions import IsAdmin
+from apps.common.permissions import SECTIONS, HasSection
 from apps.common.throttling import WRITE_THROTTLES
 
 from . import services
@@ -16,10 +16,10 @@ from .serializers import (
 
 
 class MemberEmailViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, GenericViewSet):
-    """Emails de l'administration aux membres (admin uniquement) : envoi, test,
+    """Emails de l'administration aux membres (section Emails) : envoi, test,
     aperçu, historique et renvoi aux échecs."""
 
-    permission_classes = [IsAuthenticated, IsAdmin]
+    permission_classes = [IsAuthenticated, HasSection(SECTIONS.EMAILS)]
     throttle_classes = WRITE_THROTTLES
     # Quota propre aux envois (voir @action(throttle_scope=…)) ; lecture libre.
     throttle_scope = None

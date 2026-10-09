@@ -3,18 +3,22 @@ from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
+from apps.accounts.models import ROLES, SECTIONS
+
 User = get_user_model()
 
 
 class UserSerializer(serializers.ModelSerializer):
     full_name = serializers.CharField(read_only=True)
     department = serializers.SerializerMethodField()
+    # Sections de gestion ouvertes à l'utilisateur (toutes pour l'admin) : menu du site.
+    sections = serializers.ListField(source="granted_sections", child=serializers.CharField(), read_only=True)
 
     class Meta:
         model = User
         fields = [
             "id", "email", "first_name", "last_name", "full_name",
-            "phone", "avatar", "role", "poste", "department", "email_verified", "created_at",
+            "phone", "avatar", "role", "poste", "department", "sections", "email_verified", "created_at",
         ]
         read_only_fields = ["id", "email", "role", "poste", "department", "email_verified", "created_at"]
 
@@ -31,12 +35,15 @@ class UserAdminSerializer(serializers.ModelSerializer):
     full_name = serializers.CharField(read_only=True)
     department = serializers.SerializerMethodField()
     department_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
+    sections = serializers.ListField(
+        child=serializers.ChoiceField(choices=SECTIONS.CHOICES), required=False, max_length=len(SECTIONS.KEYS),
+    )
 
     class Meta:
         model = User
         fields = [
             "id", "email", "first_name", "last_name", "full_name",
-            "phone", "role", "poste", "department", "department_id",
+            "phone", "role", "poste", "department", "department_id", "sections",
             "is_active", "email_verified", "created_at",
         ]
         read_only_fields = ["id", "email_verified", "created_at"]
@@ -44,6 +51,21 @@ class UserAdminSerializer(serializers.ModelSerializer):
     def get_department(self, obj):
         from apps.departments.services import get_department_dict
         return get_department_dict(obj)
+
+    def validate(self, attrs):
+        role = attrs.get("role", getattr(self.instance, "role", None))
+        sections = attrs.get("sections")
+        if sections is not None:
+            # Ordre stable, sans doublon.
+            attrs["sections"] = [key for key in SECTIONS.KEYS if key in sections]
+        if role in (ROLES.VISITEUR, ROLES.CANDIDAT):
+            if attrs.get("sections"):
+                raise serializers.ValidationError(
+                    {"sections": "Les accès ne peuvent être accordés qu'à un membre actif."})
+            attrs["sections"] = []  # un compte qui redevient visiteur/candidat perd ses accès
+        elif role == ROLES.ADMIN:
+            attrs["sections"] = []  # l'admin a déjà tout
+        return attrs
 
     def update(self, instance, validated_data):
         department_id = validated_data.pop("department_id", serializers.empty)

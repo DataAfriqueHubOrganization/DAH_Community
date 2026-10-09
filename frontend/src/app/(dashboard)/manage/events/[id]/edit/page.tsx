@@ -4,7 +4,7 @@ import { use } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { eventsService } from "@/services/events.service";
 import { useCurrentUser } from "@/hooks/useAuth";
-import { isBureau } from "@/types/auth.types";
+import { hasSection } from "@/types/auth.types";
 import { useI18n } from "@/i18n/I18nProvider";
 import { EventEditor } from "@/features/events/EventEditor";
 
@@ -15,7 +15,7 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
   const { data: event, isLoading, isError } = useQuery({
     queryKey: ["event", id],
     queryFn: () => eventsService.get(id).then((r) => r.data),
-    enabled: isBureau(user),
+    enabled: hasSection(user, "events"),
   });
 
   if (loadingUser || isLoading) {
@@ -27,7 +27,7 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
       </div>
     );
   }
-  if (!isBureau(user)) return <p className="text-fg-muted">{t.manageEvents.restricted}</p>;
+  if (!hasSection(user, "events")) return <p className="text-fg-muted">{t.manageEvents.restricted}</p>;
   if (isError || !event) return <p className="text-fg-muted">{t.common.error}</p>;
   // key : un autre événement ouvert dans la même page repart d'un formulaire neuf.
   return <EventEditor key={event.id} event={event} />;

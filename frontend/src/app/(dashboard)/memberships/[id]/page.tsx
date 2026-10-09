@@ -8,7 +8,7 @@ import { membershipsService } from "@/services/memberships.service";
 import { useI18n } from "@/i18n/I18nProvider";
 import { countryLabel } from "@/lib/countries";
 import { Badge } from "@/components/ui/Badge";
-import { isAdmin } from "@/types/auth.types";
+import { hasSection } from "@/types/auth.types";
 import { ArrowLeft, Check, X, ExternalLink, Trash2, FileText } from "lucide-react";
 import Link from "next/link";
 import type { CandidatureStatus } from "@/types/memberships.types";
@@ -31,7 +31,7 @@ export default function CandidatureDetailPage({
   const qc = useQueryClient();
   const router = useRouter();
   const { data: user } = useCurrentUser();
-  const canManage = user && (isAdmin(user.role) || user.poste === "president");
+  const canManage = hasSection(user, "applications");
   const [showRejectForm, setShowRejectForm] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
 

@@ -43,6 +43,32 @@ class POSTES:
     ]
 
 
+class SECTIONS:
+    """Sections de gestion du tableau de bord. L'admin les a toutes ; les autres
+    comptes n'ont que celles que l'admin leur accorde (Gestion des accès).
+    « Gestion des accès » elle-même reste réservée à l'admin."""
+    EVENTS = "events"
+    MEMBERS = "members"
+    DEPARTMENTS = "departments"
+    NEWS = "news"
+    EMAILS = "emails"
+    TREASURY = "treasury"
+    RANKING = "ranking"
+    APPLICATIONS = "applications"
+
+    CHOICES = [
+        (EVENTS, "Événements"),
+        (MEMBERS, "Membres"),
+        (DEPARTMENTS, "Départements"),
+        (NEWS, "Actualités"),
+        (EMAILS, "Emails aux membres"),
+        (TREASURY, "Trésorerie"),
+        (RANKING, "Classement"),
+        (APPLICATIONS, "Candidatures"),
+    ]
+    KEYS = [key for key, _ in CHOICES]
+
+
 class UserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
         if not email:
@@ -59,6 +85,15 @@ class UserManager(BaseUserManager):
         extra_fields.setdefault("role", ROLES.ADMIN)
         extra_fields.setdefault("email_verified", True)
         return self.create_user(email, password, **extra_fields)
+
+
+def users_with_section(key: str):
+    """Comptes ayant accès à une section : admins + membres actifs à qui elle est
+    accordée (destinataires des notifications de cette section)."""
+    return User.objects.filter(is_active=True).filter(
+        models.Q(role=ROLES.ADMIN)
+        | (models.Q(sections__contains=[key]) & ~models.Q(role__in=[ROLES.VISITEUR, ROLES.CANDIDAT]))
+    )
 
 
 class User(AbstractBaseUser, PermissionsMixin, TimestampMixin):
@@ -84,6 +119,10 @@ class User(AbstractBaseUser, PermissionsMixin, TimestampMixin):
         default=None,
         verbose_name="Poste au bureau",
     )
+    sections = models.JSONField(
+        default=list, blank=True, verbose_name="Sections accordées",
+        help_text="Sections de gestion accordées par l'admin (voir SECTIONS).",
+    )
     email_verified = models.BooleanField(default=False, verbose_name="Email vérifié")
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
@@ -106,12 +145,22 @@ class User(AbstractBaseUser, PermissionsMixin, TimestampMixin):
         return f"{self.first_name} {self.last_name}".strip()
 
     @property
-    def is_bureau(self):
-        return self.poste is not None or self.role == ROLES.ADMIN
-
-    @property
     def is_admin(self):
         return self.role == ROLES.ADMIN
+
+    def has_section(self, key: str) -> bool:
+        """Accès à une section de gestion : tout pour l'admin ; sinon seulement les
+        sections accordées, et seulement pour un membre actif."""
+        if not self.is_active:
+            return False
+        if self.role == ROLES.ADMIN:
+            return True
+        return self.is_member and key in (self.sections or [])
+
+    @property
+    def granted_sections(self) -> list[str]:
+        """Sections effectivement ouvertes (toutes pour l'admin)."""
+        return [key for key in SECTIONS.KEYS if self.has_section(key)]
 
     @property
     def is_member(self):

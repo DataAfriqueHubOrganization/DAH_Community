@@ -59,7 +59,8 @@ class TestDepartmentVisibility:
         assert names(client_for(make_user("seul@dah.test", role="membre")).get(URL)) == set()
 
     def test_bureau_voit_tout(self, setup):
-        president = make_user("president@dah.test", role="membre", poste="president")
+        president = make_user("president@dah.test", role="membre", poste="president",
+                              sections=["events", "members", "departments", "news", "ranking"])
         assert names(client_for(president).get(URL)) == {"Dept A", "Dept B"}
 
     def test_liste_publique_sans_connexion(self, setup):

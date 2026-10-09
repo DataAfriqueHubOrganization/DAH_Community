@@ -2,11 +2,11 @@ from django.db.models import Q
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound, PermissionDenied
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
-from apps.common.permissions import IsOwnerOrAdmin, is_bureau
+from apps.common.permissions import SECTIONS, has_section
 from apps.departments.services import get_user_department_ids
 from apps.engagement.serializers import ReturnTaskSerializer, SubmitTaskSerializer, ValidateTaskSerializer
 from apps.engagement import services as engagement
@@ -15,6 +15,12 @@ from .serializers import (
     ProjectSerializer, ProjectWriteSerializer,
     ProjectTaskSerializer, ProjectTaskWriteSerializer, ProjectTaskStatusUpdateSerializer,
 )
+
+
+class IsOwnerOrDepartmentsManager(BasePermission):
+    """Propriétaire du projet, ou section Départements."""
+    def has_object_permission(self, request, view, obj):
+        return obj.owner_id == request.user.id or has_section(request.user, SECTIONS.DEPARTMENTS)
 
 
 class ProjectViewSet(ModelViewSet):
@@ -30,7 +36,7 @@ class ProjectViewSet(ModelViewSet):
     def get_queryset(self):
         qs = super().get_queryset()
         user = self.request.user
-        if not is_bureau(user):
+        if not has_section(user, SECTIONS.DEPARTMENTS):
             qs = qs.filter(
                 Q(department_id__in=get_user_department_ids(user))
                 | Q(owner=user)
@@ -48,14 +54,14 @@ class ProjectViewSet(ModelViewSet):
 
     def get_permissions(self):
         if self.action in ["update", "partial_update", "destroy"]:
-            return [IsAuthenticated(), IsOwnerOrAdmin()]
+            return [IsAuthenticated(), IsOwnerOrDepartmentsManager()]
         return [IsAuthenticated()]
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
 
     def _can_manage_project(self, project) -> bool:
-        return is_bureau(self.request.user) or project.owner_id == self.request.user.id
+        return has_section(self.request.user, SECTIONS.DEPARTMENTS) or project.owner_id == self.request.user.id
 
     # ── Toutes les tâches d'un département (ses membres, son responsable, le bureau)
     @action(detail=False, methods=["get"], url_path="department-tasks")

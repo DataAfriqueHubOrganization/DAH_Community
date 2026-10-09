@@ -7,7 +7,7 @@ from rest_framework.viewsets import ModelViewSet
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django_filters.rest_framework import DjangoFilterBackend
 
-from apps.common.permissions import IsAdminOrBureau
+from apps.common.permissions import SECTIONS, HasSection, has_section
 from .filters import EventFilter
 from .models import Event, EventParticipant
 from .serializers import (
@@ -33,9 +33,7 @@ class EventViewSet(ModelViewSet):
 
     def get_queryset(self):
         qs = Event.objects.prefetch_related("participants", "speakers")
-        if not self.request.user.is_authenticated or not (
-            self.request.user.is_admin or self.request.user.is_bureau
-        ):
+        if not has_section(self.request.user, SECTIONS.EVENTS):
             return qs.filter(is_published=True)
         return qs
 
@@ -48,7 +46,7 @@ class EventViewSet(ModelViewSet):
 
     def get_permissions(self):
         if self.action in ["create", "update", "partial_update", "destroy"]:
-            return [IsAuthenticated(), IsAdminOrBureau()]
+            return [IsAuthenticated(), HasSection(SECTIONS.EVENTS)()]
         if self.action in ["list", "retrieve"]:
             return [AllowAny()]
         # Actions personnalisées : leurs propres permission_classes (inscription
@@ -69,12 +67,12 @@ class EventViewSet(ModelViewSet):
         )
         return qs, data["group"]
 
-    @action(detail=False, methods=["get"], url_path="participants", permission_classes=[IsAuthenticated, IsAdminOrBureau])
+    @action(detail=False, methods=["get"], url_path="participants", permission_classes=[IsAuthenticated, HasSection(SECTIONS.EVENTS)])
     def all_participants(self, request):
         qs, _ = self._all_participants(request)
         return Response(ParticipantWithEventSerializer(qs, many=True).data)
 
-    @action(detail=False, methods=["get"], url_path="participants/export", permission_classes=[IsAuthenticated, IsAdminOrBureau])
+    @action(detail=False, methods=["get"], url_path="participants/export", permission_classes=[IsAuthenticated, HasSection(SECTIONS.EVENTS)])
     def export_all_participants(self, request):
         qs, group = self._all_participants(request)
         response = HttpResponse(
@@ -123,7 +121,7 @@ class EventViewSet(ModelViewSet):
 
     @action(detail=True, methods=["post"],
             url_path="validate/(?P<participant_id>[^/.]+)",
-            permission_classes=[IsAuthenticated, IsAdminOrBureau])
+            permission_classes=[IsAuthenticated, HasSection(SECTIONS.EVENTS)])
     def validate_presence(self, request, pk=None, participant_id=None):
         event = self.get_object()
         try:
@@ -133,14 +131,14 @@ class EventViewSet(ModelViewSet):
         participant = validate_presence(participant)
         return Response(EventParticipantSerializer(participant).data)
 
-    @action(detail=True, methods=["get"], permission_classes=[IsAuthenticated, IsAdminOrBureau])
+    @action(detail=True, methods=["get"], permission_classes=[IsAuthenticated, HasSection(SECTIONS.EVENTS)])
     def participants(self, request, pk=None):
         event = self.get_object()
         queryset = event.participants.select_related("user").order_by("created_at")
         serializer = EventParticipantSerializer(queryset, many=True)
         return Response(serializer.data)
 
-    @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated, IsAdminOrBureau])
+    @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated, HasSection(SECTIONS.EVENTS)])
     def remind(self, request, pk=None):
         """Rappel par email aux inscrits (ou test à soi-même avec test=true)."""
         event = self.get_object()
@@ -149,13 +147,13 @@ class EventViewSet(ModelViewSet):
         count = send_event_reminder(event, request.user, **serializer.validated_data)
         return Response({"sent": count, "test": serializer.validated_data["test"]})
 
-    @action(detail=True, methods=["get"], permission_classes=[IsAuthenticated, IsAdminOrBureau])
+    @action(detail=True, methods=["get"], permission_classes=[IsAuthenticated, HasSection(SECTIONS.EVENTS)])
     def reminders(self, request, pk=None):
         event = self.get_object()
         queryset = event.reminders.select_related("sent_by")[:20]
         return Response(EventReminderSerializer(queryset, many=True).data)
 
-    @action(detail=True, methods=["get"], permission_classes=[IsAuthenticated, IsAdminOrBureau])
+    @action(detail=True, methods=["get"], permission_classes=[IsAuthenticated, HasSection(SECTIONS.EVENTS)])
     def export(self, request, pk=None):
         event = self.get_object()
         content = export_participants_excel(event)

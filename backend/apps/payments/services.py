@@ -24,7 +24,7 @@ from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
 from apps.common.background import fire_and_forget
-from apps.accounts.models import POSTES, ROLES
+from apps.accounts.models import ROLES
 
 from .models import CashEntry, Contribution, ContributionMonth, ContributionReminder, PaymentDeclaration
 
@@ -35,7 +35,6 @@ MAX_MONTHS_PER_PAYMENT = 24
 MAX_MONTHS_PER_DECLARATION = 12
 REMINDER_WINDOW_DAYS = 10
 
-TREASURY_POSTES = (POSTES.TRESORIER, POSTES.TRESORIER_ADJ)
 
 MONTHS_FR = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet",
              "août", "septembre", "octobre", "novembre", "décembre"]
@@ -66,9 +65,9 @@ def period_label(start: date, months: int) -> str:
 # ── Qui paie, combien, depuis quand ─────────────────────────────────────────
 
 def is_treasurer(user) -> bool:
-    return bool(user and user.is_authenticated) and (
-        user.role == ROLES.ADMIN or user.poste in TREASURY_POSTES
-    )
+    """Accès à la section Trésorerie (accordée par l'admin)."""
+    from apps.common.permissions import SECTIONS, has_section
+    return has_section(user, SECTIONS.TREASURY)
 
 
 def liable_members():
@@ -274,12 +273,8 @@ def pending_months(user) -> set:
 
 
 def treasurer_emails() -> list[str]:
-    User = get_user_model()
-    return list(
-        User.objects.filter(is_active=True)
-        .filter(Q(role=ROLES.ADMIN) | Q(poste__in=TREASURY_POSTES))
-        .values_list("email", flat=True)
-    )
+    from apps.accounts.models import SECTIONS, users_with_section
+    return list(users_with_section(SECTIONS.TREASURY).values_list("email", flat=True))
 
 
 @transaction.atomic

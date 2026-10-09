@@ -24,7 +24,7 @@ from .serializers import (
 
 
 class IsTreasurer(BasePermission):
-    """Trésorier, trésorier adjoint ou admin."""
+    """Section Trésorerie (accordée par l'admin)."""
     message = "Réservé à la trésorerie."
 
     def has_permission(self, request, view):

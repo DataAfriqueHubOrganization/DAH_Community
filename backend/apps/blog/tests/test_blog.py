@@ -15,7 +15,8 @@ def client_for(user):
 
 @pytest.fixture
 def bureau(db):
-    return User.objects.create_user(email="sg@dah.test", password="x", first_name="SG", last_name="", role="membre", poste="secretaire_general")
+    return User.objects.create_user(email="sg@dah.test", password="x", first_name="SG", last_name="", role="membre", poste="secretaire_general",
+                                    sections=["events", "members", "departments", "news", "ranking"])
 
 
 @pytest.fixture

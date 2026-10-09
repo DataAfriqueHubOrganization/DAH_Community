@@ -47,7 +47,8 @@ def world(db):
         DepartmentMembership.objects.create(department=dept, user=u, start_date=today - timedelta(days=30))
     outsider = make_user("autre@dah.test", role="membre")
     DepartmentMembership.objects.create(department=other, user=outsider, start_date=today - timedelta(days=30))
-    president = make_user("president@dah.test", role="membre", poste="president")
+    president = make_user("president@dah.test", role="membre", poste="president",
+                          sections=["events", "members", "departments", "news", "ranking"])
     project = Project.objects.create(title="Migration dbt", description="d", department=dept, owner=lead)
     return dict(today=today, dept=dept, other=other, lead=lead, member=member, idle=idle,
                 outsider=outsider, president=president, project=project)

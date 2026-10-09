@@ -7,7 +7,7 @@ import { membershipsService } from "@/services/memberships.service";
 import { useI18n } from "@/i18n/I18nProvider";
 import { countryLabel } from "@/lib/countries";
 import { Badge } from "@/components/ui/Badge";
-import { isAdmin } from "@/types/auth.types";
+import { hasSection } from "@/types/auth.types";
 import {
   Check, X, Clock, FileText, ChevronDown, ChevronUp,
   ExternalLink, Search, CheckCircle2, XCircle, Users, Trash2,
@@ -31,7 +31,7 @@ export default function CandidaturesPage() {
   const [statusFilter, setStatusFilter] = useState<CandidatureStatus | "">("");
   const [search, setSearch] = useState("");
 
-  const canManage = user && (isAdmin(user.role) || user.poste === "president");
+  const canManage = hasSection(user, "applications");
 
   const { data: all = [], isLoading } = useQuery({
     queryKey: ["candidatures"],

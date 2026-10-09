@@ -7,7 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Download, Mail, Search, ShieldAlert, Users } from "lucide-react";
 import { eventsService } from "@/services/events.service";
 import { useCurrentUser } from "@/hooks/useAuth";
-import { isBureau } from "@/types/auth.types";
+import { hasSection } from "@/types/auth.types";
 import { useI18n } from "@/i18n/I18nProvider";
 import { countryLabel } from "@/lib/countries";
 import { cn } from "@/lib/utils";
@@ -21,7 +21,7 @@ export default function EventParticipantsPage({ params }: { params: Promise<{ id
   const { t, intl, fmt, locale } = useI18n();
   const x = t.eventsAdmin;
   const { data: currentUser, isLoading: loadingUser } = useCurrentUser();
-  const canView = isBureau(currentUser);
+  const canView = hasSection(currentUser, "events");
   const [query, setQuery] = useState("");
   const searchParams = useSearchParams();
   const [reminding, setReminding] = useState(searchParams.get("remind") === "1");

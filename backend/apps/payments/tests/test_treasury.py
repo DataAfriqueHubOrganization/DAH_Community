@@ -43,8 +43,8 @@ def no_background(monkeypatch):
 def world(db):
     today = timezone.localdate()
     year_start = date(today.year, 1, 1)
-    treasurer = make_user("tresor@dah.test", year_start, role="membre", poste="tresorier")
-    deputy = make_user("adjoint@dah.test", year_start, role="membre", poste="tresorier_adj")
+    treasurer = make_user("tresor@dah.test", year_start, role="membre", poste="tresorier", sections=["treasury"])
+    deputy = make_user("adjoint@dah.test", year_start, role="membre", poste="tresorier_adj", sections=["treasury"])
     admin = make_user("admin@dah.test", year_start, role="admin")
     member = make_user("membre@dah.test", year_start, role="membre")
     lead = make_user("lead@dah.test", year_start, role="membre")

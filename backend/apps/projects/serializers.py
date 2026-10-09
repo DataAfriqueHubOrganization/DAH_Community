@@ -1,6 +1,6 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
-from apps.common.permissions import is_bureau
+from apps.common.permissions import SECTIONS, has_section
 from apps.departments.services import get_department_member_ids
 from .models import Project, ProjectTask
 
@@ -48,7 +48,7 @@ class ProjectWriteSerializer(serializers.ModelSerializer):
         department = attrs.get("department")
         user = self.context["request"].user
 
-        if not (is_bureau(user) or user.id in (department.lead_id, department.co_lead_id)):
+        if not (has_section(user, SECTIONS.DEPARTMENTS) or user.id in (department.lead_id, department.co_lead_id)):
             raise serializers.ValidationError({
                 "department": "Vous devez être responsable ou adjoint de ce département pour y créer un projet.",
             })
@@ -89,7 +89,7 @@ class ProjectTaskWriteSerializer(serializers.ModelSerializer):
             return value
         request = self.context["request"]
         project = self.context["project"]
-        if is_bureau(request.user):
+        if has_section(request.user, SECTIONS.DEPARTMENTS):
             return value
         if value.id not in get_department_member_ids(project.department):
             raise serializers.ValidationError(

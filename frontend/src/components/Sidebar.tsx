@@ -8,26 +8,26 @@ import { useCurrentUser } from "@/hooks/useAuth";
 import { Logo } from "@/components/ui/Logo";
 import { useI18n } from "@/i18n/I18nProvider";
 import { PreferencesToggle } from "@/components/PreferencesToggle";
-import { isAdmin, isBureau, isContributor, isTreasurer } from "@/types/auth.types";
+import { hasSection, isAdmin, isContributor } from "@/types/auth.types";
 
+// `access` : "all" (tout le monde), une section de gestion (accordée par l'admin
+// dans Gestion des accès), ou une règle propre (contributors, ranking, admin).
 const allNavItems = [
-  { href: "/dashboard", key: "dashboard", icon: LayoutDashboard, roles: "all" },
-  { href: "/manage/events", key: "events", icon: CalendarDays, roles: "bureau" },
-  { href: "/manage/members", key: "members", icon: Users, roles: "bureau" },
-  // Liste des départements : bureau uniquement — un membre n'y verrait que le sien,
-  // déjà accessible via « Mon département ».
-  { href: "/manage/departments", key: "departments", icon: Building2, roles: "bureau" },
-  { href: "/manage/actualites", key: "news", icon: Newspaper, roles: "bureau" },
-  { href: "/manage/emails", key: "emails", icon: Mail, roles: "admin" },
-  { href: "/my-department", key: "myDepartment", icon: Building2, roles: "all" },
-  { href: "/my-points", key: "myPoints", icon: Star, roles: "all" },
-  { href: "/my-contributions", key: "myContributions", icon: Wallet, roles: "contributors" },
-  { href: "/treasury", key: "treasury", icon: Landmark, roles: "treasury" },
-  // Classement : responsables de département et bureau — jamais les simples membres.
-  { href: "/ranking", key: "ranking", icon: Trophy, roles: "managers" },
-  { href: "/memberships", key: "applications", icon: FileText, roles: "admin_president" },
-  { href: "/manage/access", key: "access", icon: ShieldCheck, roles: "admin" },
-  { href: "/member-card", key: "memberCard", icon: CreditCard, roles: "all" },
+  { href: "/dashboard", key: "dashboard", icon: LayoutDashboard, access: "all" },
+  { href: "/manage/events", key: "events", icon: CalendarDays, access: "events" },
+  { href: "/manage/members", key: "members", icon: Users, access: "members" },
+  { href: "/manage/departments", key: "departments", icon: Building2, access: "departments" },
+  { href: "/manage/actualites", key: "news", icon: Newspaper, access: "news" },
+  { href: "/manage/emails", key: "emails", icon: Mail, access: "emails" },
+  { href: "/my-department", key: "myDepartment", icon: Building2, access: "all" },
+  { href: "/my-points", key: "myPoints", icon: Star, access: "all" },
+  { href: "/my-contributions", key: "myContributions", icon: Wallet, access: "contributors" },
+  { href: "/treasury", key: "treasury", icon: Landmark, access: "treasury" },
+  // Classement : section Classement (communauté), ou responsable (son département).
+  { href: "/ranking", key: "ranking", icon: Trophy, access: "ranking" },
+  { href: "/memberships", key: "applications", icon: FileText, access: "applications" },
+  { href: "/manage/access", key: "access", icon: ShieldCheck, access: "admin" },
+  { href: "/member-card", key: "memberCard", icon: CreditCard, access: "all" },
 ] as const;
 
 export function Sidebar({ mobileOpen = false, onMobileClose }: { mobileOpen?: boolean; onMobileClose?: () => void }) {
@@ -36,15 +36,12 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: { mobileOpen?: bo
   const [collapsed, setCollapsed] = useState(false);
   const { t } = useI18n();
 
-  const navItems = allNavItems.filter(item => {
-    if (item.roles === "all") return true;
-    if (item.roles === "bureau") return isBureau(user);
-    if (item.roles === "managers") return isBureau(user) || user?.role === "responsable";
-    if (item.roles === "admin") return !!user && isAdmin(user.role);
-    if (item.roles === "contributors") return isContributor(user);
-    if (item.roles === "treasury") return isTreasurer(user);
-    if (item.roles === "admin_president") return user && (isAdmin(user.role) || user.poste === "president");
-    return true;
+  const navItems = allNavItems.filter(({ access }) => {
+    if (access === "all") return true;
+    if (access === "admin") return !!user && isAdmin(user.role);
+    if (access === "contributors") return isContributor(user);
+    if (access === "ranking") return hasSection(user, "ranking") || user?.role === "responsable";
+    return hasSection(user, access);
   });
 
   return (
@@ -78,7 +75,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: { mobileOpen?: bo
             const label = t.sidebar[key];
             // « Mon département » redirige vers /manage/departments/<id> : sans l'entrée
             // « Départements » (masquée hors bureau), c'est elle qui doit être surlignée.
-            const showsMyDepartment = !isBureau(user) && pathname.startsWith("/manage/departments/");
+            const showsMyDepartment = !hasSection(user, "departments") && pathname.startsWith("/manage/departments/");
             const active = href === "/my-department" && showsMyDepartment
               ? true
               : pathname === href || pathname.startsWith(href + "/");

@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import GenericViewSet
 
-from apps.common.permissions import IsBureau, is_bureau
+from apps.common.permissions import SECTIONS, HasSection, has_section
 from apps.departments.services import can_manage_department
 
 from . import services
@@ -45,7 +45,7 @@ class RankingView(APIView):
 
         start, end = services.period_bounds(period, ref)
         awards = []
-        if is_bureau(request.user):
+        if has_section(request.user, SECTIONS.RANKING):
             awards = AwardSerializer(
                 Award.objects.filter(period_start__gte=start, period_start__lt=end).select_related("user"),
                 many=True,
@@ -161,7 +161,7 @@ class CheckInViewSet(GenericViewSet):
 
 
 class AwardViewSet(GenericViewSet):
-    permission_classes = [IsAuthenticated, IsBureau]
+    permission_classes = [IsAuthenticated, HasSection(SECTIONS.RANKING)]
     queryset = Award.objects.select_related("user")
     serializer_class = AwardSerializer
 
@@ -182,7 +182,7 @@ class AwardViewSet(GenericViewSet):
 
 class AdjustmentView(APIView):
     """Correction manuelle de points par le bureau — motif obligatoire, tracée au registre."""
-    permission_classes = [IsAuthenticated, IsBureau]
+    permission_classes = [IsAuthenticated, HasSection(SECTIONS.RANKING)]
 
     def post(self, request):
         serializer = AdjustmentSerializer(data=request.data)

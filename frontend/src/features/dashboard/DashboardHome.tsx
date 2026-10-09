@@ -9,7 +9,7 @@ import { membershipsService } from "@/services/memberships.service";
 import { engagementService } from "@/services/engagement.service";
 import { checkinPeriod } from "@/features/engagement/period";
 import { Users, CalendarDays, Award, FileText, ArrowRight, Clock, CheckCircle2, ClipboardList } from "lucide-react";
-import { isAdmin, isBureau } from "@/types/auth.types";
+import { hasSection } from "@/types/auth.types";
 import { avatarUrl } from "@/lib/utils";
 import { useI18n } from "@/i18n/I18nProvider";
 import type { Event } from "@/types/events.types";
@@ -29,13 +29,13 @@ export function DashboardHome() {
   const { data: membersData } = useQuery({
     queryKey: ["members", "list"],
     queryFn: () => membersService.list().then((r) => r.data),
-    enabled: isBureau(user),
+    enabled: hasSection(user, "members"),
   });
 
   const { data: membershipData } = useQuery({
     queryKey: ["candidatures", "pending"],
     queryFn: () => membershipsService.listCandidatures({ status: "pending" }).then((r) => r.data),
-    enabled: !!user && (isAdmin(user.role) || user.poste === "president"),
+    enabled: hasSection(user, "applications"),
   });
 
   const { data: myProfile } = useQuery({
@@ -59,8 +59,8 @@ export function DashboardHome() {
   const allMembers = membersData?.results ?? membersData ?? [];
   const pendingCandidatures: CandidatureList[] = membershipData ?? [];
 
-  const isAdminUser = user && isAdmin(user.role);
-  const isBureauUser = isBureau(user);
+  const canSeeMembers = hasSection(user, "members");
+  const canSeeApplications = hasSection(user, "applications");
 
   return (
     <div className="space-y-6">
@@ -108,7 +108,7 @@ export function DashboardHome() {
           </div>
         </Link>
 
-        {(isAdminUser || isBureauUser) && (
+        {canSeeMembers && (
           <Link href="/members" target="_blank" rel="noopener noreferrer" className="bg-surface rounded-xl border border-line-soft p-5 flex items-center gap-4 hover:shadow-md transition-shadow group">
             <div className="p-2.5 rounded-xl bg-brand-orange/10 text-brand-orange group-hover:bg-brand-orange group-hover:text-ink transition-colors">
               <Users size={20} />
@@ -120,7 +120,7 @@ export function DashboardHome() {
           </Link>
         )}
 
-        {(isAdminUser || user?.poste === "president") && (
+        {canSeeApplications && (
           <Link href="/memberships" className="bg-surface rounded-xl border border-line-soft p-5 flex items-center gap-4 hover:shadow-md transition-shadow group">
             <div className="p-2.5 rounded-xl bg-brand-blue/10 text-brand-blue group-hover:bg-brand-blue group-hover:text-white transition-colors">
               <FileText size={20} />

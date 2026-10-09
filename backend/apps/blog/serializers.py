@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from apps.common.sanitize import clean_html
-from apps.common.permissions import is_bureau
+from apps.common.permissions import SECTIONS, has_section
 from .models import Article, ArticleCategory, ArticleComment
 
 
@@ -95,4 +95,4 @@ class ArticleCommentSerializer(serializers.ModelSerializer):
         if not request or not request.user.is_authenticated:
             return False
         user = request.user
-        return user.id == obj.author_id or user.role == "admin" or is_bureau(user)
+        return user.id == obj.author_id or has_section(user, SECTIONS.NEWS)

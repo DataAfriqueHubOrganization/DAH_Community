@@ -9,7 +9,7 @@ import { departmentsService } from "@/services/departments.service";
 import { projectsService } from "@/services/projects.service";
 import { engagementService } from "@/services/engagement.service";
 import { useCurrentUser } from "@/hooks/useAuth";
-import { isBureau } from "@/types/auth.types";
+import { hasSection } from "@/types/auth.types";
 import { useI18n } from "@/i18n/I18nProvider";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/Badge";
@@ -134,7 +134,7 @@ export default function DepartmentWorkspacePage({ params }: { params: Promise<{ 
     <div className="space-y-6">
       {/* En-tête */}
       <header className="-mx-4 sm:-mx-6 -mt-4 sm:-mt-6 px-4 sm:px-6 pt-4 sm:pt-6 bg-surface border-b border-line-soft">
-        {isBureau(currentUser) && (
+        {hasSection(currentUser, "departments") && (
           <Link href="/manage/departments" className="inline-flex items-center gap-1.5 text-sm text-fg-subtle hover:text-brand-blue mb-2 transition-colors">
             <ArrowLeft size={14} /> {d.backToList}
           </Link>
@@ -216,7 +216,7 @@ export default function DepartmentWorkspacePage({ params }: { params: Promise<{ 
           viewerMode={viewerMode}
           assignees={assignees}
           currentUserId={currentUser?.id}
-          isBureauUser={!!currentUser && isBureau(currentUser)}
+          isBureauUser={hasSection(currentUser, "departments")}
           selectedId={selectedProjectId}
           onSelect={(projectId) => navigate("projects", projectId)}
           onTasksChanged={onTasksChanged}

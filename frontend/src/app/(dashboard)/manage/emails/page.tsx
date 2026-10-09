@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { useI18n } from "@/i18n/I18nProvider";
-import { isAdmin } from "@/types/auth.types";
+import { hasSection } from "@/types/auth.types";
 import { cn } from "@/lib/utils";
 import { Composer } from "@/features/mailing/Composer";
 import { History } from "@/features/mailing/History";
@@ -18,7 +18,7 @@ export default function MemberEmailsPage() {
   const [tab, setTab] = useState<Tab>("compose");
   const [notice, setNotice] = useState<string | null>(null);
 
-  if (!isLoading && !(user && isAdmin(user.role))) return <p className="text-fg-muted">{x.restricted}</p>;
+  if (!isLoading && !hasSection(user, "emails")) return <p className="text-fg-muted">{x.restricted}</p>;
 
   return (
     <div className="space-y-6">

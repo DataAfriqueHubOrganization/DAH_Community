@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { treasuryService } from "@/services/treasury.service";
 import { useCurrentUser } from "@/hooks/useAuth";
-import { isTreasurer } from "@/types/auth.types";
+import { hasSection } from "@/types/auth.types";
 import { useI18n } from "@/i18n/I18nProvider";
 import { cn } from "@/lib/utils";
 import { todayIso } from "@/features/engagement/period";
@@ -24,7 +24,7 @@ export default function TreasuryPage() {
   const x = t.treasury;
   const v = x.v2;
   const { data: user, isLoading: loadingUser } = useCurrentUser();
-  const allowed = isTreasurer(user);
+  const allowed = hasSection(user, "treasury");
   const searchParams = useSearchParams();
   const requested = searchParams.get("tab") as Tab | null;
   const [chosen, setChosen] = useState<Tab | null>(requested && TABS.includes(requested) ? requested : null);

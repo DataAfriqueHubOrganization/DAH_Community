@@ -5,7 +5,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
-from apps.common.permissions import IsAdminOrBureau, is_bureau
+from apps.common.permissions import SECTIONS, HasSection, has_section
 from apps.engagement import services as engagement
 from apps.engagement.serializers import ReturnTaskSerializer, SubmitTaskSerializer, ValidateTaskSerializer
 from .models import Department, DepartmentMembership, DepartmentAnnouncement, DepartmentSession, DepartmentTask
@@ -38,10 +38,10 @@ class DepartmentViewSet(ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
-        # Bureau/admin voient tous les départements ; un membre uniquement le(s)
+        # La section Départements voit tous les départements ; un membre uniquement le(s)
         # sien(s) (adhésion en cours ou lead/co-lead). Un autre département répond
         # 404, sous-ressources comprises (membres, annonces, séances, tâches).
-        if self.action != "public_list" and not is_bureau(self.request.user):
+        if self.action != "public_list" and not has_section(self.request.user, SECTIONS.DEPARTMENTS):
             qs = qs.filter(id__in=get_user_department_ids(self.request.user))
         return qs
 
@@ -51,7 +51,7 @@ class DepartmentViewSet(ModelViewSet):
         if self.action == "mine":
             return [IsAuthenticated()]
         if self.action in ["create", "update", "partial_update", "destroy"]:
-            return [IsAuthenticated(), IsAdminOrBureau()]
+            return [IsAuthenticated(), HasSection(SECTIONS.DEPARTMENTS)()]
         # list/retrieve et actions sur les sous-ressources : tout utilisateur connecté peut
         # consulter ; les vérifications fines (gérant / membre du département) se font dans
         # chaque action, car elles varient (lecture ouverte aux membres, écriture réservée

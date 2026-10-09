@@ -1,5 +1,6 @@
 import { api } from "@/lib/axios";
 import type { MemberDepartment } from "@/types/members.types";
+import type { Section } from "@/types/auth.types";
 
 export interface AdminUser {
   id: number;
@@ -11,6 +12,8 @@ export interface AdminUser {
   role: string;
   poste: string | null;
   department: MemberDepartment | null;
+  /** Sections accordées (vide pour l'admin, qui a déjà tout). */
+  sections: Section[];
   is_active: boolean;
   email_verified: boolean;
   created_at: string;
@@ -26,6 +29,7 @@ export interface AdminUserUpdatePayload {
    * ou le retire de son département actuel si null. Omis = ne pas toucher. */
   department_id?: number | null;
   is_active?: boolean;
+  sections?: Section[];
 }
 
 interface PaginatedResponse<T> { count: number; results: T[]; next: string | null; previous: string | null; }

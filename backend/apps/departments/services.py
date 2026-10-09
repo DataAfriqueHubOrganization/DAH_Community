@@ -7,7 +7,7 @@ from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
 from apps.common.background import fire_and_forget
-from apps.common.permissions import is_bureau
+from apps.common.permissions import SECTIONS, has_section
 
 FREQUENCY_DELTAS = {
     "weekly": timedelta(days=7),
@@ -18,10 +18,10 @@ MAX_OCCURRENCES = 52
 
 
 def can_manage_department(user, department) -> bool:
-    """Admin/Bureau gèrent tous les départements ; le lead/co-lead ne gère que
-    le sien (membres, annonces, séances, tâches) — jamais son nom/description/
-    lead/co-lead, réservés à Admin/Bureau (voir get_permissions de la vue)."""
-    if is_bureau(user):
+    """La section Départements gère tous les départements ; le lead/co-lead ne gère
+    que le sien (membres, annonces, séances, tâches) — jamais son nom/description/
+    lead/co-lead, réservés à la section (voir get_permissions de la vue)."""
+    if has_section(user, SECTIONS.DEPARTMENTS):
         return True
     return department.lead_id == user.id or department.co_lead_id == user.id
 

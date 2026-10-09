@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { departmentsService } from "@/services/departments.service";
 import { membersService } from "@/services/members.service";
-import { isBureau } from "@/types/auth.types";
+import { hasSection } from "@/types/auth.types";
 import { Building2, Plus, Users, Edit2, Trash2, X, Crown, ShieldHalf } from "lucide-react";
 import { MemberSearchSelect } from "@/components/MemberSearchSelect";
 import type { Department, DepartmentWritePayload } from "@/types/departments.types";
@@ -24,7 +24,7 @@ export default function DepartmentsManagePage() {
   const [editingDept, setEditingDept] = useState<Department | null>(null);
   const [form, setForm] = useState<DepartmentWritePayload>(emptyForm);
 
-  const canManage = isBureau(user);
+  const canManage = hasSection(user, "departments");
 
   const { data, isLoading } = useQuery({
     queryKey: ["departments", "manage"],

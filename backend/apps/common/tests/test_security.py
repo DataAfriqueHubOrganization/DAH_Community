@@ -21,7 +21,8 @@ def member(db):
 @pytest.fixture
 def bureau(db):
     return User.objects.create_user(email="sg@dah.test", password=PASSWORD, first_name="S", last_name="",
-                                    role="membre", poste="secretaire_general", email_verified=True)
+                                    role="membre", poste="secretaire_general", email_verified=True,
+                                    sections=["events", "members", "departments", "news", "ranking"])
 
 
 def as_user(user):
