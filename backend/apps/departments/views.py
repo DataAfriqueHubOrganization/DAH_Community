@@ -303,7 +303,7 @@ class DepartmentViewSet(ModelViewSet):
             assigned_to=serializer.validated_data.get("assigned_to"),
             due_date=serializer.validated_data.get("due_date"),
             status=serializer.validated_data.get("status", "todo"),
-            size=serializer.validated_data.get("size", "medium"),
+            weight=serializer.validated_data.get("weight", 3),
         )
         return Response(DepartmentTaskSerializer(task).data, status=status.HTTP_201_CREATED)
 

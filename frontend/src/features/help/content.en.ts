@@ -66,8 +66,13 @@ export const helpEn: HelpContent = {
           "When done, click **Submit**. Add a note or a link for your lead if needed.",
           "Your lead **validates** the task (you earn the points) or **sends it back** with what is left to fix: fix it, then submit again.",
         ] },
-        { type: "table", head: ["Size", "Points"], rows: [["Small", "5"], ["Medium", "10"], ["Large", "20"]] },
-        { type: "note", text: "+20% if handed in before the due date, −25% if late, +25% for outstanding work. Points count in the month the task is handed in." },
+        { type: "p", text: "Each task is worth **1 to 5 points**, set by the lead according to the effort required." },
+        { type: "table", head: ["Situation", "Effect"], rows: [
+          ["Handed in before the due date", "+1 point"],
+          ["Outstanding work", "+1 point"],
+          ["Handed in late", "−1 point (1 point minimum)"],
+        ] },
+        { type: "note", text: "Points are awarded on validation and count in the month the task is handed in." },
       ],
     },
     {
@@ -81,7 +86,7 @@ export const helpEn: HelpContent = {
           "In **My points**, click **Fill in** next to “A check-in is waiting for you”.",
           "Rate yourself from 1 to 5 on five criteria, then answer the two questions.",
           "Send it. You can edit your answers until your lead replies.",
-          "Your lead confirms and sends you feedback. A check-in is worth up to 5 points: your tasks are what count most.",
+          "Your lead confirms and sends you feedback. A check-in is worth 1 to 5 points.",
         ] },
       ],
     },
@@ -132,7 +137,7 @@ export const helpEn: HelpContent = {
         { type: "p", text: "Your lead made you a project manager. You organise the work, but you do not validate tasks: validation and points stay with the lead." },
         { type: "steps", items: [
           "**Projects → New project**: title, description, status, due date, repository link if needed.",
-          "Open the project, then **Assign a task**: describe it with the editor (bold, lists, links), pick the person, due date and size.",
+          "Open the project, then **Assign a task**: describe it with the editor (bold, lists, links), pick the person, due date and points (1 to 5).",
           "Save: the person gets an email with the description and a link to their tasks.",
         ] },
         { type: "note", text: "The pencil next to a task lets you edit or reassign it. Your rights end if you leave the department or the lead removes them." },
@@ -148,7 +153,7 @@ export const helpEn: HelpContent = {
         { type: "list", items: [
           "**Team → Add a member**; **End membership** when someone leaves the department.",
           "**Project managers** (top of the Team tab): pick a member, then **Add**. They create projects and assign tasks, without validating them.",
-          "**Validate a task**: the orange “To validate” group → **Validate** (tick “Outstanding work” for +25%) or **Send back** with what is left to do. Nobody validates their own task.",
+          "**Validate a task**: the orange “To validate” group → **Validate** (tick “Outstanding work” for +1 point) or **Send back** with what is left to do. Nobody validates their own task.",
           "**Check-ins → Start a check-in**: month reviewed, deadline, members. Then **Read and confirm**: adjust the scores (only yours count) and send feedback.",
           "**Ranking**: the most involved members of your department.",
         ] },

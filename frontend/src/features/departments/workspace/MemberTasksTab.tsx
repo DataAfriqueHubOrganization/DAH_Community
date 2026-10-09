@@ -199,7 +199,7 @@ function MemberTaskRow({ task, onChanged }: { task: ProjectTask; onChanged: () =
         <p className="text-xs text-fg-muted mt-0.5">
           {task.project_title}
           {task.due_date && <> · <span className={late ? "font-semibold text-red-600" : ""}>{w.dueOn(fmt.date(task.due_date))}</span></>}
-          {` · ${t.tasks.size[task.size]}`}
+          {` · ${t.tasks.weightShort(task.weight)}`}
         </p>
         <TaskDescription description={task.description} />
       </div>

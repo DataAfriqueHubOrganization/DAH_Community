@@ -199,7 +199,7 @@ class DepartmentTaskSerializer(serializers.ModelSerializer):
         model = DepartmentTask
         fields = [
             "id", "title", "description", "assigned_to_id", "assigned_to_name",
-            "due_date", "status", "status_display", "size",
+            "due_date", "status", "status_display", "weight",
             "submitted_at", "submission_note", "return_reason",
             "validated_at", "is_outstanding", "points_awarded", "created_at",
         ]
@@ -214,7 +214,7 @@ class TaskWriteSerializer(serializers.Serializer):
     due_date = serializers.DateField(required=False, allow_null=True)
     # « À valider » / « Validée » : uniquement via les actions submit / validate.
     status = serializers.ChoiceField(choices=DepartmentTask.FREE_STATUSES, required=False)
-    size = serializers.ChoiceField(choices=DepartmentTask.SIZE_CHOICES, required=False)
+    weight = serializers.IntegerField(min_value=DepartmentTask.WEIGHT_MIN, max_value=DepartmentTask.WEIGHT_MAX, required=False)
 
 
 class TaskStatusUpdateSerializer(serializers.Serializer):

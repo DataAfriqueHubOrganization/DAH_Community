@@ -67,7 +67,7 @@ class ProjectTaskSerializer(serializers.ModelSerializer):
         model = ProjectTask
         fields = [
             "id", "project", "project_title", "title", "description",
-            "assigned_to", "assigned_to_name", "due_date", "status", "status_display", "size",
+            "assigned_to", "assigned_to_name", "due_date", "status", "status_display", "weight",
             "submitted_at", "submission_note", "return_reason",
             "validated_at", "validated_by_name", "is_outstanding", "points_awarded", "created_at",
         ]
@@ -83,7 +83,7 @@ class ProjectTaskSerializer(serializers.ModelSerializer):
 class ProjectTaskWriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProjectTask
-        fields = ["title", "description", "assigned_to", "due_date", "status", "size"]
+        fields = ["title", "description", "assigned_to", "due_date", "status", "weight"]
 
     def validate_description(self, value: str) -> str:
         # Éditeur de texte riche : HTML nettoyé (texte brut des anciennes tâches intact).

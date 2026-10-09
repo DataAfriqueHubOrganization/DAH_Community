@@ -69,8 +69,13 @@ export const helpFr: HelpContent = {
           "Quand c'est terminé, cliquez sur **Soumettre**. Ajoutez si besoin un mot ou un lien pour votre responsable.",
           "Votre responsable **valide** la tâche (vous gagnez les points) ou la **renvoie** avec ce qu'il reste à ajuster : corrigez, puis soumettez à nouveau.",
         ] },
-        { type: "table", head: ["Envergure", "Points"], rows: [["Petite", "5"], ["Moyenne", "10"], ["Grande", "20"]] },
-        { type: "note", text: "+20 % si la tâche est rendue avant l'échéance, −25 % en retard, +25 % pour un travail remarquable. Les points comptent au mois où la tâche est rendue." },
+        { type: "p", text: "Chaque tâche vaut **de 1 à 5 points**, fixés par le responsable selon l'effort demandé." },
+        { type: "table", head: ["Situation", "Effet"], rows: [
+          ["Rendue avant l'échéance", "+1 point"],
+          ["Travail remarquable", "+1 point"],
+          ["Rendue en retard", "−1 point (1 point au minimum)"],
+        ] },
+        { type: "note", text: "Les points sont accordés à la validation et comptent au mois où la tâche est rendue." },
       ],
     },
     {
@@ -84,7 +89,7 @@ export const helpFr: HelpContent = {
           "Dans **Mes points**, cliquez sur **Remplir** à côté de « Un point d'étape vous attend ».",
           "Notez-vous de 1 à 5 sur cinq critères, puis répondez aux deux questions.",
           "Envoyez. Vous pouvez modifier vos réponses tant que votre responsable n'a pas répondu.",
-          "Votre responsable confirme et vous envoie un retour. Le point d'étape vaut jusqu'à 5 points : ce sont surtout vos tâches qui comptent.",
+          "Votre responsable confirme et vous envoie un retour. Le point d'étape vaut de 1 à 5 points.",
         ] },
       ],
     },
@@ -136,7 +141,7 @@ export const helpFr: HelpContent = {
         { type: "p", text: "Votre responsable vous a désigné gestionnaire de projets. Vous organisez le travail, mais vous ne validez pas les tâches : la validation et les points restent au responsable." },
         { type: "steps", items: [
           "**Projets → Nouveau projet** : titre, description, statut, échéance, lien du dépôt si besoin.",
-          "Ouvrez le projet puis **Assigner une tâche** : décrivez-la avec l'éditeur (gras, listes, liens), choisissez la personne, l'échéance et l'envergure.",
+          "Ouvrez le projet puis **Assigner une tâche** : décrivez-la avec l'éditeur (gras, listes, liens), choisissez la personne, l'échéance et les points (1 à 5).",
           "Enregistrez : la personne reçoit un email avec la description et un lien vers ses tâches.",
         ] },
         { type: "note", text: "Le crayon à côté d'une tâche permet de la modifier ou de la réaffecter. Vos droits s'arrêtent si vous quittez le département ou si le responsable vous les retire." },
@@ -152,7 +157,7 @@ export const helpFr: HelpContent = {
         { type: "list", items: [
           "**Équipe → Ajouter un membre** ; **Terminer l'adhésion** quand quelqu'un quitte le département.",
           "**Gestionnaires de projets** (haut de l'onglet Équipe) : choisissez un membre puis **Ajouter**. Il crée des projets et assigne des tâches, sans les valider.",
-          "**Valider une tâche** : groupe « À valider » en orange → **Valider** (cochez « Travail remarquable » pour +25 %) ou **Renvoyer** avec ce qu'il reste à faire. Personne ne valide sa propre tâche.",
+          "**Valider une tâche** : groupe « À valider » en orange → **Valider** (cochez « Travail remarquable » pour +1 point) ou **Renvoyer** avec ce qu'il reste à faire. Personne ne valide sa propre tâche.",
           "**Points d'étape → Lancer un point d'étape** : mois évalué, date limite, membres concernés. Puis **Lire et confirmer** : ajustez les scores (seuls les vôtres comptent) et envoyez un retour.",
           "**Classement** : les membres les plus impliqués de votre département.",
         ] },

@@ -14,7 +14,7 @@ import { TaskDescription } from "@/features/tasks/TaskDescription";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { apiError } from "@/features/treasury/shared";
 import type {
-  Project, ProjectStatus, ProjectTask, ProjectTaskStatus, ProjectTaskWritePayload, ProjectWritePayload, TaskSize,
+  Project, ProjectStatus, ProjectTask, ProjectTaskStatus, ProjectTaskWritePayload, ProjectWritePayload, TaskWeight,
 } from "@/types/projects.types";
 import {
   Avatar, FilterChip, GroupTitle, inputClass, isLate, type Assignee, type ViewerMode,
@@ -402,7 +402,7 @@ function TaskRow({
             {task.status === "submitted" && task.submitted_at
               ? ` · ${w.submittedOn(fmt.date(task.submitted_at))}`
               : task.due_date ? <> · <span className={late ? "font-semibold text-red-600" : ""}>{w.dueOn(fmt.date(task.due_date))}</span></> : null}
-            {` · ${t.tasks.size[task.size]}`}
+            {` · ${t.tasks.weightShort(task.weight)}`}
           </p>
           <TaskDescription description={task.description} />
         </div>
@@ -451,14 +451,14 @@ function TaskForm({
   const [description, setDescription] = useState(task?.description ?? "");
   const [assignedTo, setAssignedTo] = useState(task?.assigned_to ? String(task.assigned_to) : "");
   const [dueDate, setDueDate] = useState(task?.due_date ?? "");
-  const [size, setSize] = useState<TaskSize>(task?.size ?? "medium");
+  const [weight, setWeight] = useState<TaskWeight>(task?.weight ?? 3);
   // La personne affectée (si elle a changé) reçoit un email.
   const notifies = !!assignedTo && assignedTo !== String(task?.assigned_to ?? "");
 
   const save = useMutation({
     mutationFn: () => {
       const payload: ProjectTaskWritePayload = {
-        title, description, assigned_to: assignedTo ? Number(assignedTo) : null, due_date: dueDate || null, size,
+        title, description, assigned_to: assignedTo ? Number(assignedTo) : null, due_date: dueDate || null, weight,
       };
       return task ? projectsService.tasks.update(projectId, task.id, payload) : projectsService.tasks.create(projectId, payload);
     },
@@ -487,13 +487,13 @@ function TaskForm({
           <input id={`assign-due-${projectId}`} type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={cn(inputClass, "w-full")} />
         </div>
         <div>
-          <label htmlFor={`assign-size-${projectId}`} className="block text-xs text-fg-muted mb-1">{t.tasks.sizeLabel}</label>
-          <select id={`assign-size-${projectId}`} value={size} onChange={(e) => setSize(e.target.value as TaskSize)} className={cn(inputClass, "w-full")}>
-            {(["small", "medium", "large"] as TaskSize[]).map((v) => <option key={v} value={v}>{t.tasks.sizeOption[v]}</option>)}
+          <label htmlFor={`assign-weight-${projectId}`} className="block text-xs text-fg-muted mb-1">{t.tasks.weightLabel}</label>
+          <select id={`assign-weight-${projectId}`} value={weight} onChange={(e) => setWeight(Number(e.target.value) as TaskWeight)} className={cn(inputClass, "w-full")}>
+            {([1, 2, 3, 4, 5] as TaskWeight[]).map((v) => <option key={v} value={v}>{t.tasks.weightOption[v]}</option>)}
           </select>
         </div>
       </div>
-      <p className="text-[11px] text-fg-subtle">{t.tasks.sizeHint}{notifies && <> · {d.assigneeNotified}</>}</p>
+      <p className="text-[11px] text-fg-subtle">{t.tasks.weightHint}{notifies && <> · {d.assigneeNotified}</>}</p>
       {save.isError && <p className="text-red-500 text-xs">{apiError(save.error, d.assignError)}</p>}
       <div className="flex justify-end gap-2">
         <button onClick={onCancel} className="px-4 py-2 text-sm border border-line rounded-xl hover:bg-surface">{t.common.cancel}</button>

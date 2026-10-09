@@ -42,7 +42,7 @@ def send_task_assigned_email(task, by_name: str) -> None:
             ("Projet", project.title),
             ("Département", project.department.name if project.department else ""),
             ("Échéance", task.due_date.strftime("%d/%m/%Y") if task.due_date else ""),
-            ("Taille", task.get_size_display()),
+            ("Points", f"{task.weight} (+1 si rendue à temps)" if task.due_date else str(task.weight)),
         ],
         body_html=_description_html(task.description),
         cta=("Voir mes tâches", _tasks_url(project)),

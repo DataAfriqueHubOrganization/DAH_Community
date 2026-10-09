@@ -4,9 +4,10 @@ Règles (validées avec le bureau) :
 - Une tâche rapporte des points uniquement quand le responsable la valide, et une
   seule fois (contrainte d'unicité sur PointEntry), même si elle est renvoyée puis
   resoumise plusieurs fois.
-- Barème : petite 5, moyenne 10, grande 20 ; +20 % si soumise avant l'échéance,
-  −25 % si soumise en retard ; +25 % si « travail remarquable ». La ponctualité
-  se mesure à la date de SOUMISSION, pas de validation.
+- Barème : de 1 à 5 points, choisis par le responsable selon l'effort ; +1 si
+  soumise avant l'échéance, −1 si soumise en retard, +1 si « travail
+  remarquable » ; jamais moins de 1. La ponctualité se mesure à la date de
+  SOUMISSION, pas de validation.
 - Point d'étape (mensuel) : seuls les scores finaux du responsable comptent ;
   points = moyenne des 5 scores (1 à 5), arrondie, soit 5 points au maximum —
   un repère d'implication, volontairement léger face aux tâches.
@@ -30,11 +31,10 @@ from apps.departments.services import (
 
 from .models import Award, CheckIn, PointEntry
 
-SIZE_POINTS = {"small": 5, "medium": 10, "large": 20}
-CHECKIN_MAX_POINTS = 5  # le point d'étape ne pèse pas plus qu'une petite tâche
-ON_TIME_BONUS = Decimal("1.20")
-LATE_PENALTY = Decimal("0.75")
-OUTSTANDING_BONUS = Decimal("1.25")
+CHECKIN_MAX_POINTS = 5  # moyenne des scores du point d'étape (1 à 5)
+ON_TIME_BONUS = 1       # rendue avant l'échéance
+LATE_PENALTY = 1        # rendue en retard
+OUTSTANDING_BONUS = 1   # « travail remarquable »
 
 
 def _round(value: Decimal) -> int:
@@ -72,14 +72,14 @@ def can_validate_task(user, task) -> bool:
 
 def compute_task_points(task, outstanding: bool) -> tuple[int, bool | None]:
     """(points, à_temps) — à_temps vaut None quand la tâche n'a pas d'échéance."""
-    points = Decimal(SIZE_POINTS.get(task.size, SIZE_POINTS["medium"]))
+    points = task.weight or 3
     on_time = None
     if task.due_date and task.submitted_at:
         on_time = timezone.localdate(task.submitted_at) <= task.due_date
-        points *= ON_TIME_BONUS if on_time else LATE_PENALTY
+        points += ON_TIME_BONUS if on_time else -LATE_PENALTY
     if outstanding:
-        points *= OUTSTANDING_BONUS
-    return _round(points), on_time
+        points += OUTSTANDING_BONUS
+    return max(points, 1), on_time
 
 
 def check_free_status_change(task, new_status: str) -> None:

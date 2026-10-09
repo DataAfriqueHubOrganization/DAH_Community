@@ -55,7 +55,7 @@ def world(db):
 
 
 def new_task(world, **extra):
-    data = dict(project=world["project"], title="Écrire les tests", assigned_to=world["member"], size="medium")
+    data = dict(project=world["project"], title="Écrire les tests", assigned_to=world["member"], weight=3)
     data.update(extra)
     return ProjectTask.objects.create(**data)
 
@@ -69,25 +69,27 @@ def task_url(world, task, action=""):
 
 @pytest.mark.django_db
 class TestBareme:
-    def make(self, size="medium", due=None, submitted=None):
-        task = ProjectTask(size=size, due_date=due)
+    def make(self, weight=3, due=None, submitted=None):
+        task = ProjectTask(weight=weight, due_date=due)
         task.submitted_at = submitted
         return task
 
     def test_sans_echeance(self):
-        assert compute_task_points(self.make("small"), False) == (5, None)
-        assert compute_task_points(self.make("large"), False) == (20, None)
+        assert compute_task_points(self.make(1), False) == (1, None)
+        assert compute_task_points(self.make(5), False) == (5, None)
 
     def test_a_temps_et_en_retard(self):
         now = timezone.now()
         today = timezone.localdate(now)
-        assert compute_task_points(self.make("medium", today, now), False) == (12, True)
-        assert compute_task_points(self.make("medium", today - timedelta(days=1), now), False) == (8, False)
+        assert compute_task_points(self.make(3, today, now), False) == (4, True)
+        assert compute_task_points(self.make(3, today - timedelta(days=1), now), False) == (2, False)
+        # Jamais moins d'un point, même en retard.
+        assert compute_task_points(self.make(1, today - timedelta(days=1), now), False) == (1, False)
 
     def test_travail_remarquable(self):
         now = timezone.now()
-        assert compute_task_points(self.make("medium", timezone.localdate(now), now), True) == (15, True)
-        assert compute_task_points(self.make("large"), True) == (25, None)
+        assert compute_task_points(self.make(3, timezone.localdate(now), now), True) == (5, True)
+        assert compute_task_points(self.make(5), True) == (6, None)
 
 
 # ── Cycle de validation ───────────────────────────────────────────────────
@@ -108,9 +110,9 @@ class TestValidationCycle:
         response = api(world["lead"]).post(task_url(world, task, "validate"), {"outstanding": False})
         assert response.status_code == 200
         assert response.data["status"] == "done"
-        assert response.data["points_awarded"] == 12
+        assert response.data["points_awarded"] == 4  # 3 + 1 (à temps)
         entry = PointEntry.objects.get(project_task=task)
-        assert (entry.user, entry.points, entry.on_time, entry.department) == (world["member"], 12, True, world["dept"])
+        assert (entry.user, entry.points, entry.on_time, entry.department) == (world["member"], 4, True, world["dept"])
 
     def test_un_membre_ne_valide_pas(self, world):
         task = new_task(world, assigned_to=world["idle"], status="submitted", submitted_at=timezone.now())
@@ -150,14 +152,14 @@ class TestValidationCycle:
 
     def test_taches_de_departement(self, world):
         task = DepartmentTask.objects.create(
-            department=world["dept"], title="Doc", assigned_to=world["member"], size="large",
+            department=world["dept"], title="Doc", assigned_to=world["member"], weight=5,
         )
         base = f"/api/v1/departments/{world['dept'].pk}/tasks/{task.pk}"
         assert api(world["member"]).patch(f"{base}/", {"status": "done"}, format="json").status_code == 400
         assert api(world["member"]).post(f"{base}/submit/").status_code == 200
         response = api(world["lead"]).post(f"{base}/validate/", {"outstanding": True})
         assert response.status_code == 200
-        assert PointEntry.objects.get(department_task=task).points == 25
+        assert PointEntry.objects.get(department_task=task).points == 6  # 5 + 1 (remarquable)
 
 
 # ── Classement & mes points ───────────────────────────────────────────────
@@ -388,3 +390,13 @@ class TestDepartmentWorkspace:
         assert api(world["member"]).get(url).status_code == 200
         assert api(world["outsider"]).get(url).status_code == 403
         assert api(world["president"]).get(url).status_code == 200
+
+
+@pytest.mark.django_db
+def test_points_de_tache_entre_1_et_5(world):
+    lead = api(world["lead"])
+    url = f"/api/v1/projects/{world['project'].pk}/tasks/"
+    for bad in (0, 6):
+        assert lead.post(url, {"title": "T", "weight": bad}, format="json").status_code == 400
+    response = lead.post(url, {"title": "T", "weight": 2}, format="json")
+    assert response.status_code == 201 and response.data["weight"] == 2
