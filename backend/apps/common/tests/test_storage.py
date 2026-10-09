@@ -86,3 +86,21 @@ def test_remise_en_ordre(_isolated_media, member):
     member.refresh_from_db()
     assert not member.avatar
     assert cleanup(log=lambda *_: None) == {"moved": 0, "cleared": 0, "ok": 1}  # relançable
+
+
+def test_choix_du_stockage(settings):
+    from cloudinary_storage.storage import MediaCloudinaryStorage, RawMediaCloudinaryStorage
+    from apps.common.storage import private_image_storage, private_storage
+    settings.MEDIA_STORAGE = "local"
+    assert isinstance(private_storage(), PrivateFileSystemStorage)
+    assert isinstance(private_image_storage(), PrivateFileSystemStorage)
+    settings.MEDIA_STORAGE = "cloudinary"  # pré-production (Render)
+    assert isinstance(private_storage(), RawMediaCloudinaryStorage)
+    assert isinstance(private_image_storage(), MediaCloudinaryStorage)
+
+
+def test_remise_en_ordre_refusee_hors_stockage_local(settings):
+    from django.core.management import CommandError, call_command
+    settings.MEDIA_STORAGE = "cloudinary"
+    with pytest.raises(CommandError):
+        call_command("cleanup_media", "--dry-run")

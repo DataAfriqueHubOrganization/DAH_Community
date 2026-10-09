@@ -1,5 +1,7 @@
 # Déploiement sur un serveur (Contabo)
 
+> Production. La pré-production (Render + Vercel, branche `deploy`) est décrite dans PREPROD.md.
+
 Tout tourne dans Docker sur un seul serveur, derrière un seul domaine :
 
 ```
@@ -11,7 +13,8 @@ Internet ──HTTPS──> nginx ──┬── /api, /admin, /static ──> 
 ```
 
 Les fichiers envoyés (avatars, couvertures, CV, preuves de paiement, justificatifs)
-sont stockés sur le disque du serveur, dans des volumes Docker persistants. Les
+sont stockés sur le disque du serveur, dans des volumes Docker persistants
+(`MEDIA_STORAGE=local`, posé par docker-compose.prod.yml). Les
 documents sensibles sont dans un dossier séparé, jamais accessible directement.
 
 ---
@@ -98,7 +101,7 @@ Sans reprise de données : créer le premier administrateur avec
 ## 6. Bascule
 
 - Vérifier le site : `https://dataafriquehub.org`, connexion, une page de l'espace membre.
-- Arrêter le service Render et le projet Vercel (une seule production à la fois).
+- Render et Vercel deviennent la **pré-production** (branche `deploy`) : voir PREPROD.md.
 - Les emails pointent vers `FRONTEND_URL` : vérifier qu'il vaut bien le nouveau domaine.
 
 ## 7. Sauvegardes (indispensable)

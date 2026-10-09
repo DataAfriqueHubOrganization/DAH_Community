@@ -1344,5 +1344,9 @@ export const en: Messages = {
     memberTag: "DAH member",
     externalTag: "External",
   },
+  env: {
+    preprod: "Pre-production",
+    preprodHint: "Test site: demo data, emails are not sent to members.",
+  },
   plural,
 };

@@ -9,8 +9,8 @@ from django.core.validators import FileExtensionValidator
 
 def _cv_storage():
     """CV du profil : document privé (voir apps.common.storage)."""
-    from apps.common.storage import private_storage
-    return private_storage()
+    from apps.common.storage import private_image_storage
+    return private_image_storage()
 
 
 class MemberProfile(TimestampMixin):

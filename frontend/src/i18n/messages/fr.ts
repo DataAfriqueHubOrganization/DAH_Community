@@ -1365,6 +1365,10 @@ export const fr = {
     memberTag: "Membre DAH",
     externalTag: "Externe",
   },
+  env: {
+    preprod: "Pré-production",
+    preprodHint: "Site de test : données de démonstration, les emails ne partent pas vers les membres.",
+  },
   plural,
 };
 

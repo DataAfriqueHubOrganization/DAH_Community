@@ -14,7 +14,7 @@ Relançable sans risque.
 from django.apps import apps
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.db import models
 
 from apps.common.storage import PrivateFileSystemStorage
@@ -68,6 +68,8 @@ class Command(BaseCommand):
         parser.add_argument("--dry-run", action="store_true", help="Lister sans rien modifier.")
 
     def handle(self, *args, dry_run=False, **options):
+        if settings.MEDIA_STORAGE != "local":
+            raise CommandError("Réservé au stockage sur le serveur (MEDIA_STORAGE=local).")
         stats = cleanup(dry_run=dry_run, log=self.stdout.write)
         prefix = "(simulation) " if dry_run else ""
         self.stdout.write(self.style.SUCCESS(

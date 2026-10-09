@@ -1,22 +1,35 @@
-"""Stockage des fichiers envoyés, sur le disque du serveur.
+"""Stockage des fichiers envoyés : disque du serveur ou Cloudinary.
+
+MEDIA_STORAGE :
+  * « local » — disque du serveur (production sur Contabo) : MEDIA_ROOT pour les
+    fichiers publics, PRIVATE_MEDIA_ROOT pour les documents sensibles ;
+  * « cloudinary » — pour un hébergeur sans disque persistant (pré-production
+    sur Render). Choisi automatiquement sur Render (voir settings/prod.py).
 
 Deux familles :
-  * publics (avatars, couvertures d'événements et d'articles…) : MEDIA_ROOT,
-    servis directement sous /media/ (par nginx en production) ;
-  * privés (CV, preuves de paiement, justificatifs de caisse) : PRIVATE_MEDIA_ROOT,
-    jamais servis directement. Leur URL est un lien signé à durée limitée (vue
-    apps.common.views.private_file), produit uniquement dans les réponses de
-    l'API déjà réservées aux personnes autorisées.
+  * publics (avatars, couvertures…) : stockage par défaut (STORAGES["default"]) ;
+  * privés (CV, preuves de paiement, justificatifs) : private_storage() /
+    private_image_storage(). En local, jamais servis directement : l'URL est un
+    lien signé à durée limitée (vue apps.common.views.private_file), produit
+    uniquement dans les réponses de l'API déjà réservées aux bonnes personnes.
+    Chez Cloudinary, l'URL est celle du fichier (adaptée à la pré-production,
+    qui ne contient que des données de démonstration).
 """
 import os
 
 from django.conf import settings
 from django.core import signing
-from django.core.files.storage import FileSystemStorage
+from django.core.files.storage import FileSystemStorage, Storage
 from django.urls import reverse
 from django.utils.deconstruct import deconstructible
 
+LOCAL = "local"
+CLOUDINARY = "cloudinary"
 _PRIVATE_SALT = "dah-private-media"
+
+
+def media_backend() -> str:
+    return getattr(settings, "MEDIA_STORAGE", LOCAL)
 
 
 @deconstructible
@@ -49,6 +62,18 @@ def read_private_token(token: str) -> str:
         raise ValueError("Lien invalide ou expiré.") from exc
 
 
-def private_storage() -> PrivateFileSystemStorage:
-    """Documents sensibles : CV, preuves de paiement, justificatifs."""
+def private_storage() -> Storage:
+    """Documents sensibles (PDF ou images) : CV de candidature, justificatifs de caisse."""
+    if media_backend() == CLOUDINARY:
+        from cloudinary_storage.storage import RawMediaCloudinaryStorage  # fichiers « bruts » (PDF…)
+        return RawMediaCloudinaryStorage()
+    return PrivateFileSystemStorage()
+
+
+def private_image_storage() -> Storage:
+    """Documents sensibles rangés en « image » chez Cloudinary (preuves de paiement,
+    CV du profil — type historique, conservé pour que les liens existants restent valides)."""
+    if media_backend() == CLOUDINARY:
+        from cloudinary_storage.storage import MediaCloudinaryStorage
+        return MediaCloudinaryStorage()
     return PrivateFileSystemStorage()

@@ -17,12 +17,9 @@ SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
 
 # Un proxy devant l'application : IP réelle du client pour les quotas.
 REST_FRAMEWORK["NUM_PROXIES"] = 1  # noqa: F405
-# Render est derrière Cloudflare (CF-Connecting-IP fiable). Sur un autre
-# hébergement, définir CLIENT_IP_HEADER selon le proxy (ex. HTTP_X_REAL_IP avec nginx).
-CLIENT_IP_HEADER = config(
-    "CLIENT_IP_HEADER",
-    default="HTTP_CF_CONNECTING_IP" if config("RENDER_EXTERNAL_HOSTNAME", default="") else "",
-) or None
+# En-tête portant l'IP réelle, selon le proxy de l'hébergeur (ex. HTTP_X_REAL_IP
+# avec nginx, HTTP_CF_CONNECTING_IP derrière Cloudflare). Vide par défaut.
+CLIENT_IP_HEADER = config("CLIENT_IP_HEADER", default="") or None
 
 # Documentation de l'API réservée aux administrateurs en production.
 SPECTACULAR_SETTINGS["SERVE_PERMISSIONS"] = ["rest_framework.permissions.IsAdminUser"]  # noqa: F405
@@ -44,12 +41,22 @@ CSRF_TRUSTED_ORIGINS = [o for o in config("CSRF_TRUSTED_ORIGINS", default="", ca
 if RENDER_EXTERNAL_HOSTNAME:
     CSRF_TRUSTED_ORIGINS.append(f"https://{RENDER_EXTERNAL_HOSTNAME}")
 
-# WhiteNoise sert les fichiers statiques depuis Gunicorn ; les fichiers envoyés
-# restent sur le disque du serveur (volumes persistants, voir deploy/).
+# Fichiers envoyés : disque du serveur par défaut (volumes persistants — voir
+# deploy/). MEDIA_STORAGE=cloudinary pour un hébergeur sans disque persistant
+# (réglé dans l'environnement de l'hébergeur, pas dans le code).
+MEDIA_STORAGE = config("MEDIA_STORAGE", default="local")
+# WhiteNoise sert les fichiers statiques depuis Gunicorn.
 STORAGES = {
-    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "default": {
+        "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage"
+        if MEDIA_STORAGE == "cloudinary" else "django.core.files.storage.FileSystemStorage",
+    },
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
 }
+if MEDIA_STORAGE == "cloudinary":
+    # django-cloudinary-storage lit encore l'ancien réglage dans sa commande
+    # collectstatic (sinon AttributeError au build).
+    STATICFILES_STORAGE = STORAGES["staticfiles"]["BACKEND"]
 
 # Pas de worker Celery/Redis déployé sur ce plan gratuit : les tâches (emails)
 # s'exécutent de façon synchrone dans la requête, via l'API HTTP de Brevo.

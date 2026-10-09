@@ -25,10 +25,22 @@ def send_transactional_email(
     Sans BREVO_API_KEY (développement local), repli sur le backend email de Django
     — en dev, le SMTP de Mailpit (http://localhost:8025) — pour pouvoir prévisualiser
     les emails sans clé Brevo."""
+    # Pré-production : aucun email ne doit partir vers les vrais destinataires.
+    redirect_to = getattr(settings, "EMAIL_REDIRECT_TO", [])
+    if redirect_to:
+        original = ", ".join(recipient_list)
+        subject = f"[Préprod → {original}] {subject}"
+        message = f"(Pré-production — destinataire réel : {original})\n\n{message}"
+        recipient_list = list(redirect_to)
+
     logger.info(
         "Envoi email — À: %s — Sujet: %s\n%s",
         ", ".join(recipient_list), subject, message,
     )
+
+    if not getattr(settings, "EMAIL_ENABLED", True):
+        logger.info("Envoi des emails désactivé (EMAIL_ENABLED=false) : email non envoyé.")
+        return
 
     if not settings.BREVO_API_KEY:
         email = EmailMultiAlternatives(
