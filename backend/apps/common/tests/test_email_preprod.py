@@ -28,3 +28,15 @@ def test_sans_reglage_envoi_normal(settings):
     settings.EMAIL_REDIRECT_TO = []
     send_branded_email(subject="Test", recipient_list=["awa@exemple.org"], paragraphs=["x"])
     assert mail.outbox[0].to == ["awa@exemple.org"] and mail.outbox[0].subject == "Test"
+
+
+def test_comptes_de_demo_jamais_envoyes_via_brevo(settings, monkeypatch):
+    settings.BREVO_API_KEY = "cle-test"
+    settings.EMAIL_REDIRECT_TO = []
+    sent = []
+    monkeypatch.setattr("apps.common.email.requests.post",
+                        lambda url, json, **kw: sent.append(json) or type("R", (), {"raise_for_status": lambda self: None})())
+    send_branded_email(subject="Test", recipient_list=["alice@dah.com"], paragraphs=["x"])
+    assert sent == []
+    send_branded_email(subject="Test", recipient_list=["alice@dah.com", "awa@exemple.org"], paragraphs=["x"])
+    assert [r["email"] for r in sent[0]["to"]] == ["awa@exemple.org"]

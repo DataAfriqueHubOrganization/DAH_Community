@@ -7,6 +7,8 @@ from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 
+from apps.common.demo import DEMO_DOMAIN
+
 logger = logging.getLogger(__name__)
 
 _BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
@@ -41,6 +43,16 @@ def send_transactional_email(
     if not getattr(settings, "EMAIL_ENABLED", True):
         logger.info("Envoi des emails désactivé (EMAIL_ENABLED=false) : email non envoyé.")
         return
+
+    if settings.BREVO_API_KEY:
+        # Comptes de démo (@dah.com) : adresses fictives, un envoi réel rebondirait
+        # et nuirait à la réputation d'expéditeur. (En local, Mailpit les affiche.)
+        skipped = [addr for addr in recipient_list if addr.lower().endswith(DEMO_DOMAIN)]
+        if skipped:
+            logger.info("Comptes de démo ignorés : %s", ", ".join(skipped))
+            recipient_list = [addr for addr in recipient_list if addr not in skipped]
+            if not recipient_list:
+                return
 
     if not settings.BREVO_API_KEY:
         email = EmailMultiAlternatives(

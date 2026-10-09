@@ -7,7 +7,7 @@
 | Adresse | `*.onrender.com` / `*.vercel.app` | `dataafriquehub.org` |
 | Base de données | celle de Render, **séparée** | celle de Contabo, **séparée** |
 | Fichiers | Cloudinary (`MEDIA_STORAGE=cloudinary`, réglé dans Render) | disque du serveur |
-| Emails | tous détournés vers une boîte de test | envoyés aux membres |
+| Emails | envoyés aux vrais destinataires (sauf comptes de démo `@dah.com`) | envoyés aux membres |
 | Moteurs de recherche | exclue (`noindex`) | indexée |
 
 ## Cycle de travail
@@ -55,10 +55,12 @@ Service `dah-backend` → **Settings** :
 **Environment** :
 - `MEDIA_STORAGE` = `cloudinary` (le disque de Render est effacé à chaque redémarrage)
 - `CLIENT_IP_HEADER` = `HTTP_CF_CONNECTING_IP` (Render est derrière Cloudflare)
-- `EMAIL_REDIRECT_TO` = une **vraie boîte mail** que vous lisez (ex. votre Gmail) — **obligatoire** :
-  sans elle, la pré-production enverrait des emails à de vraies adresses.
-  (Ou `EMAIL_ENABLED` = `false` pour n'envoyer aucun email.)
-  Ne pas y mettre l'identifiant SMTP de Brevo (`…@smtp-brevo.com`) : ce n'est pas une boîte mail.
+- Emails : envoyés au destinataire concerné, comme en production — **ne pas
+  définir** `EMAIL_REDIRECT_TO`. Les comptes de démo (`@dah.com`) ne reçoivent
+  jamais rien (adresses fictives).
+  Options : `EMAIL_REDIRECT_TO` = une vraie boîte mail pour tout détourner vers
+  elle (jamais l'identifiant SMTP `…@smtp-brevo.com`) ; `EMAIL_ENABLED` = `false`
+  pour n'envoyer aucun email.
 - `SEED_PASSWORD` = un mot de passe long, propre à la pré-production, pour les
   comptes de démo — **obligatoire** pour les seeds sur un serveur (voir ci-dessous).
 - `CORS_ALLOWED_ORIGINS` et `FRONTEND_URL` = l'adresse Vercel de pré-production.
