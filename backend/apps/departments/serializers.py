@@ -88,9 +88,25 @@ class DepartmentListSerializer(serializers.ModelSerializer):
 
 class DepartmentDetailSerializer(DepartmentListSerializer):
     memberships = DepartmentMembershipSerializer(many=True, read_only=True)
+    project_managers = serializers.SerializerMethodField()
+    can_manage_projects = serializers.SerializerMethodField()
 
     class Meta(DepartmentListSerializer.Meta):
-        fields = DepartmentListSerializer.Meta.fields + ["memberships"]
+        fields = DepartmentListSerializer.Meta.fields + ["memberships", "project_managers", "can_manage_projects"]
+
+    def get_project_managers(self, obj):
+        return [{"id": u.id, "full_name": u.full_name} for u in obj.project_managers.order_by("first_name", "last_name")]
+
+    def get_can_manage_projects(self, obj) -> bool:
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return False
+        from .services import can_manage_projects
+        return can_manage_projects(request.user, obj)
+
+
+class ProjectManagerSerializer(serializers.Serializer):
+    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.filter(is_active=True))
 
 
 class DepartmentWriteSerializer(serializers.ModelSerializer):

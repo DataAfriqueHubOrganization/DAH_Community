@@ -16,6 +16,12 @@ class Department(TimestampMixin):
         null=True, blank=True, related_name="co_led_departments",
         verbose_name="Co-responsable",
     )
+    # Gestionnaires de projets désignés par le responsable : créent les projets du
+    # département et y affectent les tâches (sans les valider).
+    project_managers = models.ManyToManyField(
+        settings.AUTH_USER_MODEL, blank=True, related_name="managed_project_departments",
+        verbose_name="Gestionnaires de projets",
+    )
 
     class Meta:
         verbose_name = "Département"

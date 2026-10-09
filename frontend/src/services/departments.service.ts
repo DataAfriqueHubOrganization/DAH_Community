@@ -24,6 +24,13 @@ export const departmentsService = {
 
   delete: (id: number) => api.delete(`/departments/${id}/`),
 
+  /** Gestionnaires de projets (responsable du département uniquement). */
+  addProjectManager: (departmentId: number, userId: number) =>
+    api.post<DepartmentDetail["project_managers"]>(`/departments/${departmentId}/project-managers/`, { user: userId }),
+
+  removeProjectManager: (departmentId: number, userId: number) =>
+    api.delete(`/departments/${departmentId}/project-managers/${userId}/`),
+
   addMember: (departmentId: number, data: AddMembershipPayload) =>
     api.post<DepartmentMembership>(`/departments/${departmentId}/members/`, data),
 

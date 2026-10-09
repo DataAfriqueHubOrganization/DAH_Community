@@ -26,6 +26,18 @@ def can_manage_department(user, department) -> bool:
     return department.lead_id == user.id or department.co_lead_id == user.id
 
 
+def can_manage_projects(user, department) -> bool:
+    """Créer les projets d'un département, y créer et affecter les tâches : ceux qui
+    gèrent le département, et les gestionnaires de projets désignés par le
+    responsable — tant qu'ils font partie du département."""
+    if department is None or not user or not user.is_authenticated:
+        return False
+    if can_manage_department(user, department):
+        return True
+    return (department.project_managers.filter(pk=user.pk).exists()
+            and user.id in get_department_member_ids(department))
+
+
 def is_current_department_member(user, department) -> bool:
     today = timezone.now().date()
     return department.memberships.filter(user=user).filter(

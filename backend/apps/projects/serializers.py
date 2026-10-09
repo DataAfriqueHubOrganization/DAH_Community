@@ -1,7 +1,8 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from apps.common.permissions import SECTIONS, has_section
-from apps.departments.services import get_department_member_ids
+from apps.common.sanitize import clean_rich_text
+from apps.departments.services import can_manage_projects, get_department_member_ids
 from .models import Project, ProjectTask
 
 User = get_user_model()
@@ -31,8 +32,8 @@ class ProjectSerializer(serializers.ModelSerializer):
 class ProjectWriteSerializer(serializers.ModelSerializer):
     """Création/édition — le propriétaire est fixé par la vue (request.user à la
     création), jamais transmis par le client. Un projet est toujours rattaché à un
-    département, et ne peut être créé/déplacé que par le responsable/adjoint de ce
-    département, ou le bureau/admin."""
+    département, et ne peut être créé/déplacé que par ceux qui gèrent ses projets
+    (responsable/adjoint, gestionnaires de projets, section Départements)."""
     members = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), many=True, required=False)
 
     class Meta:
@@ -48,9 +49,9 @@ class ProjectWriteSerializer(serializers.ModelSerializer):
         department = attrs.get("department")
         user = self.context["request"].user
 
-        if not (has_section(user, SECTIONS.DEPARTMENTS) or user.id in (department.lead_id, department.co_lead_id)):
+        if not can_manage_projects(user, department):
             raise serializers.ValidationError({
-                "department": "Vous devez être responsable ou adjoint de ce département pour y créer un projet.",
+                "department": "Vous devez gérer les projets de ce département pour y créer un projet.",
             })
 
         return attrs
@@ -72,11 +73,21 @@ class ProjectTaskSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "project", "project_title", "created_at"]
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        # Affichée en HTML : nettoyée aussi à la lecture (anciennes descriptions).
+        data["description"] = clean_rich_text(data["description"] or "")
+        return data
+
 
 class ProjectTaskWriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProjectTask
         fields = ["title", "description", "assigned_to", "due_date", "status", "size"]
+
+    def validate_description(self, value: str) -> str:
+        # Éditeur de texte riche : HTML nettoyé (texte brut des anciennes tâches intact).
+        return clean_rich_text(value)
 
     def validate_status(self, value):
         # « À valider » et « Validée » passent par les actions submit / validate.

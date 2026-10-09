@@ -10,6 +10,9 @@ import { useI18n } from "@/i18n/I18nProvider";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/Badge";
 import { TaskReviewControls } from "@/features/tasks/TaskReviewControls";
+import { TaskDescription } from "@/features/tasks/TaskDescription";
+import { RichTextEditor } from "@/components/RichTextEditor";
+import { apiError } from "@/features/treasury/shared";
 import type {
   Project, ProjectStatus, ProjectTask, ProjectTaskStatus, ProjectTaskWritePayload, ProjectWritePayload, TaskSize,
 } from "@/types/projects.types";
@@ -34,7 +37,7 @@ export function projectProgress(tasks: ProjectTask[]) {
 }
 
 export function ProjectsTab({
-  departmentId, projects, tasks, isLoading, viewerMode, assignees, currentUserId, isBureauUser,
+  departmentId, projects, tasks, isLoading, viewerMode, assignees, currentUserId, canManageProjects,
   selectedId, onSelect, onTasksChanged,
 }: {
   departmentId: number;
@@ -44,7 +47,8 @@ export function ProjectsTab({
   viewerMode: ViewerMode;
   assignees: Assignee[];
   currentUserId: number | undefined;
-  isBureauUser: boolean;
+  /** Responsable, gestionnaire de projets ou section Départements. */
+  canManageProjects: boolean;
   selectedId: number | null;
   onSelect: (id: number | null) => void;
   onTasksChanged: () => void;
@@ -86,7 +90,7 @@ export function ProjectsTab({
       <div className="space-y-2.5">
         <div className="flex items-center justify-between">
           <h2 className="font-display font-bold text-fg">{d.projects}</h2>
-          {viewerMode === "manager" && (
+          {canManageProjects && (
             <button onClick={() => setFormProject("new")}
               className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-brand-blue text-white text-xs font-semibold hover:bg-brand-deep">
               <Plus size={14} /> {d.newProject}
@@ -155,7 +159,7 @@ export function ProjectsTab({
           viewerMode={viewerMode}
           assignees={assignees}
           currentUserId={currentUserId}
-          isBureauUser={isBureauUser}
+          canManageProjects={canManageProjects}
           onEdit={() => setFormProject(selected)}
           onDelete={() => { if (confirm(d.confirmDeleteProject(selected.title))) deleteProject.mutate(selected.id); }}
           onTasksChanged={onTasksChanged}
@@ -177,14 +181,14 @@ export function ProjectsTab({
 }
 
 function ProjectDetail({
-  project, tasks, viewerMode, assignees, currentUserId, isBureauUser, onEdit, onDelete, onTasksChanged,
+  project, tasks, viewerMode, assignees, currentUserId, canManageProjects, onEdit, onDelete, onTasksChanged,
 }: {
   project: Project;
   tasks: ProjectTask[];
   viewerMode: ViewerMode;
   assignees: Assignee[];
   currentUserId: number | undefined;
-  isBureauUser: boolean;
+  canManageProjects: boolean;
   onEdit: () => void;
   onDelete: () => void;
   onTasksChanged: () => void;
@@ -195,10 +199,12 @@ function ProjectDetail({
   const [filter, setFilter] = useState<TaskFilter>("all");
   const [assignee, setAssignee] = useState<string>("");
   const [showAssign, setShowAssign] = useState(false);
+  const [editing, setEditing] = useState<ProjectTask | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
-  const canManageProject = isBureauUser || project.owner_id === currentUserId;
-  const canValidate = isBureauUser || viewerMode === "manager";
+  const canManageProject = canManageProjects || project.owner_id === currentUserId;
+  // Valider (et donc donner les points) : responsable / section Départements, jamais un gestionnaire de projets.
+  const canValidate = viewerMode === "manager";
   const progress = projectProgress(tasks);
   const involved = new Set(tasks.map((task) => task.assigned_to).filter(Boolean)).size;
 
@@ -251,7 +257,7 @@ function ProjectDetail({
                   className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-line text-fg-subtle hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10">
                   <Trash2 size={14} />
                 </button>
-                <button onClick={() => setShowAssign((v) => !v)}
+                <button onClick={() => { setEditing(null); setShowAssign((v) => !v); }}
                   className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-brand-blue text-white text-xs font-semibold hover:bg-brand-deep">
                   <Plus size={14} /> {d.assignTask}
                 </button>
@@ -260,12 +266,14 @@ function ProjectDetail({
           </div>
         </div>
 
-        {showAssign && canManageProject && (
-          <AssignTaskForm
+        {(showAssign || editing) && canManageProject && (
+          <TaskForm
+            key={editing?.id ?? "new"}
             projectId={project.id}
+            task={editing}
             assignees={assignees}
-            onDone={() => { setShowAssign(false); onTasksChanged(); }}
-            onCancel={() => setShowAssign(false)}
+            onDone={() => { setShowAssign(false); setEditing(null); onTasksChanged(); }}
+            onCancel={() => { setShowAssign(false); setEditing(null); }}
           />
         )}
 
@@ -277,7 +285,7 @@ function ProjectDetail({
                 {d.taskStatus[s]} · {count(s)}
               </FilterChip>
             ))}
-            {viewerMode === "manager" && (
+            {canManageProject && (
               <label className="sm:ml-auto inline-flex items-center gap-2 h-8 pl-3 pr-1 border border-line rounded-full text-xs">
                 <span className="text-fg-muted">{w.assigneeFilter}</span>
                 <select value={assignee} onChange={(e) => setAssignee(e.target.value)} className="bg-transparent font-semibold text-fg focus:outline-none">
@@ -322,9 +330,8 @@ function ProjectDetail({
                         highlight={highlight}
                         canValidate={canValidate && task.assigned_to !== currentUserId}
                         isAssignee={task.assigned_to === currentUserId}
-                        canDelete={canManageProject}
-                        expanded={expanded.has(`d${task.id}`)}
-                        onToggleDescription={() => toggle(`d${task.id}`)}
+                        canManage={canManageProject}
+                        onEdit={() => { setShowAssign(false); setEditing(task); }}
                         onChanged={onTasksChanged}
                       />
                     ))}
@@ -346,15 +353,15 @@ function ProjectDetail({
 }
 
 function TaskRow({
-  task, highlight, canValidate, isAssignee, canDelete, expanded, onToggleDescription, onChanged,
+  task, highlight, canValidate, isAssignee, canManage, onEdit, onChanged,
 }: {
   task: ProjectTask;
   highlight: boolean;
   canValidate: boolean;
   isAssignee: boolean;
-  canDelete: boolean;
-  expanded: boolean;
-  onToggleDescription: () => void;
+  /** Modifier / réaffecter / supprimer la tâche. */
+  canManage: boolean;
+  onEdit: () => void;
   onChanged: () => void;
 }) {
   const { t, fmt } = useI18n();
@@ -385,21 +392,18 @@ function TaskRow({
               : task.due_date ? <> · <span className={late ? "font-semibold text-red-600" : ""}>{w.dueOn(fmt.date(task.due_date))}</span></> : null}
             {` · ${t.tasks.size[task.size]}`}
           </p>
-          {task.description && (
-            <div className="mt-1">
-              <p className={cn("text-xs text-fg-muted whitespace-pre-line", !expanded && "line-clamp-1")}>{task.description}</p>
-              {task.description.length > 80 && (
-                <button onClick={onToggleDescription} className="text-brand-blue text-xs font-medium hover:underline">
-                  {expanded ? t.sidebar.collapse : d.moreDetails}
-                </button>
-              )}
-            </div>
-          )}
+          <TaskDescription description={task.description} />
         </div>
       </div>
       <div className="flex items-start gap-1 sm:justify-end pl-10 sm:pl-0">
         <TaskReviewControls task={task} canValidate={canValidate} isAssignee={isAssignee} onChanged={onChanged} />
-        {canDelete && (
+        {canManage && task.status !== "done" && (
+          <button onClick={onEdit} aria-label={d.editTask} title={d.editTask}
+            className="p-1.5 text-fg-faint hover:text-brand-blue rounded-lg hover:bg-surface-muted shrink-0">
+            <Pencil size={14} />
+          </button>
+        )}
+        {canManage && (
           <button onClick={() => { if (confirm(d.confirmDeleteTask)) remove.mutate(); }}
             aria-label={t.common.delete} title={t.common.delete}
             className="p-1.5 text-fg-faint hover:text-red-500 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 shrink-0">
@@ -411,10 +415,12 @@ function TaskRow({
   );
 }
 
-function AssignTaskForm({
-  projectId, assignees, onDone, onCancel,
+function TaskForm({
+  projectId, task, assignees, onDone, onCancel,
 }: {
   projectId: number;
+  /** Tâche à modifier ; null = nouvelle tâche. */
+  task: ProjectTask | null;
   assignees: Assignee[];
   onDone: () => void;
   onCancel: () => void;
@@ -422,18 +428,20 @@ function AssignTaskForm({
   const { t } = useI18n();
   const d = t.deptDetail;
   const qc = useQueryClient();
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [assignedTo, setAssignedTo] = useState("");
-  const [dueDate, setDueDate] = useState("");
-  const [size, setSize] = useState<TaskSize>("medium");
+  const [title, setTitle] = useState(task?.title ?? "");
+  const [description, setDescription] = useState(task?.description ?? "");
+  const [assignedTo, setAssignedTo] = useState(task?.assigned_to ? String(task.assigned_to) : "");
+  const [dueDate, setDueDate] = useState(task?.due_date ?? "");
+  const [size, setSize] = useState<TaskSize>(task?.size ?? "medium");
+  // La personne affectée (si elle a changé) reçoit un email.
+  const notifies = !!assignedTo && assignedTo !== String(task?.assigned_to ?? "");
 
-  const create = useMutation({
+  const save = useMutation({
     mutationFn: () => {
       const payload: ProjectTaskWritePayload = {
         title, description, assigned_to: assignedTo ? Number(assignedTo) : null, due_date: dueDate || null, size,
       };
-      return projectsService.tasks.create(projectId, payload);
+      return task ? projectsService.tasks.update(projectId, task.id, payload) : projectsService.tasks.create(projectId, payload);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["project", projectId, "tasks"] });
@@ -443,9 +451,10 @@ function AssignTaskForm({
 
   return (
     <div className="bg-surface-muted rounded-xl p-4 space-y-3">
+      {task && <p className="text-xs font-semibold text-fg-soft">{d.editTask}</p>}
       <input placeholder={d.taskTitle} aria-label={d.taskTitle} value={title} onChange={(e) => setTitle(e.target.value)} className={cn(inputClass, "w-full")} />
-      <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2}
-        placeholder={d.taskDescriptionPlaceholder} aria-label={d.descriptionOptional} className={cn(inputClass, "w-full resize-none")} />
+      <RichTextEditor value={description} onChange={setDescription} minHeight={110}
+        placeholder={d.taskDescriptionPlaceholder} label={d.descriptionOptional} />
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div>
           <label htmlFor={`assign-to-${projectId}`} className="block text-xs text-fg-muted mb-1">{d.assignedTo}</label>
@@ -465,13 +474,13 @@ function AssignTaskForm({
           </select>
         </div>
       </div>
-      <p className="text-[11px] text-fg-subtle">{t.tasks.sizeHint}</p>
-      {create.isError && <p className="text-red-500 text-xs">{d.assignError}</p>}
+      <p className="text-[11px] text-fg-subtle">{t.tasks.sizeHint}{notifies && <> · {d.assigneeNotified}</>}</p>
+      {save.isError && <p className="text-red-500 text-xs">{apiError(save.error, d.assignError)}</p>}
       <div className="flex justify-end gap-2">
         <button onClick={onCancel} className="px-4 py-2 text-sm border border-line rounded-xl hover:bg-surface">{t.common.cancel}</button>
-        <button onClick={() => create.mutate()} disabled={!title || create.isPending}
+        <button onClick={() => save.mutate()} disabled={!title.trim() || save.isPending}
           className="px-5 py-2 bg-brand-blue text-white rounded-xl text-sm font-semibold hover:bg-brand-deep disabled:opacity-50">
-          {create.isPending ? t.auth.creating : d.assign}
+          {save.isPending ? t.common.saving : task ? t.common.save : d.assign}
         </button>
       </div>
     </div>

@@ -216,7 +216,7 @@ export default function DepartmentWorkspacePage({ params }: { params: Promise<{ 
           viewerMode={viewerMode}
           assignees={assignees}
           currentUserId={currentUser?.id}
-          isBureauUser={hasSection(currentUser, "departments")}
+          canManageProjects={department.can_manage_projects}
           selectedId={selectedProjectId}
           onSelect={(projectId) => navigate("projects", projectId)}
           onTasksChanged={onTasksChanged}

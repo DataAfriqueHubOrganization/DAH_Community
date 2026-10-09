@@ -24,6 +24,10 @@ export interface Department {
 
 export interface DepartmentDetail extends Department {
   memberships: DepartmentMembership[];
+  /** Gestionnaires de projets désignés par le responsable. */
+  project_managers: { id: number; full_name: string }[];
+  /** L'utilisateur peut créer des projets et y affecter des tâches. */
+  can_manage_projects: boolean;
 }
 
 export interface DepartmentWritePayload {

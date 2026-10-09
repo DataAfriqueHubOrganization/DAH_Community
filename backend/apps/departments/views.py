@@ -1,6 +1,6 @@
 from rest_framework import status
 from rest_framework.decorators import action
-from rest_framework.exceptions import NotFound, PermissionDenied
+from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
@@ -14,12 +14,12 @@ from .serializers import (
     DepartmentMembershipSerializer, AddMembershipSerializer, EndMembershipSerializer,
     DepartmentAnnouncementSerializer, AnnouncementWriteSerializer,
     DepartmentSessionSerializer, SessionWriteSerializer, SessionUpdateSerializer, SessionReportSerializer,
-    DepartmentTaskSerializer, TaskWriteSerializer, TaskStatusUpdateSerializer,
+    DepartmentTaskSerializer, TaskWriteSerializer, TaskStatusUpdateSerializer, ProjectManagerSerializer,
 )
 from .services import (
     save_department, add_member, end_membership,
     can_manage_department, is_current_department_member, get_my_department_context,
-    get_user_department_ids,
+    get_user_department_ids, get_department_member_ids,
     create_announcement, update_announcement,
     create_session, update_session, delete_session_series, submit_session_report, send_session_reminder,
     create_task,
@@ -102,6 +102,29 @@ class DepartmentViewSet(ModelViewSet):
             DepartmentMembershipSerializer(membership).data,
             status=status.HTTP_201_CREATED,
         )
+
+    # ── Gestionnaires de projets (désignés par le responsable) ─────
+    @action(detail=True, methods=["post"], url_path="project-managers")
+    def add_project_manager(self, request, pk=None):
+        department = self.get_object()
+        if not can_manage_department(request.user, department):
+            raise PermissionDenied("Seul le responsable du département désigne les gestionnaires de projets.")
+        serializer = ProjectManagerSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data["user"]
+        if user.id not in get_department_member_ids(department):
+            raise ValidationError({"user": "Choisissez un membre de ce département."})
+        department.project_managers.add(user)
+        return Response(DepartmentDetailSerializer(department, context={"request": request}).data["project_managers"],
+                        status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["delete"], url_path="project-managers/(?P<user_id>[0-9]+)")
+    def remove_project_manager(self, request, pk=None, user_id=None):
+        department = self.get_object()
+        if not can_manage_department(request.user, department):
+            raise PermissionDenied("Seul le responsable du département désigne les gestionnaires de projets.")
+        department.project_managers.remove(int(user_id))
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=["post"], url_path="members/(?P<membership_id>[^/.]+)/end")
     def end_member(self, request, pk=None, membership_id=None):
