@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { LayoutDashboard, Users, CalendarDays, FileText, Settings, ChevronLeft, ChevronRight, Home, CreditCard, Building2, Newspaper, ShieldCheck, Star, Trophy, Wallet, Landmark } from "lucide-react";
+import { LayoutDashboard, Users, CalendarDays, FileText, Settings, ChevronLeft, ChevronRight, Home, CreditCard, Building2, Newspaper, ShieldCheck, Star, Trophy, Wallet, Landmark, Mail } from "lucide-react";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { Logo } from "@/components/ui/Logo";
 import { useI18n } from "@/i18n/I18nProvider";
@@ -18,6 +18,7 @@ const allNavItems = [
   // déjà accessible via « Mon département ».
   { href: "/manage/departments", key: "departments", icon: Building2, roles: "bureau" },
   { href: "/manage/actualites", key: "news", icon: Newspaper, roles: "bureau" },
+  { href: "/manage/emails", key: "emails", icon: Mail, roles: "admin" },
   { href: "/my-department", key: "myDepartment", icon: Building2, roles: "all" },
   { href: "/my-points", key: "myPoints", icon: Star, roles: "all" },
   { href: "/my-contributions", key: "myContributions", icon: Wallet, roles: "contributors" },

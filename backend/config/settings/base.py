@@ -49,6 +49,7 @@ LOCAL_APPS = [
     "apps.blog",
     "apps.projects",
     "apps.engagement",
+    "apps.mailing",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -190,6 +191,7 @@ REST_FRAMEWORK = {
         "participant_lookup": "60/hour",  # pré-remplissage (aspiration de données)
         "comment": "30/hour",
         "declaration": "20/hour",
+        "member_email": "30/hour",      # emails de l'administration aux membres
     },
     # Derrière le proxy de Render : l'IP du client est lue dans X-Forwarded-For
     # (sinon tout le monde partagerait l'IP du proxy). Surchargé en prod.
@@ -265,6 +267,9 @@ EMAIL_ENABLED = config("EMAIL_ENABLED", default=True, cast=bool)
 # Emails des comptes de démo (@dah.com, adresses fictives) détournés vers ces
 # adresses (séparées par des virgules) ; vide = ignorés. Utile en pré-production.
 DEMO_EMAIL_REDIRECT_TO = [a.strip() for a in config("DEMO_EMAIL_REDIRECT_TO", default="").split(",") if a.strip()]
+# Quota quotidien d'emails de l'hébergeur d'envoi (Brevo gratuit : 300 / jour),
+# partagé par tous les envois — vérifié avant un email aux membres.
+EMAIL_DAILY_QUOTA = config("EMAIL_DAILY_QUOTA", default=300, cast=int)
 
 # ─── Sécurité headers ────────────────────────────────────────────
 SECURE_BROWSER_XSS_FILTER = True

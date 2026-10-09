@@ -6,6 +6,7 @@ import requests
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
+from django.utils.safestring import mark_safe
 
 from apps.common.demo import DEMO_DOMAIN
 
@@ -73,6 +74,7 @@ def send_transactional_email(
         if html_message:
             email.attach_alternative(html_message, "text/html")
         email.send()
+        _count_sent(len(recipient_list))
         return
 
     payload = {
@@ -93,6 +95,7 @@ def send_transactional_email(
         try:
             response = requests.post(_BREVO_API_URL, json=payload, headers=headers, timeout=10)
             response.raise_for_status()
+            _count_sent(len(recipient_list))
             return
         except requests.RequestException:
             if attempt == _MAX_ATTEMPTS:
@@ -102,6 +105,12 @@ def send_transactional_email(
                 ", ".join(recipient_list), attempt, _MAX_ATTEMPTS,
             )
             time.sleep(1)
+
+
+def _count_sent(n: int) -> None:
+    """Quota quotidien partagé (voir apps.mailing.quota)."""
+    from apps.mailing.quota import record_sent
+    record_sent(n)
 
 
 def send_branded_email(
@@ -118,6 +127,7 @@ def send_branded_email(
     after: list[str] | tuple = (),
     closing: str = "À bientôt,\nL'équipe Data Afrique Hub",
     preheader: str = "",
+    body_html: str = "",
 ) -> None:
     """Email aux couleurs de Data Afrique Hub (gabarit emails/base.html : logo,
     encadré de détails, bouton d'action, pied de page de la charte).
@@ -129,11 +139,30 @@ def send_branded_email(
       notice  : message mis en avant (filet orange), ex. un conseil de sécurité.
       cta     : (libellé, url) — bouton principal ; l'URL est aussi donnée en clair.
       after   : paragraphes affichés après le bouton.
+      body_html : HTML déjà nettoyé et stylé (emails aux membres), après les paragraphes.
     """
-    site_url = settings.FRONTEND_URL.rstrip("/")
     details = [(label, value) for label, value in details if value not in (None, "")]
+    html_message = render_branded_email(
+        subject=subject, preheader=preheader, title=title, greeting=greeting, paragraphs=paragraphs,
+        details=details, details_title=details_title, notice=notice, cta=cta, after=after,
+        closing=closing, body_html=body_html,
+    )
+    if body_html:
+        from apps.mailing.services import plain_text
+        paragraphs = [*paragraphs, plain_text(body_html)]
+    text = _as_text(greeting, title, paragraphs, details, details_title, notice, cta, after, closing)
 
-    html_message = render_to_string("emails/base.html", {
+    send_transactional_email(subject, text, recipient_list, html_message=html_message)
+
+
+def render_branded_email(
+    subject: str, *, preheader: str = "", title: str = "", greeting: str = "", paragraphs=(), details=(),
+    details_title: str = "", notice: str = "", cta: tuple[str, str] | None = None, after=(),
+    closing: str = "À bientôt,\nL'équipe Data Afrique Hub", body_html: str = "",
+) -> str:
+    """HTML de l'email aux couleurs de DAH (gabarit emails/base.html)."""
+    site_url = settings.FRONTEND_URL.rstrip("/")
+    return render_to_string("emails/base.html", {
         "subject": subject,
         "preheader": preheader,
         "title": title,
@@ -151,14 +180,8 @@ def send_branded_email(
         # Logo servi par le frontend (public/brand) : une URL absolue est nécessaire
         # dans un email. PNG plutôt que SVG, non supporté par la plupart des clients.
         "logo_url": f"{site_url}/brand/full-color.png",
+        "body_html": mark_safe(body_html),  # noqa: S308 — nettoyé par nh3 (apps.common.sanitize)
     })
-
-    send_transactional_email(
-        subject,
-        _as_text(greeting, title, paragraphs, details, details_title, notice, cta, after, closing),
-        recipient_list,
-        html_message=html_message,
-    )
 
 
 def _as_text(greeting, title, paragraphs, details, details_title, notice, cta, after, closing) -> str:
