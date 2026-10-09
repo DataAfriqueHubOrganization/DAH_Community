@@ -4,7 +4,7 @@ MEDIA_STORAGE :
   * « local » — disque du serveur (production sur Contabo) : MEDIA_ROOT pour les
     fichiers publics, PRIVATE_MEDIA_ROOT pour les documents sensibles ;
   * « cloudinary » — pour un hébergeur sans disque persistant (pré-production
-    sur Render). Choisi automatiquement sur Render (voir settings/prod.py).
+    sur Render). Réglé dans le tableau de bord de Render (voir deploy/PREPROD.md).
 
 Deux familles :
   * publics (avatars, couvertures…) : stockage par défaut (STORAGES["default"]) ;
