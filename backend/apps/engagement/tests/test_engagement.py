@@ -289,6 +289,8 @@ class TestAwardsAndAdjustments:
         assert Award.objects.filter(kind="month").count() == 1
         assert Award.objects.get(kind="month").user == world["member"]
 
+        # Le membre a choisi d'apparaître sur le site public.
+        MemberProfile.objects.filter(user=world["member"]).update(is_public=True)
         slug = MemberProfile.objects.get(user=world["member"]).slug
         profile = api().get(f"/api/v1/members/public/{slug}/")
         assert profile.status_code == 200

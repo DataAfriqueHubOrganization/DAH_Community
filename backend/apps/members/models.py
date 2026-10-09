@@ -28,7 +28,12 @@ class MemberProfile(TimestampMixin):
         upload_to="cvs/", null=True, blank=True, storage=_cv_storage,
         validators=[FileExtensionValidator(["pdf"]), MaxFileSizeValidator(10)],
     )
-    is_public = models.BooleanField(default=True)
+    # Profil affiché sur le site public : uniquement si le membre l'a choisi
+    # lui-même (Mon profil). Désactivé par défaut.
+    is_public = models.BooleanField(default=False, verbose_name="Profil public")
+    public_invite_sent_at = models.DateTimeField(
+        null=True, blank=True, verbose_name="Invitation à rendre le profil public envoyée le",
+    )
     member_number = models.CharField(max_length=20, unique=True, null=True, blank=True)
 
     class Meta:
@@ -37,6 +42,14 @@ class MemberProfile(TimestampMixin):
 
     def __str__(self):
         return f"Profil de {self.user.full_name}"
+
+    @classmethod
+    def public(cls):
+        """Profils visibles sur le site : choisis par le membre, compte actif, et
+        jamais un visiteur ni un candidat (adhésion pas encore acceptée)."""
+        return cls.objects.filter(is_public=True, user__is_active=True).exclude(
+            user__role__in=["visiteur", "candidat"],
+        )
 
     def save(self, *args, **kwargs):
         if not self.slug:

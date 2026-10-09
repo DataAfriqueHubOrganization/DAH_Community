@@ -1,6 +1,8 @@
 from rest_framework import generics
 from rest_framework.permissions import AllowAny
 
+from apps.members.models import MemberProfile
+
 from .models import PortfolioProject
 from .serializers import PortfolioProjectSerializer
 
@@ -14,7 +16,7 @@ class PublicPortfolioListView(generics.ListAPIView):
     def get_queryset(self):
         return (
             PortfolioProject.objects
-            .filter(member_profile__is_public=True)
+            .filter(member_profile__in=MemberProfile.public())
             .select_related("member_profile__user")
             .order_by("-is_featured", "-created_at")
         )
@@ -31,7 +33,7 @@ class MemberPortfolioView(generics.ListAPIView):
             PortfolioProject.objects
             .filter(
                 member_profile__slug=self.kwargs["slug"],
-                member_profile__is_public=True,
+                member_profile__in=MemberProfile.public(),
             )
             .select_related("member_profile__user")
             .order_by("-is_featured", "-created_at")

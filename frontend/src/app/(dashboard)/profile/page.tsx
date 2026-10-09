@@ -197,6 +197,9 @@ export default function ProfilePage() {
         </div>
       </div>
 
+      {/* Visibilité sur le site public (choix du membre) */}
+      {user && user.role !== "visiteur" && user.role !== "candidat" && <VisibilitySection profile={profile} />}
+
       {/* Expériences */}
       <ExperiencesSection profile={profile} />
 
@@ -209,6 +212,45 @@ export default function ProfilePage() {
       {/* Zone de danger */}
       <DeleteAccountSection />
     </div>
+  );
+}
+
+function VisibilitySection({ profile }: { profile: MemberProfile | undefined }) {
+  const { t } = useI18n();
+  const p = t.myProfile;
+  const qc = useQueryClient();
+  const update = useMutation({
+    mutationFn: (isPublic: boolean) => membersService.updateProfile({ is_public: isPublic }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["my-profile"] }),
+  });
+  if (!profile) return null;
+  const on = update.isPending ? !!update.variables : profile.is_public;
+
+  return (
+    <section id="visibilite" aria-labelledby="visibility-title" className="bg-surface rounded-2xl border border-line-soft p-6 scroll-mt-24">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 id="visibility-title" className="font-semibold text-fg">{p.visibilityTitle}</h2>
+          <p className="text-sm text-fg-muted mt-1 max-w-xl">{on ? p.visibilityOn : p.visibilityOff}</p>
+        </div>
+        <button type="button" role="switch" aria-checked={on} aria-labelledby="visibility-title"
+          onClick={() => update.mutate(!profile.is_public)} disabled={update.isPending}
+          className={`relative shrink-0 w-12 h-7 rounded-full transition-colors disabled:opacity-60 ${on ? "bg-brand-blue" : "bg-surface-strong border border-line-strong"}`}>
+          <span aria-hidden="true" className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white shadow transition-transform ${on ? "translate-x-5" : ""}`} />
+        </button>
+      </div>
+      <dl className="mt-4 grid grid-cols-1 sm:grid-cols-[140px_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-sm">
+        <dt className="text-fg-muted">{p.visibilityShownLabel}</dt><dd className="text-fg">{p.visibilityShown}</dd>
+        <dt className="text-fg-muted">{p.visibilityNeverLabel}</dt><dd className="text-fg">{p.visibilityNever}</dd>
+      </dl>
+      {profile.is_public && profile.slug && (
+        <a href={`/members/${profile.slug}`} target="_blank" rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 mt-4 text-sm font-medium text-brand-blue hover:underline">
+          {p.visibilityView} <ExternalLink size={14} aria-hidden="true" />
+        </a>
+      )}
+      {update.isError && <p role="status" className="mt-3 text-sm text-red-600">{t.common.error}</p>}
+    </section>
   );
 }
 

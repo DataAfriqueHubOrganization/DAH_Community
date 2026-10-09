@@ -61,9 +61,8 @@ class PublicMemberListView(generics.ListAPIView):
 
     def get_queryset(self):
         qs = (
-            MemberProfile.objects
-            .filter(is_public=True)
-            .exclude(user__role__in=["visiteur", "admin"])
+            MemberProfile.public()
+            .exclude(user__role="admin")
             .select_related("user")
             .prefetch_related("experiences")
             .order_by("user__first_name")
@@ -78,7 +77,7 @@ class PublicProfileView(generics.RetrieveAPIView):
     lookup_field = "slug"
 
     def get_queryset(self):
-        return MemberProfile.objects.filter(is_public=True).select_related("user").prefetch_related("experiences", "certifications", "social_links")
+        return MemberProfile.public().select_related("user").prefetch_related("experiences", "certifications", "social_links")
 
 
 class MemberExperienceViewSet(viewsets.ModelViewSet):

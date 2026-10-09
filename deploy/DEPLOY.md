@@ -93,6 +93,20 @@ dah exec backend python manage.py createsuperuser
 > Ne jamais lancer de commande de seed (`seed_dah`, `seed_engagement`,
 > `seed_treasury`) en production : elles créent des comptes de démonstration.
 
+## 5 bis. Annuaire public des membres
+
+Les profils sont masqués par défaut : chacun choisit d'apparaître sur le site
+(Mon profil → « Apparaître dans l'annuaire public »). Pour inviter les membres
+à faire ce choix — **en production uniquement**, une seule fois par membre :
+
+```bash
+dah exec backend python manage.py invite_public_profiles --dry-run   # qui sera invité
+dah exec backend python manage.py invite_public_profiles
+```
+
+La commande respecte le quota d'emails du jour : s'il reste des membres à inviter,
+la relancer le lendemain (aucun doublon).
+
 ## 6. Bascule
 
 - Vérifier le site : `https://dataafriquehub.org`, connexion, une page de l'espace membre.
