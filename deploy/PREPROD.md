@@ -55,9 +55,10 @@ Service `dah-backend` → **Settings** :
 **Environment** :
 - `MEDIA_STORAGE` = `cloudinary` (le disque de Render est effacé à chaque redémarrage)
 - `CLIENT_IP_HEADER` = `HTTP_CF_CONNECTING_IP` (Render est derrière Cloudflare)
-- `EMAIL_REDIRECT_TO` = votre boîte de test (ex. `preprod@dataafriquehub.org`) — **obligatoire** :
+- `EMAIL_REDIRECT_TO` = une **vraie boîte mail** que vous lisez (ex. votre Gmail) — **obligatoire** :
   sans elle, la pré-production enverrait des emails à de vraies adresses.
   (Ou `EMAIL_ENABLED` = `false` pour n'envoyer aucun email.)
+  Ne pas y mettre l'identifiant SMTP de Brevo (`…@smtp-brevo.com`) : ce n'est pas une boîte mail.
 - `SEED_PASSWORD` = un mot de passe long, propre à la pré-production, pour les
   comptes de démo — **obligatoire** pour les seeds sur un serveur (voir ci-dessous).
 - `CORS_ALLOWED_ORIGINS` et `FRONTEND_URL` = l'adresse Vercel de pré-production.
@@ -92,9 +93,7 @@ Les comptes du README (`admin@dah.com`, `president@dah.com`, `tresorier@dah.com`
 connu de tous et ne sert qu'en local.
 
 Si ces comptes existent déjà sur Render avec l'ancien mot de passe (anciens
-déploiements), le remplacer une fois. Pour l'instant, c'est **automatique** au
-build (`seed_dah` force `--reset-passwords` ; ligne temporaire à commenter
-ensuite). Sinon, Render → `dah-backend` → **Shell** :
+déploiements), le remplacer une fois — Render → `dah-backend` → **Shell** :
 
 ```bash
 python manage.py seed_dah --users-only --reset-passwords
