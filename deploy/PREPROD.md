@@ -47,9 +47,10 @@ Service `dah-backend` → **Settings** :
 - **Branch** : `deploy` (Render ne suit plus `main`)
 - **Build Command** :
   ```
-  pip install -r requirements/prod.txt && python manage.py migrate && python manage.py collectstatic --noinput
+  pip install -r requirements/prod.txt && python manage.py migrate && python manage.py collectstatic --noinput && python manage.py seed_dah --users-only
   ```
-  (aucun seed : la base de Render garde ses propres données)
+  (`--users-only` : crée seulement les comptes de démo s'ils manquent — aucun
+  événement, article ou département de démo ; les données de Render restent intactes)
 
 **Environment** :
 - `MEDIA_STORAGE` = `cloudinary` (le disque de Render est effacé à chaque redémarrage)
@@ -57,6 +58,8 @@ Service `dah-backend` → **Settings** :
 - `EMAIL_REDIRECT_TO` = votre boîte de test (ex. `preprod@dataafriquehub.org`) — **obligatoire** :
   sans elle, la pré-production enverrait des emails à de vraies adresses.
   (Ou `EMAIL_ENABLED` = `false` pour n'envoyer aucun email.)
+- `SEED_PASSWORD` = un mot de passe long, propre à la pré-production, pour les
+  comptes de démo — **obligatoire** pour les seeds sur un serveur (voir ci-dessous).
 - `CORS_ALLOWED_ORIGINS` et `FRONTEND_URL` = l'adresse Vercel de pré-production.
 - `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` : déjà en place.
 - `ENV` = `prod`, `ALLOWED_HOSTS`, `DATABASE_URL`, `BREVO_API_KEY` : déjà en place.
@@ -81,7 +84,24 @@ Chaque environnement a **sa propre base et ses propres fichiers** :
 > Les bases PostgreSQL gratuites de Render expirent : penser à la sauvegarder
 > ou à passer sur un plan payant si ses données doivent être conservées.
 
-### 4. GitHub (conseillé)
+### 4. Se connecter avec les comptes de démo
+
+Les comptes du README (`admin@dah.com`, `president@dah.com`, `tresorier@dah.com`,
+`alice@dah.com`…) existent sur la pré-production, **avec le mot de passe
+`SEED_PASSWORD`** et non `Dah@2024!` : le dépôt est public, ce mot de passe est
+connu de tous et ne sert qu'en local.
+
+Si ces comptes existent déjà sur Render avec l'ancien mot de passe (anciens
+déploiements), le remplacer une fois — Render → `dah-backend` → **Shell** :
+
+```bash
+python manage.py seed_dah --users-only --reset-passwords
+```
+
+Seuls les comptes `@dah.com` sont touchés. À relancer après chaque changement
+de `SEED_PASSWORD`.
+
+### 5. GitHub (conseillé)
 
 Protéger `main` (Settings → Branches) : passage obligatoire par une *pull request*
 depuis `deploy`, pour qu'aucune modification n'arrive en production sans avoir

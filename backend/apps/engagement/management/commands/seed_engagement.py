@@ -19,9 +19,10 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
 
+from apps.common.demo import demo_password
+
 User = get_user_model()
 
-PASSWORD = "Dah@2024!"
 # Historique figé : de janvier à septembre 2026, quelle que soit la date d'exécution.
 HISTORY_START = date(2026, 1, 5)
 HISTORY_END = date(2026, 9, 28)
@@ -94,6 +95,8 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         from apps.departments.models import Department
 
+        self.password = demo_password()
+
         if not User.objects.filter(email="admin@dah.com").exists() or not Department.objects.exists():
             self.stdout.write("  → Données de base absentes : lancement de seed_dah...")
             call_command("seed_dah")
@@ -131,7 +134,7 @@ class Command(BaseCommand):
                 defaults=dict(first_name=first, last_name=last, role="membre", email_verified=True),
             )
             if created:
-                user.set_password(PASSWORD)
+                user.set_password(self.password)
                 user.save()
             MemberProfile.objects.get_or_create(
                 user=user,
