@@ -17,7 +17,9 @@ export type HelpBlock =
   | { type: "steps"; items: string[] }
   | { type: "list"; items: string[] }
   | { type: "table"; head: string[]; rows: string[][] }
-  | { type: "note"; text: string };
+  | { type: "note"; text: string }
+  /** Encadré mis en avant : titre, texte et points facultatifs. */
+  | { type: "callout"; title: string; text: string; items?: string[]; footer?: string };
 
 export interface HelpTopic {
   id: string;

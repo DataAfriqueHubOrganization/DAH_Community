@@ -100,11 +100,20 @@ export const helpEn: HelpContent = {
       summary: "Declaring a payment with its proof.",
       link: { href: "/my-contributions", label: "Open My contributions" },
       blocks: [
+        { type: "callout", title: "Why your contribution matters",
+          text: "Data Afrique Hub lives thanks to its members. Your contribution directly funds what the community gives you:",
+          items: [
+            "the platform, website and emails you use every day;",
+            "events, workshops and trainings, often free for participants;",
+            "community projects and hackathons, where you build your skills;",
+            "the community's presence with partners, which opens opportunities for its members.",
+          ],
+          footer: "500 FCFA a month is 6,000 FCFA a year: little for each of us, but together contributions let the community grow without relying only on sponsors. Every income and expense is recorded in the cash book by the treasury. And each paid month also earns you 5 points." },
         { type: "table", head: ["You are", "Monthly contribution"], rows: [
           ["Member", "500 FCFA"],
           ["Department lead or board member", "1,000 FCFA"],
         ] },
-        { type: "p", text: "Each paid month earns 5 points. You can pay one month, a period or the whole year." },
+        { type: "p", text: "You can pay one month, a period or the whole year." },
         { type: "steps", items: [
           "Pay by Mobile Money or bank transfer.",
           "In **My contributions**, click **Declare a payment**.",

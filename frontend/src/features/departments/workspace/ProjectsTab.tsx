@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   CalendarDays, ChevronDown, FolderKanban, GitBranch, Pencil, Plus, Trash2, X,
@@ -266,14 +266,13 @@ function ProjectDetail({
           </div>
         </div>
 
-        {(showAssign || editing) && canManageProject && (
+        {showAssign && canManageProject && (
           <TaskForm
-            key={editing?.id ?? "new"}
             projectId={project.id}
-            task={editing}
+            task={null}
             assignees={assignees}
-            onDone={() => { setShowAssign(false); setEditing(null); onTasksChanged(); }}
-            onCancel={() => { setShowAssign(false); setEditing(null); }}
+            onDone={() => { setShowAssign(false); onTasksChanged(); }}
+            onCancel={() => setShowAssign(false)}
           />
         )}
 
@@ -324,16 +323,29 @@ function ProjectDetail({
                 {!collapsed && (
                   <>
                     {items.map((task) => (
-                      <TaskRow
-                        key={task.id}
-                        task={task}
-                        highlight={highlight}
-                        canValidate={canValidate && task.assigned_to !== currentUserId}
-                        isAssignee={task.assigned_to === currentUserId}
-                        canManage={canManageProject}
-                        onEdit={() => { setShowAssign(false); setEditing(task); }}
-                        onChanged={onTasksChanged}
-                      />
+                      <Fragment key={task.id}>
+                        <TaskRow
+                          task={task}
+                          highlight={highlight}
+                          canValidate={canValidate && task.assigned_to !== currentUserId}
+                          isAssignee={task.assigned_to === currentUserId}
+                          canManage={canManageProject}
+                          onEdit={() => { setShowAssign(false); setEditing(editing?.id === task.id ? null : task); }}
+                          onChanged={onTasksChanged}
+                        />
+                        {/* Formulaire de modification ouvert sous la tâche elle-même. */}
+                        {editing?.id === task.id && canManageProject && (
+                          <div className="px-4 pb-4 border-t border-line-soft pt-3">
+                            <TaskForm
+                              projectId={project.id}
+                              task={editing}
+                              assignees={assignees}
+                              onDone={() => { setEditing(null); onTasksChanged(); }}
+                              onCancel={() => setEditing(null)}
+                            />
+                          </div>
+                        )}
+                      </Fragment>
                     ))}
                     {!showAll && g.items.length > GROUP_LIMIT && (
                       <button onClick={() => toggle(`all-${g.status}`)}
@@ -428,6 +440,13 @@ function TaskForm({
   const { t } = useI18n();
   const d = t.deptDetail;
   const qc = useQueryClient();
+  const formRef = useRef<HTMLDivElement>(null);
+  const titleRef = useRef<HTMLInputElement>(null);
+  // Le formulaire s'ouvre là où l'on a cliqué : on l'amène à l'écran.
+  useEffect(() => {
+    formRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    titleRef.current?.focus({ preventScroll: true });
+  }, []);
   const [title, setTitle] = useState(task?.title ?? "");
   const [description, setDescription] = useState(task?.description ?? "");
   const [assignedTo, setAssignedTo] = useState(task?.assigned_to ? String(task.assigned_to) : "");
@@ -450,9 +469,9 @@ function TaskForm({
   });
 
   return (
-    <div className="bg-surface-muted rounded-xl p-4 space-y-3">
+    <div ref={formRef} className="bg-surface-muted rounded-xl p-4 space-y-3 scroll-mt-24">
       {task && <p className="text-xs font-semibold text-fg-soft">{d.editTask}</p>}
-      <input placeholder={d.taskTitle} aria-label={d.taskTitle} value={title} onChange={(e) => setTitle(e.target.value)} className={cn(inputClass, "w-full")} />
+      <input ref={titleRef} placeholder={d.taskTitle} aria-label={d.taskTitle} value={title} onChange={(e) => setTitle(e.target.value)} className={cn(inputClass, "w-full")} />
       <RichTextEditor value={description} onChange={setDescription} minHeight={110}
         placeholder={d.taskDescriptionPlaceholder} label={d.descriptionOptional} />
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

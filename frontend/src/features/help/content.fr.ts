@@ -103,11 +103,20 @@ export const helpFr: HelpContent = {
       summary: "Déclarer un paiement avec sa preuve.",
       link: { href: "/my-contributions", label: "Ouvrir Mes cotisations" },
       blocks: [
+        { type: "callout", title: "Pourquoi votre cotisation compte",
+          text: "Data Afrique Hub vit grâce à ses membres. Votre cotisation finance directement ce que la communauté vous apporte :",
+          items: [
+            "la plateforme, le site et les emails que vous utilisez chaque jour ;",
+            "les événements, ateliers et formations, souvent gratuits pour les participants ;",
+            "les projets communautaires et les hackathons, où vous montez en compétences ;",
+            "la présence de la communauté auprès des partenaires, qui ouvre des opportunités à ses membres.",
+          ],
+          footer: "500 FCFA par mois, c'est 6 000 FCFA par an : peu pour chacun, mais, réunies, les cotisations permettent à la communauté de grandir sans dépendre uniquement des sponsors. Toutes les recettes et dépenses sont tenues dans la caisse par la trésorerie. Et chaque mois réglé vous rapporte aussi 5 points." },
         { type: "table", head: ["Vous êtes", "Cotisation mensuelle"], rows: [
           ["Membre", "500 FCFA"],
           ["Responsable de département ou membre du bureau", "1 000 FCFA"],
         ] },
-        { type: "p", text: "Chaque mois réglé rapporte 5 points. Vous pouvez payer un mois, une période ou l'année entière." },
+        { type: "p", text: "Vous pouvez payer un mois, une période ou l'année entière." },
         { type: "steps", items: [
           "Payez par Mobile Money ou virement.",
           "Dans **Mes cotisations**, cliquez sur **Déclarer un paiement**.",

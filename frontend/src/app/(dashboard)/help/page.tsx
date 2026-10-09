@@ -2,7 +2,7 @@
 
 import { Fragment, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, ChevronDown, Info, LifeBuoy, Search } from "lucide-react";
+import { ArrowRight, ChevronDown, HeartHandshake, Info, LifeBuoy, Search } from "lucide-react";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { useI18n } from "@/i18n/I18nProvider";
 import { cn } from "@/lib/utils";
@@ -41,7 +41,9 @@ function Rich({ text }: { text: string }) {
 }
 
 const plain = (b: HelpBlock) =>
-  b.type === "table" ? [...b.head, ...b.rows.flat()].join(" ") : "items" in b ? b.items.join(" ") : b.text;
+  b.type === "table" ? [...b.head, ...b.rows.flat()].join(" ")
+    : b.type === "callout" ? [b.title, b.text, ...(b.items ?? []), b.footer ?? ""].join(" ")
+      : "items" in b ? b.items.join(" ") : b.text;
 
 /** Aide : guide d'utilisation adapté au compte (rôle, département, sections). */
 export default function HelpPage() {
@@ -211,6 +213,21 @@ function Block({ block }: { block: HelpBlock }) {
       return <p><Rich text={block.text} /></p>;
     case "note":
       return <p className="rounded-xl bg-brand-orange/10 px-4 py-3 text-fg"><Rich text={block.text} /></p>;
+    case "callout":
+      return (
+        <div className="rounded-xl border border-brand-blue/25 bg-brand-blue/[0.06] px-5 py-4 space-y-2.5">
+          <p className="flex items-center gap-2 font-display font-bold text-fg">
+            <HeartHandshake size={18} className="text-brand-blue shrink-0" aria-hidden="true" /> {block.title}
+          </p>
+          <p><Rich text={block.text} /></p>
+          {block.items && (
+            <ul className="space-y-1 pl-5 list-disc marker:text-brand-blue">
+              {block.items.map((item, i) => <li key={i}><Rich text={item} /></li>)}
+            </ul>
+          )}
+          {block.footer && <p className="text-fg"><Rich text={block.footer} /></p>}
+        </div>
+      );
     case "list":
       return (
         <ul className="space-y-1.5 pl-5 list-disc marker:text-brand-blue">
