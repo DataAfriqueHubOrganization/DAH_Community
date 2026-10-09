@@ -8,7 +8,8 @@ Règles (validées avec le bureau) :
   −25 % si soumise en retard ; +25 % si « travail remarquable ». La ponctualité
   se mesure à la date de SOUMISSION, pas de validation.
 - Point d'étape (mensuel) : seuls les scores finaux du responsable comptent ;
-  points = moyenne des 5 scores (1 à 5) × 4, soit 20 points au maximum.
+  points = moyenne des 5 scores (1 à 5), arrondie, soit 5 points au maximum —
+  un repère d'implication, volontairement léger face aux tâches.
 - Points d'un mois = tâches SOUMISES dans le mois (et validées) + point d'étape
   DE ce mois (même confirmé plus tard) + ajustements du bureau.
 """
@@ -30,6 +31,7 @@ from apps.departments.services import (
 from .models import Award, CheckIn, PointEntry
 
 SIZE_POINTS = {"small": 5, "medium": 10, "large": 20}
+CHECKIN_MAX_POINTS = 5  # le point d'étape ne pèse pas plus qu'une petite tâche
 ON_TIME_BONUS = Decimal("1.20")
 LATE_PENALTY = Decimal("0.75")
 OUTSTANDING_BONUS = Decimal("1.25")
@@ -349,8 +351,9 @@ def validate_scores(scores: dict) -> dict:
 
 
 def checkin_points(final_scores: dict) -> int:
+    """Moyenne des scores finaux (1 à 5) : CHECKIN_MAX_POINTS au maximum."""
     mean = Decimal(sum(final_scores.values())) / Decimal(len(final_scores))
-    return _round(mean * 4)
+    return _round(mean * CHECKIN_MAX_POINTS / 5)
 
 
 MONTHS_FR = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet",

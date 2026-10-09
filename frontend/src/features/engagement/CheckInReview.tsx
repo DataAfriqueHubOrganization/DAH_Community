@@ -66,7 +66,8 @@ export function CheckInReviewForm({
 
   const complete = CRITERIA.every((k) => scores[k]);
   const mean = complete ? CRITERIA.reduce((sum, k) => sum + (scores[k] ?? 0), 0) / CRITERIA.length : 0;
-  const preview = Math.round(mean * 4);
+  // Même calcul que le serveur : moyenne des scores, 5 points au maximum.
+  const preview = Math.round(mean);
   const card = compact ? "space-y-4" : "bg-surface rounded-2xl border border-line-soft p-6 space-y-5";
 
   return (

@@ -795,7 +795,7 @@ export const fr = {
     scoresHint: "Pré-remplis avec les scores proposés par le membre (repère orange) : confirmez ou ajustez chaque score. Seuls vos scores comptent.",
     proposedLegend: "proposé par le membre",
     memberProposed: (v: number | string) => `Proposé par le membre : ${v}`,
-    pointsPreview: (n: number) => `Points du point d'étape : ${n} / 20`,
+    pointsPreview: (n: number) => `Points du point d'étape : ${n} / 5`,
     answersTitle: "Réponses du membre",
     submittedOn: (d: string) => `Envoyé le ${d}`,
     feedbackHint: "Seul ce retour est visible par le membre (pas les scores).",

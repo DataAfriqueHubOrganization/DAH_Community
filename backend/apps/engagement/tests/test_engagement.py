@@ -237,14 +237,15 @@ class TestCheckIn:
             "self_scores": SCORES, "improve_self": "Être plus régulier", "department_help": "Plus de points d'équipe",
         }, format="json").status_code == 200
 
-        final = {**SCORES, "teamwork": 5}  # 4+5+4+5+4 = 22 / 5 = 4.4 → 17.6 → 18 points
+        final = {**SCORES, "teamwork": 5}  # 4+5+4+5+4 = 22 / 5 = 4,4 → 4 points
         response = api(world["lead"]).post(f"{url}confirm/", {
             "final_scores": final, "feedback": "Merci pour ton implication.",
         }, format="json")
         assert response.status_code == 200
-        assert response.data["points"] == 18 and response.data["viewer"] == "manager"
+        # Moyenne des scores finaux 4,4 → 4 points (5 au maximum).
+        assert response.data["points"] == 4 and response.data["viewer"] == "manager"
         entry = PointEntry.objects.get(checkin=checkin)
-        assert (entry.user, entry.points, entry.source) == (world["member"], 18, "checkin")
+        assert (entry.user, entry.points, entry.source) == (world["member"], 4, "checkin")
 
         # Le membre ne voit que le retour écrit
         seen = member.get(url).data

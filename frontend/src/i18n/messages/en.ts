@@ -794,7 +794,7 @@ export const en: Messages = {
     scoresHint: "Pre-filled with the member's proposed scores (orange marker): confirm or adjust each one. Only your scores count.",
     proposedLegend: "proposed by the member",
     memberProposed: (v: number | string) => `Proposed by the member: ${v}`,
-    pointsPreview: (n: number) => `Check-in points: ${n} / 20`,
+    pointsPreview: (n: number) => `Check-in points: ${n} / 5`,
     answersTitle: "Member's answers",
     submittedOn: (d: string) => `Sent on ${d}`,
     feedbackHint: "Only this feedback is visible to the member (not the scores).",

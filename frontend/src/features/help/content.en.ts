@@ -81,7 +81,7 @@ export const helpEn: HelpContent = {
           "In **My points**, click **Fill in** next to “A check-in is waiting for you”.",
           "Rate yourself from 1 to 5 on five criteria, then answer the two questions.",
           "Send it. You can edit your answers until your lead replies.",
-          "Your lead confirms and sends you feedback. A check-in is worth up to 20 points.",
+          "Your lead confirms and sends you feedback. A check-in is worth up to 5 points: your tasks are what count most.",
         ] },
       ],
     },

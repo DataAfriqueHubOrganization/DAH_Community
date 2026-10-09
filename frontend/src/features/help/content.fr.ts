@@ -84,7 +84,7 @@ export const helpFr: HelpContent = {
           "Dans **Mes points**, cliquez sur **Remplir** à côté de « Un point d'étape vous attend ».",
           "Notez-vous de 1 à 5 sur cinq critères, puis répondez aux deux questions.",
           "Envoyez. Vous pouvez modifier vos réponses tant que votre responsable n'a pas répondu.",
-          "Votre responsable confirme et vous envoie un retour. Le point d'étape vaut jusqu'à 20 points.",
+          "Votre responsable confirme et vous envoie un retour. Le point d'étape vaut jusqu'à 5 points : ce sont surtout vos tâches qui comptent.",
         ] },
       ],
     },
