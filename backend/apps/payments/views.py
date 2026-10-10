@@ -111,7 +111,7 @@ class ContributionViewSet(GenericViewSet):
         return Response(ContributionSerializer(contribution).data, status=status.HTTP_201_CREATED)
 
     def destroy(self, request, pk=None):
-        services.delete_contribution(self.get_object())
+        services.delete_contribution(self.get_object(), by=request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

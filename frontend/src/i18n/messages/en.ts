@@ -1077,6 +1077,8 @@ export const en: Messages = {
   },
   treasury: {
     v2: {
+      deletePayment: (period: string) => `Delete the ${period} payment`,
+      deletePaymentConfirm: (period: string, amount: string, viaDeclaration: boolean) => `Delete the ${period} payment (${amount})?\n\nThe months will be due again, and the points and cash book entry will be removed.${viaDeclaration ? " The member's declaration will be marked as rejected (payment cancelled by the administration)." : ""}`,
       tabs: { validate: "To validate", members: "Members", cash: "Cash book" },
       subtitleWaiting: (month: string, n: number) => `${month} · ${n} ${n > 1 ? "payments are" : "payment is"} waiting for your validation`,
       subtitleClear: (month: string) => `${month} · no payment waiting`,

@@ -2,8 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BellRing, Check, ChevronLeft, ChevronRight, Clock, Plus, Search, X } from "lucide-react";
+import { BellRing, Check, ChevronLeft, ChevronRight, Clock, Plus, Search, Trash2, X } from "lucide-react";
 import { treasuryService } from "@/services/treasury.service";
+import { useCurrentUser } from "@/hooks/useAuth";
+import { isAdmin } from "@/types/auth.types";
 import { useI18n } from "@/i18n/I18nProvider";
 import { cn } from "@/lib/utils";
 import { todayIso } from "@/features/engagement/period";
@@ -320,9 +322,20 @@ function MemberDrawer({ userId, year: initialYear, onClose, onCollect }: {
   const x = t.treasury;
   const v = x.v2;
   const [year, setYear] = useState(initialYear);
+  const qc = useQueryClient();
+  const { data: me } = useCurrentUser();
+  // Suppression d'une cotisation validée (y compris issue d'une déclaration) : admin.
+  const canDelete = !!me && isAdmin(me.role);
   const { data: m } = useQuery({
     queryKey: ["treasury", "member", userId, year],
     queryFn: () => treasuryService.contributions.member(userId, year).then((r) => r.data),
+  });
+  const removePayment = useMutation({
+    mutationFn: (id: number) => treasuryService.contributions.remove(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["treasury"] });
+      qc.invalidateQueries({ queryKey: ["ranking"] });
+    },
   });
 
   useEffect(() => {
@@ -338,7 +351,7 @@ function MemberDrawer({ userId, year: initialYear, onClose, onCollect }: {
   const owedMonths = m ? Math.round(m.owed / Math.max(1, m.rate)) : 0;
   const timeline = m ? [
     ...m.history.map((c) => ({
-      key: `c${c.id}`, date: c.paid_on, ok: true as const,
+      key: `c${c.id}`, date: c.paid_on, ok: true as const, contributionId: c.id, viaDeclaration: c.via_declaration,
       period: c.months > 1 ? `${monthName(c.period_start, intl)} → ${monthName(c.period_end, intl)}` : monthName(c.period_start, intl),
       sub: `${fmt.date(c.paid_on)} · ${x.methods[c.method]} · ${c.via_declaration ? v.viaDeclaration : v.inHand}`,
       amount: x.fcfa(c.amount),
@@ -423,10 +436,20 @@ function MemberDrawer({ userId, year: initialYear, onClose, onCollect }: {
                       <span className="block text-xs text-fg-muted truncate">{item.sub}</span>
                     </span>
                     <span className="font-display font-extrabold text-sm text-fg whitespace-nowrap">{item.amount}</span>
+                    {canDelete && "contributionId" in item && (
+                      <button type="button"
+                        onClick={() => { if (confirm(v.deletePaymentConfirm(item.period, item.amount, item.viaDeclaration))) removePayment.mutate(item.contributionId); }}
+                        disabled={removePayment.isPending}
+                        aria-label={v.deletePayment(item.period)} title={v.deletePayment(item.period)}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center text-fg-faint hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 shrink-0">
+                        <Trash2 size={14} />
+                      </button>
+                    )}
                   </li>
                 ))}
               </ul>
             )}
+            {removePayment.isError && <p role="alert" className="text-sm text-red-600 mt-2">{apiError(removePayment.error, t.common.error)}</p>}
           </div>
         </div>
       </aside>

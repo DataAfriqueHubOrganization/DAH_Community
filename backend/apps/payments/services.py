@@ -256,8 +256,20 @@ def record_contribution(*, member, recorded_by, period_start: date, months: int,
     return contribution
 
 
-def delete_contribution(contribution: Contribution) -> None:
-    """Annule une saisie erronée : mois, points et ligne de caisse disparaissent avec elle."""
+@transaction.atomic
+def delete_contribution(contribution: Contribution, by=None) -> None:
+    """Supprime une cotisation validée, y compris celle issue d'une déclaration du
+    membre : ses mois, ses points et sa ligne de caisse disparaissent avec elle.
+    La déclaration d'origine repasse en « refusée » avec un motif, pour que le
+    membre comprenne pourquoi ses mois ne sont plus réglés."""
+    declaration = PaymentDeclaration.objects.filter(contribution=contribution).first()
+    if declaration is not None:
+        declaration.status = PaymentDeclaration.STATUS_REJECTED
+        declaration.rejection_reason = "Paiement annulé par l'administration."
+        if by is not None:
+            declaration.reviewed_by = by
+        declaration.reviewed_at = timezone.now()
+        declaration.save(update_fields=["status", "rejection_reason", "reviewed_by", "reviewed_at", "updated_at"])
     contribution.delete()
 
 

@@ -1083,6 +1083,8 @@ export const fr = {
   },
   treasury: {
     v2: {
+      deletePayment: (period: string) => `Supprimer le paiement de ${period}`,
+      deletePaymentConfirm: (period: string, amount: string, viaDeclaration: boolean) => `Supprimer le paiement de ${period} (${amount}) ?\n\nLes mois redeviendront dus, et les points et la ligne de caisse seront retirés.${viaDeclaration ? " La déclaration du membre passera en « refusée » (paiement annulé par l'administration)." : ""}`,
       tabs: { validate: "À valider", members: "Membres", cash: "Caisse" },
       subtitleWaiting: (month: string, n: number) => `${month} · ${n} ${n > 1 ? "paiements attendent" : "paiement attend"} votre validation`,
       subtitleClear: (month: string) => `${month} · aucun paiement en attente`,

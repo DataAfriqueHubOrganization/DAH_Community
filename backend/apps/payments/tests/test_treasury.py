@@ -243,6 +243,19 @@ class TestDeclarations:
         # Déjà traitée
         assert api(world["treasurer"]).post(f"/api/v1/payments/declarations/{r.data['id']}/approve/").status_code == 400
 
+    def test_suppression_d_une_cotisation_issue_d_une_declaration(self, world):
+        r = declare(world, months=2)
+        api(world["treasurer"]).post(f"/api/v1/payments/declarations/{r.data['id']}/approve/")
+        contribution = PaymentDeclaration.objects.get(pk=r.data["id"]).contribution
+        assert api(world["admin"]).delete(f"/api/v1/payments/contributions/{contribution.pk}/").status_code == 204
+        assert not ContributionMonth.objects.filter(user=world["member"]).exists()
+        assert not PointEntry.objects.filter(user=world["member"], source="contribution").exists()
+        assert not CashEntry.objects.exists()
+        declaration = PaymentDeclaration.objects.get(pk=r.data["id"])
+        assert declaration.status == "rejected" and "annulé" in declaration.rejection_reason
+        # Les mois redeviennent déclarables.
+        assert declare(world, months=2).status_code == 201
+
     def test_refus_avec_motif(self, world):
         r = declare(world)
         bad = api(world["treasurer"]).post(f"/api/v1/payments/declarations/{r.data['id']}/reject/", {}, format="json")
