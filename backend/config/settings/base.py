@@ -271,6 +271,9 @@ DEMO_EMAIL_REDIRECT_TO = [a.strip() for a in config("DEMO_EMAIL_REDIRECT_TO", de
 # partagé par tous les envois — vérifié avant un email aux membres.
 EMAIL_DAILY_QUOTA = config("EMAIL_DAILY_QUOTA", default=300, cast=int)
 
+# Membres du bureau sur le site public (annuaire, profils) : masqués pour l'instant.
+PUBLIC_SHOW_BUREAU = config("PUBLIC_SHOW_BUREAU", default=False, cast=bool)
+
 # ─── Sécurité headers ────────────────────────────────────────────
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True

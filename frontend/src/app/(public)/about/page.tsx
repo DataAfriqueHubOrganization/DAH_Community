@@ -9,6 +9,9 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: t.about.metaTitle };
 }
 
+// Section « Le bureau » masquée pour l'instant : passer à true pour la réafficher.
+const SHOW_BUREAU = false;
+
 // Rôles traduits via t.about.team.roles (même ordre)
 const team = [
   { name: "Kouamé Assouman", avatar: "https://ui-avatars.com/api/?name=Kouame+Assouman&background=2F6FE0&color=fff&bold=true&format=svg" },
@@ -92,8 +95,8 @@ export default async function AboutPage() {
         </div>
       </section>
 
-      {/* Bureau */}
-      <section className="bg-panel py-20">
+      {/* Bureau — masqué pour l'instant (SHOW_BUREAU). */}
+      {SHOW_BUREAU && <section className="bg-panel py-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-white mb-4">{t.about.teamTitle}</h2>
@@ -109,7 +112,7 @@ export default async function AboutPage() {
             ))}
           </div>
         </div>
-      </section>
+      </section>}
 
       {/* CTA */}
       <section className="relative overflow-hidden bg-univers py-16">

@@ -46,10 +46,16 @@ class MemberProfile(TimestampMixin):
     @classmethod
     def public(cls):
         """Profils visibles sur le site : choisis par le membre, compte actif, et
-        jamais un visiteur ni un candidat (adhésion pas encore acceptée)."""
-        return cls.objects.filter(is_public=True, user__is_active=True).exclude(
+        jamais un visiteur ni un candidat (adhésion pas encore acceptée). Les
+        membres du bureau sont masqués tant que PUBLIC_SHOW_BUREAU est faux."""
+        from django.conf import settings
+
+        qs = cls.objects.filter(is_public=True, user__is_active=True).exclude(
             user__role__in=["visiteur", "candidat"],
         )
+        if not getattr(settings, "PUBLIC_SHOW_BUREAU", False):
+            qs = qs.filter(user__poste__isnull=True)
+        return qs
 
     def save(self, *args, **kwargs):
         if not self.slug:

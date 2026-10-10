@@ -92,3 +92,14 @@ def test_invitation_respects_daily_quota(settings):
     call_command("invite_public_profiles")
     assert len(mail.outbox) == 2
     assert MemberProfile.objects.filter(public_invite_sent_at__isnull=True).count() == 2
+
+
+@pytest.mark.django_db
+def test_bureau_masque_sur_le_site_public(settings):
+    member("awa@exemple.org", public=True)
+    pres = member("pres@exemple.org", public=True, poste="president")
+    c = APIClient()
+    assert slugs(c.get("/api/v1/members/public/")) == {MemberProfile.objects.get(user__email="awa@exemple.org").slug}
+    assert c.get(f"/api/v1/members/public/{pres.slug}/").status_code == 404
+    settings.PUBLIC_SHOW_BUREAU = True
+    assert pres.slug in slugs(c.get("/api/v1/members/public/"))
