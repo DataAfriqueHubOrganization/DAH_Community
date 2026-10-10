@@ -104,7 +104,8 @@ export default function LandingPage() {
     staleTime: 1000 * 60 * 10,
   });
   const all: Event[] = eventsData?.results ?? eventsData ?? [];
-  const upcomingEvents = all.filter((e) => new Date(e.start_date) > new Date()).slice(0, 3);
+  const upcomingEvents = all.filter((e) => new Date(e.start_date) > new Date())
+    .sort((a, b) => a.start_date.localeCompare(b.start_date)).slice(0, 3);
   const featuredMembers: PublicMemberListItem[] = (membersData?.results ?? [])
     .sort((a: PublicMemberListItem, b: PublicMemberListItem) => memberSortRank(a) - memberSortRank(b))
     .slice(0, 6);
@@ -137,6 +138,16 @@ export default function LandingPage() {
                   {t.home.heroSecondary}
                 </Link>
               </div>
+              {upcomingEvents[0] && (
+                <Link href={`/events/${upcomingEvents[0].id}`}
+                  className="group inline-flex items-center gap-3 max-w-full rounded-full bg-white/[0.12] hover:bg-white/[0.18] border border-white/20 pl-1.5 pr-4 py-1.5 text-sm transition-colors">
+                  <span className="shrink-0 rounded-full bg-brand-orange text-ink font-display font-bold text-xs px-3 py-1.5">
+                    {new Date(upcomingEvents[0].start_date).toLocaleDateString(intl, { day: "numeric", month: "short" })}
+                  </span>
+                  <span className="truncate"><span className="text-white/75">{t.home.nextEvent} · </span>{upcomingEvents[0].title}</span>
+                  <ArrowRight size={15} className="shrink-0 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                </Link>
+              )}
             </div>
             <div className="hidden lg:flex justify-center">
               <div className="w-[420px] h-[420px] rounded-full border border-white/20 flex items-center justify-center">

@@ -143,6 +143,7 @@ export const fr = {
     heroText: "Formations, événements, projets et mentorat : rejoignez les talents africains qui construisent l'avenir numérique du continent.",
     heroCta: "Rejoindre DAH",
     heroSecondary: "Voir les événements",
+    nextEvent: "Prochain événement",
     stats: { members: "Membres actifs", trained: "Participants à nos événements", countries: "Pays représentés" },
     poles: {
       eyebrow: "Nos pôles",
@@ -239,6 +240,9 @@ export const fr = {
     registrationClosed: "Inscriptions terminées",
   },
   eventDetail: {
+    addToCalendar: "Ajouter à mon agenda",
+    share: "Partager",
+    linkCopied: "Lien copié",
     notFound: "Événement introuvable",
     backToEvents: "Retour aux événements",
     allEvents: "Tous les événements",
@@ -365,6 +369,13 @@ export const fr = {
       "Un réseau panafricain de data scientists, ingénieurs et mentors",
       "Formations, hackathons et projets communautaires",
       "Opportunités professionnelles et partenariats",
+    ],
+    faqTitle: "Questions fréquentes",
+    faq: [
+      { q: "Qui peut adhérer ?", a: "Toute personne intéressée par la data et l'IA : étudiants, professionnels, chercheurs ou personnes en reconversion. Aucun niveau minimum n'est exigé." },
+      { q: "Combien coûte l'adhésion ?", a: "La candidature est gratuite. Une fois membre, la cotisation est de 500 FCFA par mois (1 000 FCFA pour les responsables de département et le bureau), payable au mois, sur une période ou pour l'année." },
+      { q: "Comment saurai-je si ma candidature est acceptée ?", a: "L'équipe étudie chaque candidature et vous répond par email. Une fois accepté, vous accédez à votre espace membre, à votre carte et à votre département." },
+      { q: "Mon profil sera-t-il visible sur le site ?", a: "Non, sauf si vous l'activez vous-même dans votre espace. Votre email, votre téléphone et votre CV ne sont jamais affichés." },
     ],
     alreadyMember: "Déjà membre ?",
     goToSpace: "Accédez à votre espace",

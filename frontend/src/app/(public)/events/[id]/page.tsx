@@ -9,6 +9,7 @@ import { eventTypeBadgeVariant } from "@/lib/utils";
 import { useI18n } from "@/i18n/I18nProvider";
 import { Badge } from "@/components/ui/Badge";
 import { EventRegistrationForm } from "@/features/events/EventRegistrationForm";
+import { EventShareActions } from "@/features/events/EventShareActions";
 
 export default function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -184,6 +185,9 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                 </p>
               )}
             </div>
+
+            {/* Agenda et partage */}
+            {!isPast && <EventShareActions event={event} />}
 
             {/* Organisateur */}
             {event.created_by_name && (

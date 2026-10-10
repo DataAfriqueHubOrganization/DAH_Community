@@ -51,6 +51,19 @@ export default async function JoinPage() {
           <div className="bg-surface rounded-2xl border border-line-soft shadow-sm p-6 sm:p-8">
             <CandidatureForm />
           </div>
+          {/* Questions fréquentes (sans JavaScript : <details>). */}
+          <section aria-labelledby="join-faq" className="mt-8 space-y-2.5">
+            <h2 id="join-faq" className="font-display font-bold text-lg text-fg">{t.join.faqTitle}</h2>
+            {t.join.faq.map((item) => (
+              <details key={item.q} className="group bg-surface rounded-xl border border-line-soft px-5 py-4">
+                <summary className="cursor-pointer list-none flex items-center justify-between gap-3 text-sm font-semibold text-fg">
+                  {item.q}
+                  <span aria-hidden="true" className="text-brand-blue text-lg leading-none transition-transform group-open:rotate-45">+</span>
+                </summary>
+                <p className="mt-2 text-sm text-fg-soft leading-relaxed">{item.a}</p>
+              </details>
+            ))}
+          </section>
           <p className="text-center text-xs text-fg-subtle mt-6">
             {t.join.alreadyMember}{" "}
             <a href="/login" className="text-brand-blue hover:underline">

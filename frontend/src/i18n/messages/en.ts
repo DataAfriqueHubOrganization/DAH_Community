@@ -142,6 +142,7 @@ export const en: Messages = {
     heroText: "Training, events, projects and mentoring: join the African talents building the continent's digital future.",
     heroCta: "Join DAH",
     heroSecondary: "See events",
+    nextEvent: "Next event",
     stats: { members: "Active members", trained: "People at our events", countries: "Countries represented" },
     poles: {
       eyebrow: "Our divisions",
@@ -238,6 +239,9 @@ export const en: Messages = {
     registrationClosed: "Registration closed",
   },
   eventDetail: {
+    addToCalendar: "Add to calendar",
+    share: "Share",
+    linkCopied: "Link copied",
     notFound: "Event not found",
     backToEvents: "Back to events",
     allEvents: "All events",
@@ -364,6 +368,13 @@ export const en: Messages = {
       "A pan-African network of data scientists, engineers and mentors",
       "Training, hackathons and community projects",
       "Career opportunities and partnerships",
+    ],
+    faqTitle: "Frequently asked questions",
+    faq: [
+      { q: "Who can join?", a: "Anyone interested in data and AI: students, professionals, researchers or people changing careers. No minimum level is required." },
+      { q: "How much does membership cost?", a: "Applying is free. Once a member, the contribution is 500 FCFA a month (1,000 FCFA for department leads and the board), payable monthly, for a period or for the year." },
+      { q: "How will I know if my application is accepted?", a: "The team reviews every application and answers you by email. Once accepted, you get your member space, your card and your department." },
+      { q: "Will my profile be visible on the website?", a: "No, unless you turn it on yourself in your space. Your email, phone number and CV are never shown." },
     ],
     alreadyMember: "Already a member?",
     goToSpace: "Go to your space",
