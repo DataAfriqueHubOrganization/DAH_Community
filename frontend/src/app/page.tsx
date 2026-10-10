@@ -39,6 +39,9 @@ function AnimatedCounter({ target, suffix = "" }: { target: number; suffix?: str
   return <div ref={ref}>{count}{suffix}</div>;
 }
 
+// Les chiffres de l'accueil n'apparaissent qu'à partir de ce nombre de membres actifs.
+const STATS_MIN_MEMBERS = 50;
+
 // Les textes (rôles, citations, descriptions) viennent du dictionnaire : t.home.*
 const testimonials = [
   { name: "Alice Mensah", avatar: "https://ui-avatars.com/api/?name=Alice+Mensah&background=2F6FE0&color=fff&bold=true&format=svg" },
@@ -145,25 +148,25 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* CHIFFRES */}
+        {/* CHIFFRES — affichés seulement à partir de STATS_MIN_MEMBERS membres actifs */}
+        {stats && stats.members >= STATS_MIN_MEMBERS && (
         <section className="bg-section border-b border-line">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 sm:grid-cols-3 py-6 sm:py-10">
             {[
-              { value: stats?.members, label: t.home.stats.members },
-              { value: stats?.participants, label: t.home.stats.trained },
-              { value: stats?.countries, label: t.home.stats.countries },
+              { value: stats.members, label: t.home.stats.members },
+              { value: stats.participants, label: t.home.stats.trained },
+              { value: stats.countries, label: t.home.stats.countries },
             ].map(({ value, label }) => (
               <div key={label} className="flex flex-col gap-1 px-6 py-4 sm:py-0 border-b sm:border-b-0 sm:border-l border-line last:border-b-0">
                 <div className="font-display text-4xl font-bold text-brand-blue">
-                  {value === undefined
-                    ? <span className="inline-block w-16 h-9 rounded-lg bg-surface-strong animate-pulse align-middle" aria-hidden="true" />
-                    : <AnimatedCounter target={value} />}
+                  <AnimatedCounter target={value} />
                 </div>
                 <p className="text-sm text-fg-muted">{label}</p>
               </div>
             ))}
           </div>
         </section>
+        )}
 
         {/* PÔLES */}
         <section className="bg-section py-20 sm:py-24">
