@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { eventsService } from "@/services/events.service";
@@ -8,6 +10,7 @@ import { membershipsService } from "@/services/memberships.service";
 import { engagementService } from "@/services/engagement.service";
 import { projectsService } from "@/services/projects.service";
 import { treasuryService } from "@/services/treasury.service";
+import { membersService } from "@/services/members.service";
 import { checkinPeriod } from "@/features/engagement/period";
 import { isLate } from "@/features/departments/workspace/shared";
 import { hasSection, isContributor } from "@/types/auth.types";
@@ -18,7 +21,10 @@ import type { CandidatureList } from "@/types/memberships.types";
 import type { PointSource } from "@/types/engagement.types";
 
 type Tone = "blue" | "orange" | "gray";
-interface Todo { key: string; title: string; meta: string; action: string; href: string; tone: Tone }
+interface Todo { key: string; title: string; meta: string; action: string; href: string; tone: Tone; onDismiss?: () => void }
+
+/** Rappel « Apparaître dans l'annuaire » écarté par le membre (préférence de ce navigateur). */
+const VISIBILITY_DISMISSED = "dah:hide-visibility-reminder";
 
 const TONE: Record<Tone, string> = { blue: "bg-brand-blue", orange: "bg-brand-orange", gray: "bg-fg-subtle" };
 const SOURCES: PointSource[] = ["task", "checkin", "contribution", "adjustment"];
@@ -58,6 +64,22 @@ export function DashboardHome() {
     queryFn: () => eventsService.list({ is_published: "true" }).then((r) => r.data),
     enabled: !!user,
   });
+  const { data: myProfile } = useQuery({
+    queryKey: ["my-profile"],
+    queryFn: () => membersService.myProfile().then((r) => r.data),
+    enabled: isMember,
+    retry: false,
+  });
+  const [visibilityDismissed, setVisibilityDismissed] = useState(true);
+  useEffect(() => {
+    try { setVisibilityDismissed(localStorage.getItem(VISIBILITY_DISMISSED) === "1"); }
+    catch { setVisibilityDismissed(false); }
+  }, []);
+  const dismissVisibility = () => {
+    setVisibilityDismissed(true);
+    try { localStorage.setItem(VISIBILITY_DISMISSED, "1"); } catch { /* stockage indisponible */ }
+  };
+
   const { data: applications } = useQuery({
     queryKey: ["candidatures", "pending"],
     queryFn: () => membershipsService.listCandidatures({ status: "pending" }).then((r) => r.data),
@@ -107,6 +129,11 @@ export function DashboardHome() {
     todos.push({ key: "apps", title: d.applicationsTitle(pendingApplications.length), meta: d.applicationsMeta,
       action: d.review, href: "/memberships", tone: "orange" });
   }
+  // Profil masqué : invitation à apparaître dans l'annuaire public (jusqu'à activation ou refus).
+  if (myProfile && !myProfile.is_public && !visibilityDismissed) {
+    todos.push({ key: "visibility", title: d.visibilityTitle, meta: d.visibilityMeta,
+      action: d.visibilityAction, href: "/profile#visibilite", tone: "blue", onDismiss: dismissVisibility });
+  }
   if (user.capabilities?.leads_department) {
     todos.push({ key: "lead", title: d.leadTitle, meta: d.leadMeta, action: d.see, href: "/my-department?tab=today", tone: "blue" });
   }
@@ -150,6 +177,12 @@ export function DashboardHome() {
                     <span className="block text-[15px] font-semibold text-fg truncate">{item.title}</span>
                     <span className="block text-[13px] text-fg-soft truncate">{item.meta}</span>
                   </span>
+                  {item.onDismiss && (
+                    <button type="button" onClick={item.onDismiss} aria-label={d.dismiss} title={d.dismiss}
+                      className="shrink-0 w-9 h-9 rounded-lg flex items-center justify-center text-fg-subtle hover:text-fg hover:bg-surface-muted">
+                      <X size={16} />
+                    </button>
+                  )}
                   <Link href={item.href}
                     className="shrink-0 inline-flex items-center h-10 px-4 rounded-xl bg-brand-blue text-white text-[13px] font-semibold hover:bg-brand-deep">
                     {item.action}

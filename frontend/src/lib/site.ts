@@ -6,3 +6,7 @@ export const SOCIAL_LINKS = [
   { href: "https://www.youtube.com/@dataafriquehub", label: "▶", title: "YouTube" },
   { href: "https://www.linkedin.com/company/dataafrique-hub/", label: "in", title: "LinkedIn" },
 ] as const;
+
+/** L'annuaire public (menu « Membres », section de l'accueil) n'apparaît qu'à
+ *  partir de ce nombre de profils visibles : jamais une page presque vide. */
+export const DIRECTORY_MIN_PROFILES = 6;

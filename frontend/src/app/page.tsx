@@ -10,6 +10,7 @@ import { NetworkPattern } from "@/components/ui/NetworkPattern";
 import { eventsService } from "@/services/events.service";
 import { membersService } from "@/services/members.service";
 import { statsService } from "@/services/stats.service";
+import { DIRECTORY_MIN_PROFILES } from "@/lib/site";
 import { avatarUrl } from "@/lib/utils";
 import { useI18n } from "@/i18n/I18nProvider";
 import { CalendarDays, MapPin, ArrowRight, BookOpen, Lightbulb, Handshake, FlaskConical, ChevronRight } from "lucide-react";
@@ -264,7 +265,7 @@ export default function LandingPage() {
         )}
 
         {/* MEMBRES */}
-        {featuredMembers.length > 0 && (
+        {(membersData?.count ?? 0) >= DIRECTORY_MIN_PROFILES && featuredMembers.length > 0 && (
           <section id="membres" className="bg-surface-muted py-20 sm:py-24">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="flex items-end justify-between mb-10">

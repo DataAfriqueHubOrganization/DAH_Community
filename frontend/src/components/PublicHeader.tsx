@@ -7,6 +7,7 @@ import { Menu, X } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import { PreferencesToggle } from "@/components/PreferencesToggle";
 import { useI18n } from "@/i18n/I18nProvider";
+import { usePublicDirectory } from "@/hooks/usePublicDirectory";
 
 const navLinks = [
   { href: "/", key: "home" },
@@ -20,6 +21,9 @@ export function PublicHeader() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const { t } = useI18n();
+  // « Membres » n'apparaît qu'avec assez de profils visibles (lib/site.ts).
+  const { isOpen: directoryOpen } = usePublicDirectory();
+  const links = navLinks.filter((l) => l.key !== "members" || directoryOpen);
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-surface dark:bg-surface/80 dark:backdrop-blur-md border-b border-line h-[72px] sm:h-[88px] flex items-center">
@@ -33,7 +37,7 @@ export function PublicHeader() {
 
         {/* Desktop Nav */}
         <nav className="hidden lg:flex items-center gap-1">
-          {navLinks.map(({ href, key }) => {
+          {links.map(({ href, key }) => {
             const label = t.nav[key];
             const active = pathname === href || (href !== "/" && pathname.startsWith(href));
             return (
@@ -88,7 +92,7 @@ export function PublicHeader() {
       {open && (
         <div className="absolute top-[72px] sm:top-[88px] left-0 right-0 bg-surface border-t border-line-soft shadow-lg lg:hidden">
           <div className="px-4 py-4 flex flex-col gap-1">
-            {navLinks.map(({ href, key }) => {
+            {links.map(({ href, key }) => {
               const label = t.nav[key];
               const active = pathname === href || (href !== "/" && pathname.startsWith(href));
               return (

@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { membersService } from "@/services/members.service";
 import { departmentsService } from "@/services/departments.service";
+import { DIRECTORY_MIN_PROFILES } from "@/lib/site";
 import { avatarUrl } from "@/lib/utils";
 import { useI18n } from "@/i18n/I18nProvider";
 import { Users, Search } from "lucide-react";
@@ -101,6 +102,15 @@ export default function MembersPage() {
             {[...Array(6)].map((_, i) => (
               <div key={i} className="bg-surface rounded-2xl border border-line-soft p-6 h-48 animate-pulse" />
             ))}
+          </div>
+        ) : !search && !departmentFilter && (data?.count ?? members.length) < DIRECTORY_MIN_PROFILES ? (
+          <div className="text-center py-20 max-w-md mx-auto space-y-3">
+            <Users size={40} className="mx-auto text-brand-blue opacity-60" aria-hidden="true" />
+            <p className="font-display font-bold text-lg text-fg">{t.members.fillingTitle}</p>
+            <p className="text-sm text-fg-soft">{t.members.fillingText}</p>
+            <Link href="/join" className="inline-flex items-center gap-2 h-11 px-5 rounded-xl bg-brand-orange text-ink text-sm font-bold hover:bg-orange-400">
+              {t.members.fillingCta}
+            </Link>
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-20 text-fg-subtle">
