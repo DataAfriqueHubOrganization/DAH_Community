@@ -26,8 +26,6 @@ const pillars = [
   { icon: Heart, color: "bg-brand-deep" },
 ];
 
-const TIMELINE_YEARS = ["2021", "2022", "2023", "2024", "2025"];
-
 export default async function AboutPage() {
   const t = await getT();
 
@@ -69,29 +67,36 @@ export default async function AboutPage() {
         </div>
       </section>
 
-      {/* Histoire */}
+      {/* Histoire : une année, un ou plusieurs temps forts */}
       <section className="bg-page py-20">
         <div className="max-w-4xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-fg mb-4">{t.about.historyTitle}</h2>
+            <h2 className="text-3xl font-bold text-fg mb-3">{t.about.historyTitle}</h2>
+            <p className="text-fg-muted">{t.about.historyIntro}</p>
           </div>
-          <div className="space-y-6">
-            {TIMELINE_YEARS.map((year, i) => (
-              <div key={year} className="flex gap-5">
+          <ol className="space-y-2">
+            {t.about.timeline.map(({ year, events }, i) => (
+              <li key={year} className="flex gap-5">
                 <div className="flex flex-col items-center">
-                  <div className="w-12 h-12 rounded-full bg-brand-blue text-white flex items-center justify-center font-bold text-sm shrink-0">
-                    {year.slice(2)}
+                  <div className="w-16 h-16 rounded-2xl bg-brand-blue text-white flex items-center justify-center font-display font-extrabold text-lg shrink-0">
+                    {year}
                   </div>
-                  <div className="w-0.5 flex-1 bg-surface-strong mt-2" />
+                  {i < t.about.timeline.length - 1 && <div aria-hidden="true" className="w-0.5 flex-1 bg-line mt-2" />}
                 </div>
-                <div className="pb-8">
-                  <p className="text-orange-600 text-sm font-semibold mb-1">{year}</p>
-                  <h3 className="font-semibold text-fg mb-2">{t.about.timeline[i].title}</h3>
-                  <p className="text-fg-muted text-sm leading-relaxed">{t.about.timeline[i].desc}</p>
+                <div className="flex-1 min-w-0 pb-10 space-y-3">
+                  {events.map((event) => (
+                    <article key={event.title} className="bg-surface rounded-2xl border border-line-soft p-5 sm:p-6">
+                      <h3 className="font-semibold text-lg text-fg mb-2 flex items-start gap-2.5">
+                        <span aria-hidden="true" className="mt-2 w-2.5 h-2.5 rounded-[3px] bg-brand-orange shrink-0" />
+                        {event.title}
+                      </h3>
+                      <p className="text-fg-soft text-[15px] leading-relaxed">{event.desc}</p>
+                    </article>
+                  ))}
                 </div>
-              </div>
+              </li>
             ))}
-          </div>
+          </ol>
         </div>
       </section>
 

@@ -198,12 +198,22 @@ export const en: Messages = {
       { title: "Our values", text: "Excellence, Inclusion, Collaboration and Impact. We believe data can solve the continent's most complex challenges when it is in the right hands." },
     ],
     historyTitle: "Our story",
+    historyIntro: "From about ten founding members to a pan-African data science competition.",
     timeline: [
-      { title: "DAH is founded", desc: "Born from a vision shared by data enthusiasts in Cotonou, DAH was created by a dozen founding members determined to change Africa's data landscape." },
-      { title: "First training programmes", desc: "Launch of the first Python and Data Science courses, with more than 50 learners trained in the first cohort." },
-      { title: "Regional expansion", desc: "DAH grows to 10 African countries with members in Senegal, Ghana, Côte d'Ivoire, Togo, Cameroon and beyond." },
-      { title: "Hackathons & Partnerships", desc: "First Data for Good Hackathon with 100+ participants. Strategic partnerships with local and international organisations." },
-      { title: "Data Summit Africa", desc: "First Data Summit Africa, our largest annual gathering with speakers from around the world." },
+      { year: "2023", events: [
+        { title: "DAH is founded", desc: "Born from a vision shared by data enthusiasts in Benin, DAH starts with about ten founding members determined to change the African data landscape." },
+      ] },
+      { year: "2024", events: [
+        { title: "First trainings and the launch of DataTour", desc: "DAH runs an introductory training with nearly 200 registrants, followed by its first Data Academy. The same year, the first edition of DataTour is born: a fully online pan-African data science competition." },
+      ] },
+      { year: "2025", events: [
+        { title: "The Data Academy grows", desc: "The second Data Academy cohort attracts more than 1,000 applications for 200 selected participants. This free programme strengthens DAH's commitment to making data skills accessible." },
+        { title: "Second edition of DataTour", desc: "DAH runs the second edition of DataTour, still fully online. The competition pursues its ambition: revealing African talent and fostering exchanges between data science enthusiasts." },
+      ] },
+      { year: "2026", events: [
+        { title: "Third edition of DataTour", desc: "DataTour brings together 207 teams and more than 700 participants. New countries and partners join this third edition, giving more weight to the ambition of a “Data Science AFCON”." },
+        { title: "Reaching out to African AI communities", desc: "DAH hosts exchanges around the Deep Learning Indaba to share experiences, showcase opportunities and strengthen ties between African talent." },
+      ] },
     ],
     teamTitle: "The board",
     teamText: "The team guiding and leading the community",

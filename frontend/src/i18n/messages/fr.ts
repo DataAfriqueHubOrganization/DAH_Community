@@ -199,12 +199,22 @@ export const fr = {
       { title: "Nos valeurs", text: "Excellence, Inclusion, Collaboration et Impact. Nous croyons que la data peut résoudre les défis les plus complexes du continent lorsqu'elle est entre de bonnes mains." },
     ],
     historyTitle: "Notre histoire",
+    historyIntro: "D'une dizaine de membres fondateurs à une compétition panafricaine de science des données.",
     timeline: [
-      { title: "Fondation de DAH", desc: "Née d'une vision partagée par des passionnés de data à Cotonou, DAH voit le jour avec une dizaine de membres fondateurs déterminés à changer le paysage data africain." },
-      { title: "Premières formations", desc: "Lancement des premières formations Python et Data Science, avec plus de 50 apprenants formés lors de la première cohorte." },
-      { title: "Expansion régionale", desc: "DAH s'étend à 10 pays africains avec des membres au Sénégal, au Ghana, en Côte d'Ivoire, au Togo, au Cameroun et au-delà." },
-      { title: "Hackathons & Partenariats", desc: "Organisation du premier Data for Good Hackathon avec 100+ participants. Partenariats stratégiques avec des organisations locales et internationales." },
-      { title: "Data Summit Africa", desc: "Organisation du premier Data Summit Africa, notre plus grand rassemblement annuel avec des speakers du monde entier." },
+      { year: "2023", events: [
+        { title: "Fondation de DAH", desc: "Née d'une vision partagée par des passionnés de data au Bénin, DAH voit le jour avec une dizaine de membres fondateurs déterminés à changer le paysage data africain." },
+      ] },
+      { year: "2024", events: [
+        { title: "Premières formations et lancement de DataTour", desc: "DAH lance une formation d'initiation réunissant près de 200 inscrits, suivie de sa première Data Academy. La même année, la première édition de DataTour voit le jour : une compétition panafricaine de science des données entièrement en ligne." },
+      ] },
+      { year: "2025", events: [
+        { title: "La Data Academy grandit", desc: "La deuxième cohorte de la Data Academy attire plus de 1 000 candidatures, pour 200 personnes sélectionnées. Ce parcours gratuit renforce l'engagement de DAH pour rendre les compétences en data accessibles." },
+        { title: "Deuxième édition de DataTour", desc: "DAH organise la deuxième édition de DataTour, toujours entièrement en ligne. La compétition poursuit son ambition : révéler les talents africains et encourager les échanges entre passionnés de science des données." },
+      ] },
+      { year: "2026", events: [
+        { title: "Troisième édition de DataTour", desc: "DataTour rassemble 207 équipes et plus de 700 participants. De nouveaux pays et partenaires rejoignent cette troisième édition, donnant davantage d'ampleur à l'ambition d'une « CAN de la Science des Données »." },
+        { title: "Ouverture sur les communautés africaines de l'IA", desc: "DAH organise des échanges autour du Deep Learning Indaba pour partager les expériences, faire découvrir des opportunités et renforcer les liens entre les talents africains." },
+      ] },
     ],
     teamTitle: "Le bureau",
     teamText: "L'équipe qui guide et anime la communauté",
