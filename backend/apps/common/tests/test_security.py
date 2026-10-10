@@ -187,3 +187,20 @@ class TestAccessControl:
         as_user(member).patch("/api/v1/auth/me/", {"role": "admin", "poste": "president", "email": "x@y.z"}, format="json")
         member.refresh_from_db()
         assert member.role == "membre" and member.poste is None and member.email == "membre@dah.test"
+
+
+@pytest.mark.django_db
+def test_chiffres_publics_calcules_depuis_la_base():
+    from apps.events.models import Event, EventParticipant
+    from django.utils import timezone
+
+    User.objects.create_user(email="m1@exemple.org", password="x", first_name="A", last_name="B", role="membre")
+    User.objects.create_user(email="v@exemple.org", password="x", first_name="A", last_name="B", role="visiteur")
+    first = Event.objects.create(title="E1", description="d", start_date=timezone.now(), location="Cotonou")
+    second = Event.objects.create(title="E2", description="d", start_date=timezone.now(), location="Lomé")
+    # a@x.org est venu deux fois : compté une seule fois.
+    for event, email, country in [(first, "a@x.org", "Bénin"), (first, "b@x.org", " bénin "),
+                                  (second, "a@x.org", "Bénin"), (second, "c@x.org", "Togo")]:
+        EventParticipant.objects.create(event=event, email=email, first_name="P", last_name="Q", nationality=country)
+    data = APIClient().get("/api/v1/stats/").data
+    assert data == {"members": 1, "participants": 3, "countries": 2}

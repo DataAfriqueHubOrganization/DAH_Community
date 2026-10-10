@@ -9,6 +9,7 @@ import { Logo } from "@/components/ui/Logo";
 import { NetworkPattern } from "@/components/ui/NetworkPattern";
 import { eventsService } from "@/services/events.service";
 import { membersService } from "@/services/members.service";
+import { statsService } from "@/services/stats.service";
 import { avatarUrl } from "@/lib/utils";
 import { useI18n } from "@/i18n/I18nProvider";
 import { CalendarDays, MapPin, ArrowRight, BookOpen, Lightbulb, Handshake, FlaskConical, ChevronRight } from "lucide-react";
@@ -93,6 +94,12 @@ export default function LandingPage() {
     queryFn: () => membersService.publicList().then((r) => r.data),
     staleTime: 1000 * 60 * 5,
   });
+  // Chiffres réels (membres actifs, participants, pays), calculés par le serveur.
+  const { data: stats } = useQuery({
+    queryKey: ["public-stats"],
+    queryFn: () => statsService.get().then((r) => r.data),
+    staleTime: 1000 * 60 * 10,
+  });
   const all: Event[] = eventsData?.results ?? eventsData ?? [];
   const upcomingEvents = all.filter((e) => new Date(e.start_date) > new Date()).slice(0, 3);
   const featuredMembers: PublicMemberListItem[] = (membersData?.results ?? [])
@@ -142,12 +149,16 @@ export default function LandingPage() {
         <section className="bg-section border-b border-line">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 sm:grid-cols-3 py-6 sm:py-10">
             {[
-              { value: 30, suffix: "+", label: t.home.stats.members },
-              { value: 50, suffix: "+", label: t.home.stats.trained },
-              { value: 10, suffix: "+", label: t.home.stats.countries },
-            ].map(({ value, suffix, label }) => (
+              { value: stats?.members, label: t.home.stats.members },
+              { value: stats?.participants, label: t.home.stats.trained },
+              { value: stats?.countries, label: t.home.stats.countries },
+            ].map(({ value, label }) => (
               <div key={label} className="flex flex-col gap-1 px-6 py-4 sm:py-0 border-b sm:border-b-0 sm:border-l border-line last:border-b-0">
-                <div className="font-display text-4xl font-bold text-brand-blue"><AnimatedCounter target={value} suffix={suffix} /></div>
+                <div className="font-display text-4xl font-bold text-brand-blue">
+                  {value === undefined
+                    ? <span className="inline-block w-16 h-9 rounded-lg bg-surface-strong animate-pulse align-middle" aria-hidden="true" />
+                    : <AnimatedCounter target={value} />}
+                </div>
                 <p className="text-sm text-fg-muted">{label}</p>
               </div>
             ))}

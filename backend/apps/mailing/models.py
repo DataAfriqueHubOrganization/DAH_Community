@@ -1,3 +1,5 @@
+import uuid
+
 from django.conf import settings
 from django.db import models
 
@@ -8,6 +10,7 @@ class AUDIENCES:
     BUREAU = "bureau"
     LEADS = "leads"
     DEPARTMENT = "department"
+    NEWSLETTER = "newsletter"
 
     CHOICES = [
         (SELECTION, "Membres choisis"),
@@ -15,6 +18,7 @@ class AUDIENCES:
         (BUREAU, "Bureau"),
         (LEADS, "Responsables de département"),
         (DEPARTMENT, "Un département"),
+        (NEWSLETTER, "Abonnés à la newsletter"),
     ]
 
 
@@ -78,3 +82,23 @@ class DailyEmailCount(models.Model):
 
     def __str__(self):
         return f"{self.day} : {self.count}"
+
+
+class NewsletterSubscriber(models.Model):
+    """Abonné à la newsletter (formulaire du pied de page du site). Chaque email
+    envoyé contient un lien de désinscription propre à l'abonné (token)."""
+
+    email = models.EmailField(unique=True)
+    is_active = models.BooleanField(default=True, verbose_name="Abonné")
+    token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    source = models.CharField(max_length=30, default="site", verbose_name="Origine")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Inscrit le")
+    unsubscribed_at = models.DateTimeField(null=True, blank=True, verbose_name="Désinscrit le")
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Abonné à la newsletter"
+        verbose_name_plural = "Abonnés à la newsletter"
+
+    def __str__(self):
+        return self.email

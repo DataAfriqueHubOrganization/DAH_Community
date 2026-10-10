@@ -1,8 +1,12 @@
 import mimetypes
 
 from django.conf import settings
+from django.core.cache import cache
 from django.http import FileResponse, Http404, HttpResponse
 from django.views.decorators.http import require_GET
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
 
 from .storage import PrivateFileSystemStorage, read_private_token
 
@@ -42,3 +46,32 @@ def private_file(request):
         # d'où l'exception ; les formats acceptés se limitent à PDF et images).
         response["Content-Security-Policy"] = "sandbox; default-src 'none'; img-src 'self'"
     return response
+
+
+_STATS_CACHE_KEY = "public-stats"
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def public_stats(request):
+    """Chiffres de la page d'accueil, calculés depuis la base (mis en cache 10 min) :
+    membres actifs, personnes venues à nos événements, pays représentés."""
+    stats = cache.get(_STATS_CACHE_KEY)
+    if stats is None:
+        from apps.events.models import EventParticipant
+        from apps.memberships.models import Candidature
+        from apps.payments.services import liable_members
+
+        countries = {
+            c.strip().lower()
+            for c in [*EventParticipant.objects.values_list("nationality", flat=True),
+                      *Candidature.objects.values_list("country", flat=True)]
+            if c and c.strip()
+        }
+        stats = {
+            "members": liable_members().count(),
+            "participants": EventParticipant.objects.values("email").distinct().count(),
+            "countries": len(countries),
+        }
+        cache.set(_STATS_CACHE_KEY, stats, 600)
+    return Response(stats)

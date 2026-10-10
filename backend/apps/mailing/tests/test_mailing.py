@@ -117,10 +117,10 @@ def test_failures_are_recorded_and_retried(client, monkeypatch):
     awa, kofi = make("awa@exemple.org"), make("kofi@exemple.org")
     real = services._deliver_one
 
-    def flaky(fields, first, last, address):
+    def flaky(fields, first, last, address, **kwargs):
         if address == "kofi@exemple.org":
             raise RuntimeError("adresse refusée")
-        real(fields, first, last, address)
+        real(fields, first, last, address, **kwargs)
 
     monkeypatch.setattr(services, "_deliver_one", flaky)
     r = client.post(URL, {"subject": "S", "body": "<p>x</p>", "user_ids": [awa.id, kofi.id]}, format="json")

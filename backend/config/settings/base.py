@@ -192,6 +192,7 @@ REST_FRAMEWORK = {
         "comment": "30/hour",
         "declaration": "20/hour",
         "member_email": "30/hour",      # emails de l'administration aux membres
+        "newsletter": "10/hour",        # inscription / désinscription newsletter
     },
     # Derrière le proxy de Render : l'IP du client est lue dans X-Forwarded-For
     # (sinon tout le monde partagerait l'IP du proxy). Surchargé en prod.

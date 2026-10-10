@@ -1,4 +1,4 @@
-export type Audience = "selection" | "all" | "bureau" | "leads" | "department";
+export type Audience = "selection" | "all" | "bureau" | "leads" | "department" | "newsletter";
 export type MailTemplate = "annonce" | "convocation" | "volontaires" | "felicitations" | "libre";
 
 export interface MailableMember {
@@ -19,6 +19,8 @@ export interface MailQuota {
 export interface MailAudiences {
   groups: Record<"all" | "bureau" | "leads", number>;
   departments: { id: number; name: string; count: number }[];
+  /** Abonnés actifs à la newsletter. */
+  newsletter: number;
   quota: MailQuota;
 }
 

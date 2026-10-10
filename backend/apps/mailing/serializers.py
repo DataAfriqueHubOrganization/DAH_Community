@@ -5,7 +5,7 @@ from rest_framework import serializers
 from apps.common.sanitize import clean_html
 from apps.departments.models import Department
 
-from .models import AUDIENCES, MemberEmail, MemberEmailRecipient
+from .models import AUDIENCES, MemberEmail, MemberEmailRecipient, NewsletterSubscriber
 
 TEMPLATES = ["annonce", "convocation", "volontaires", "felicitations", "libre"]
 
@@ -92,3 +92,14 @@ class MailableMemberSerializer(serializers.Serializer):
     email = serializers.EmailField()
     role = serializers.CharField()
     poste = serializers.CharField(allow_null=True)
+
+
+class NewsletterSubscribeSerializer(serializers.Serializer):
+    email = serializers.EmailField(max_length=254)
+
+
+class NewsletterSubscriberSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = NewsletterSubscriber
+        fields = ["id", "email", "is_active", "source", "created_at", "unsubscribed_at"]
+        read_only_fields = ["id", "is_active", "source", "created_at", "unsubscribed_at"]

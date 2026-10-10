@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { membersService } from "@/services/members.service";
@@ -138,6 +139,9 @@ function MemberCard({ fullName, avatar, role, poste, email, memberNumber, member
   memberNumber: string | null; memberSince: string; publicUrl: string | null;
   award: { kind: "month" | "year"; period_start: string } | null;
 }) {
+  // Adresse réelle du site (et non un domaine écrit en dur).
+  const [siteHost, setSiteHost] = useState("");
+  useEffect(() => setSiteHost(window.location.host), []);
   const { t, label, intl } = useI18n();
   const m = t.memberCard;
   // La carte est un objet physique : couleurs fixes (pas de tokens de thème),
@@ -197,7 +201,7 @@ function MemberCard({ fullName, avatar, role, poste, email, memberNumber, member
           {publicUrl && (
             <div className="min-w-0 text-right">
               <p className="text-[9.5px] font-semibold tracking-[0.12em] uppercase text-[#71717A]">{m.profileLabel}</p>
-              <p className="font-mono font-semibold text-[#1E4FAF] mt-0.5 truncate">dataafrique.hub{publicUrl}</p>
+              <p className="font-mono font-semibold text-[#1E4FAF] mt-0.5 truncate">{siteHost}{publicUrl}</p>
             </div>
           )}
         </div>

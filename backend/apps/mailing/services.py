@@ -3,6 +3,7 @@ import logging
 import re
 from html import escape
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import connection
 from django.db.models import Q
@@ -15,7 +16,7 @@ from apps.common.background import fire_and_forget
 from apps.common.email import send_branded_email
 
 from . import quota
-from .models import AUDIENCES, MemberEmail, MemberEmailRecipient
+from .models import AUDIENCES, MemberEmail, MemberEmailRecipient, NewsletterSubscriber
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +71,7 @@ def audiences_summary() -> dict:
             AUDIENCES.BUREAU: count(AUDIENCES.BUREAU),
             AUDIENCES.LEADS: count(AUDIENCES.LEADS),
         },
+        "newsletter": NewsletterSubscriber.objects.filter(is_active=True).count(),
         "departments": [
             {"id": d.id, "name": d.name, "count": count(AUDIENCES.DEPARTMENT, department=d)}
             for d in Department.objects.order_by("name")
@@ -96,6 +98,9 @@ def personalize(text: str, first_name: str, last_name: str, *, html: bool = Fals
         text = text.replace(token, first)
     for token in _LAST_NAME:
         text = text.replace(token, last)
+    if not first_name:
+        # Abonné à la newsletter (sans nom) : « Bonjour {prénom}, » → « Bonjour, ».
+        text = re.sub(r"[ \t]+,", ",", text)
     return text
 
 
@@ -132,8 +137,20 @@ def plain_text(body: str) -> str:
     return re.sub(r"\n{3,}", "\n\n", text).strip()
 
 
-def _deliver_one(mail_fields: dict, first_name: str, last_name: str, address: str) -> None:
+def _unsubscribe_html(url: str) -> str:
+    return ('<p style="font-size:13px;color:#71717A;">Vous recevez cet email car vous êtes abonné(e) à la '
+            f'newsletter de Data Afrique Hub. <a href="{escape(url)}">Se désabonner</a></p>')
+
+
+def unsubscribe_url(token) -> str:
+    return f"{settings.FRONTEND_URL.rstrip('/')}/newsletter/unsubscribe?token={token}"
+
+
+def _deliver_one(mail_fields: dict, first_name: str, last_name: str, address: str,
+                 unsubscribe: str = "") -> None:
     body = personalize(mail_fields["body"], first_name, last_name, html=True)
+    if unsubscribe:
+        body += _unsubscribe_html(unsubscribe)
     text = plain_text(body)
     cta = (mail_fields["cta_label"], mail_fields["cta_url"]) if mail_fields.get("cta_url") else None
     send_branded_email(
@@ -174,8 +191,14 @@ def send_test(sender, *, subject: str, body: str, cta_label: str = "", cta_url: 
 
 def send_member_email(sender, *, subject: str, body: str, template: str = "", cta_label: str = "",
                       cta_url: str = "", audience: str, department=None, user_ids=None) -> MemberEmail:
-    users, label = audience_queryset(audience, department=department, user_ids=user_ids)
-    recipients = list(users.order_by("first_name", "last_name").values("id", "email", "first_name", "last_name"))
+    if audience == AUDIENCES.NEWSLETTER:
+        label = "Abonnés à la newsletter"
+        recipients = [{"id": None, "email": e, "first_name": "", "last_name": ""}
+                      for e in NewsletterSubscriber.objects.filter(is_active=True).order_by("email")
+                      .values_list("email", flat=True)]
+    else:
+        users, label = audience_queryset(audience, department=department, user_ids=user_ids)
+        recipients = list(users.order_by("first_name", "last_name").values("id", "email", "first_name", "last_name"))
     if not recipients:
         raise ValidationError({"detail": "Aucun destinataire pour cet envoi."})
     remaining = quota.remaining_today()
@@ -215,9 +238,19 @@ def deliver(mail_pk: int) -> None:
     try:
         mail = MemberEmail.objects.get(pk=mail_pk)
         fields = {"subject": mail.subject, "body": mail.body, "cta_label": mail.cta_label, "cta_url": mail.cta_url}
+        tokens = {}
+        if mail.audience == AUDIENCES.NEWSLETTER:
+            tokens = dict(NewsletterSubscriber.objects.values_list("email", "token"))
         for recipient in mail.recipients.filter(status=MemberEmailRecipient.STATUS.PENDING):
+            if mail.audience == AUDIENCES.NEWSLETTER and not NewsletterSubscriber.objects.filter(
+                    email=recipient.address, is_active=True).exists():
+                # Désinscrit entre-temps : on n'envoie pas.
+                recipient.status, recipient.error = MemberEmailRecipient.STATUS.FAILED, "Désinscrit"
+                recipient.save(update_fields=["status", "error"])
+                continue
             try:
-                _deliver_one(fields, recipient.first_name, recipient.last_name, recipient.address)
+                _deliver_one(fields, recipient.first_name, recipient.last_name, recipient.address,
+                             unsubscribe=unsubscribe_url(tokens[recipient.address]) if recipient.address in tokens else "")
             except Exception as exc:  # noqa: BLE001 — un échec n'arrête pas les autres envois
                 logger.warning("Email aux membres %s : échec pour %s", mail_pk, recipient.address)
                 recipient.status = MemberEmailRecipient.STATUS.FAILED
@@ -231,3 +264,23 @@ def deliver(mail_pk: int) -> None:
         # Thread d'arrière-plan : on rend sa connexion à la base.
         if not connection.in_atomic_block:
             connection.close()
+
+
+# ── Newsletter ─────────────────────────────────────────────────────────────────
+def subscribe_newsletter(email: str, source: str = "site") -> NewsletterSubscriber:
+    """Inscrit (ou réinscrit) une adresse. Sans effet si elle est déjà abonnée."""
+    sub, created = NewsletterSubscriber.objects.get_or_create(email=email.strip().lower(), defaults={"source": source})
+    if not created and not sub.is_active:
+        sub.is_active, sub.unsubscribed_at = True, None
+        sub.save(update_fields=["is_active", "unsubscribed_at"])
+    return sub
+
+
+def unsubscribe_newsletter(token) -> bool:
+    sub = NewsletterSubscriber.objects.filter(token=token).first()
+    if sub is None:
+        return False
+    if sub.is_active:
+        sub.is_active, sub.unsubscribed_at = False, timezone.now()
+        sub.save(update_fields=["is_active", "unsubscribed_at"])
+    return True

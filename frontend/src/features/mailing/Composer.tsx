@@ -15,8 +15,8 @@ import { Modal } from "./Modal";
 import type { MailTemplate, MailableMember, SendMemberEmailPayload } from "@/types/mailing.types";
 
 const TEMPLATES: MailTemplate[] = ["annonce", "convocation", "volontaires", "felicitations", "libre"];
-type Group = "all" | "bureau" | "leads" | "department";
-const GROUPS: Group[] = ["all", "bureau", "leads", "department"];
+type Group = "all" | "bureau" | "leads" | "department" | "newsletter";
+const GROUPS: Group[] = ["all", "bureau", "leads", "department", "newsletter"];
 
 const initials = (m: { first_name: string; last_name: string }) =>
   `${m.first_name[0] ?? ""}${m.last_name[0] ?? ""}`.toUpperCase();
@@ -86,7 +86,7 @@ export function Composer({ onSent }: { onSent: (message: string) => void }) {
 
   const department = audiences?.departments.find((d) => d.id === departmentId);
   const groupCount = (g: Group) =>
-    g === "department" ? department?.count ?? 0 : audiences?.groups[g] ?? 0;
+    g === "department" ? department?.count ?? 0 : g === "newsletter" ? audiences?.newsletter ?? 0 : audiences?.groups[g] ?? 0;
   const count = mode === "selection" ? selected.length : groupCount(group);
 
   // ── Quota ──

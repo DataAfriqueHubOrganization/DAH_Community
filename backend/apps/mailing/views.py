@@ -1,6 +1,10 @@
+import csv
+
+from django.db.models import Q
+from django.http import HttpResponse
 from rest_framework import mixins, status
-from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import action, api_view, permission_classes, throttle_classes
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
@@ -8,10 +12,12 @@ from apps.common.permissions import SECTIONS, HasSection
 from apps.common.throttling import WRITE_THROTTLES
 
 from . import services
-from .models import MemberEmail
+from apps.common.throttling import ClientScopedRateThrottle
+
+from .models import MemberEmail, NewsletterSubscriber
 from .serializers import (
     EmailContentSerializer, MailableMemberSerializer, MemberEmailDetailSerializer, MemberEmailListSerializer,
-    SendMemberEmailSerializer,
+    NewsletterSubscribeSerializer, NewsletterSubscriberSerializer, SendMemberEmailSerializer,
 )
 
 
@@ -77,3 +83,73 @@ class MemberEmailViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, Gener
     def members(self, request):
         users = services.search_members(request.query_params.get("search", ""))
         return Response(MailableMemberSerializer(users, many=True).data)
+
+
+# ── Newsletter ─────────────────────────────────────────────────────────────────
+class NewsletterThrottle(ClientScopedRateThrottle):
+    scope = "newsletter"
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+@throttle_classes([NewsletterThrottle])
+def newsletter_subscribe(request):
+    """Formulaire du pied de page. Même réponse que l'adresse soit nouvelle ou
+    déjà abonnée (on ne révèle pas qui est inscrit)."""
+    serializer = NewsletterSubscribeSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    services.subscribe_newsletter(serializer.validated_data["email"])
+    return Response({"detail": "Merci ! Vous êtes inscrit(e) à la newsletter."}, status=status.HTTP_201_CREATED)
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+@throttle_classes([NewsletterThrottle])
+def newsletter_unsubscribe(request):
+    """Lien « Se désabonner » des emails (token propre à chaque abonné)."""
+    token = str(request.data.get("token", ""))
+    try:
+        ok = services.unsubscribe_newsletter(token)
+    except Exception:  # noqa: BLE001 — token mal formé
+        ok = False
+    if not ok:
+        return Response({"detail": "Lien de désinscription invalide."}, status=status.HTTP_400_BAD_REQUEST)
+    return Response({"detail": "Vous êtes désinscrit(e) de la newsletter."})
+
+
+class NewsletterSubscriberViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, mixins.DestroyModelMixin,
+                                  GenericViewSet):
+    """Abonnés à la newsletter (section Emails) : liste, ajout, suppression, export."""
+
+    permission_classes = [IsAuthenticated, HasSection(SECTIONS.EMAILS)]
+    serializer_class = NewsletterSubscriberSerializer
+
+    def get_queryset(self):
+        qs = NewsletterSubscriber.objects.all()
+        status_filter = self.request.query_params.get("status")
+        if status_filter == "active":
+            qs = qs.filter(is_active=True)
+        elif status_filter == "unsubscribed":
+            qs = qs.filter(is_active=False)
+        search = self.request.query_params.get("search", "").strip()
+        if search:
+            qs = qs.filter(Q(email__icontains=search))
+        return qs
+
+    def create(self, request):
+        serializer = NewsletterSubscribeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        sub = services.subscribe_newsletter(serializer.validated_data["email"], source="admin")
+        return Response(NewsletterSubscriberSerializer(sub).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=["get"])
+    def export(self, request):
+        response = HttpResponse(content_type="text/csv; charset=utf-8")
+        response["Content-Disposition"] = 'attachment; filename="abonnes-newsletter.csv"'
+        writer = csv.writer(response)
+        writer.writerow(["email", "abonne", "origine", "inscrit_le", "desinscrit_le"])
+        for sub in self.get_queryset():
+            writer.writerow([sub.email, "oui" if sub.is_active else "non", sub.source,
+                             sub.created_at.date().isoformat(),
+                             sub.unsubscribed_at.date().isoformat() if sub.unsubscribed_at else ""])
+        return response

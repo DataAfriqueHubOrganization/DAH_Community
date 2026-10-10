@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import DailyEmailCount, MemberEmail, MemberEmailRecipient
+from .models import DailyEmailCount, MemberEmail, MemberEmailRecipient, NewsletterSubscriber
 
 
 class RecipientInline(admin.TabularInline):
@@ -21,3 +21,10 @@ class MemberEmailAdmin(admin.ModelAdmin):
 @admin.register(DailyEmailCount)
 class DailyEmailCountAdmin(admin.ModelAdmin):
     list_display = ["day", "count"]
+
+
+@admin.register(NewsletterSubscriber)
+class NewsletterSubscriberAdmin(admin.ModelAdmin):
+    list_display = ["email", "is_active", "source", "created_at"]
+    list_filter = ["is_active", "source"]
+    search_fields = ["email"]

@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.views.static import serve as static_serve
-from apps.common.views import private_file
+from apps.common.views import private_file, public_stats
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 
 urlpatterns = [
@@ -25,6 +25,8 @@ urlpatterns = [
     path("api/v1/mailing/", include("apps.mailing.urls")),
     # Documents privés (CV, preuves, justificatifs) : liens signés et expirants.
     path("api/v1/files/", private_file, name="private-file"),
+    # Chiffres publics de la page d'accueil.
+    path("api/v1/stats/", public_stats, name="public-stats"),
 
     # Documentation API
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
