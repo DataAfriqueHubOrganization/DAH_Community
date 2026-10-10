@@ -45,14 +45,27 @@ class DepartmentListSerializer(serializers.ModelSerializer):
     member_count = serializers.SerializerMethodField()
     can_manage = serializers.SerializerMethodField()
     is_member = serializers.SerializerMethodField()
+    # Résumé pour la liste : ce qui demande une action dans le département.
+    activity = serializers.SerializerMethodField()
 
     class Meta:
         model = Department
         fields = [
             "id", "name", "description",
             "lead_id", "lead_name", "co_lead_id", "co_lead_name",
-            "member_count", "can_manage", "is_member", "created_at",
+            "member_count", "can_manage", "is_member", "activity", "created_at",
         ]
+
+    def get_activity(self, obj) -> dict:
+        from apps.projects.models import Project, ProjectTask
+        today = timezone.now().date()
+        tasks = ProjectTask.objects.filter(project__department=obj)
+        return {
+            "active_projects": Project.objects.filter(department=obj).exclude(
+                status__in=["completed", "archived"]).count(),
+            "to_validate": tasks.filter(status="submitted").count(),
+            "late": tasks.filter(status__in=["todo", "in_progress", "blocked"], due_date__lt=today).count(),
+        }
 
     def get_lead_id(self, obj) -> int | None:
         return obj.lead_id
@@ -88,9 +101,25 @@ class DepartmentListSerializer(serializers.ModelSerializer):
 
 class DepartmentDetailSerializer(DepartmentListSerializer):
     memberships = DepartmentMembershipSerializer(many=True, read_only=True)
+    project_managers = serializers.SerializerMethodField()
+    can_manage_projects = serializers.SerializerMethodField()
 
     class Meta(DepartmentListSerializer.Meta):
-        fields = DepartmentListSerializer.Meta.fields + ["memberships"]
+        fields = DepartmentListSerializer.Meta.fields + ["memberships", "project_managers", "can_manage_projects"]
+
+    def get_project_managers(self, obj):
+        return [{"id": u.id, "full_name": u.full_name} for u in obj.project_managers.order_by("first_name", "last_name")]
+
+    def get_can_manage_projects(self, obj) -> bool:
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return False
+        from .services import can_manage_projects
+        return can_manage_projects(request.user, obj)
+
+
+class ProjectManagerSerializer(serializers.Serializer):
+    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.filter(is_active=True))
 
 
 class DepartmentWriteSerializer(serializers.ModelSerializer):
@@ -183,7 +212,7 @@ class DepartmentTaskSerializer(serializers.ModelSerializer):
         model = DepartmentTask
         fields = [
             "id", "title", "description", "assigned_to_id", "assigned_to_name",
-            "due_date", "status", "status_display", "size",
+            "due_date", "status", "status_display", "weight",
             "submitted_at", "submission_note", "return_reason",
             "validated_at", "is_outstanding", "points_awarded", "created_at",
         ]
@@ -198,7 +227,7 @@ class TaskWriteSerializer(serializers.Serializer):
     due_date = serializers.DateField(required=False, allow_null=True)
     # « À valider » / « Validée » : uniquement via les actions submit / validate.
     status = serializers.ChoiceField(choices=DepartmentTask.FREE_STATUSES, required=False)
-    size = serializers.ChoiceField(choices=DepartmentTask.SIZE_CHOICES, required=False)
+    weight = serializers.IntegerField(min_value=DepartmentTask.WEIGHT_MIN, max_value=DepartmentTask.WEIGHT_MAX, required=False)
 
 
 class TaskStatusUpdateSerializer(serializers.Serializer):

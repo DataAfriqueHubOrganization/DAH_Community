@@ -22,6 +22,7 @@ urlpatterns = [
     path("api/v1/blog/", include("apps.blog.urls")),
     path("api/v1/projects/", include("apps.projects.urls")),
     path("api/v1/engagement/", include("apps.engagement.urls")),
+    path("api/v1/mailing/", include("apps.mailing.urls")),
     # Documents privés (CV, preuves, justificatifs) : liens signés et expirants.
     path("api/v1/files/", private_file, name="private-file"),
 

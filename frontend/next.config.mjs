@@ -11,6 +11,11 @@ const securityHeaders = [
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
 ];
 
+// Pré-production : jamais indexée par les moteurs de recherche.
+if (process.env.NEXT_PUBLIC_ENV === "preprod") {
+  securityHeaders.push({ key: "X-Robots-Tag", value: "noindex, nofollow" });
+}
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",

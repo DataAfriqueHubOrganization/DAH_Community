@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.common.background import fire_and_forget
-from apps.common.permissions import IsAdminOrPresident
+from apps.common.permissions import SECTIONS, HasSection
 from .models import Candidature
 from .serializers import (
     CandidatureCreateSerializer, CandidatureListSerializer,
@@ -45,7 +45,7 @@ class CandidatureCreateView(generics.CreateAPIView):
 
 class CandidatureListView(generics.ListAPIView):
     serializer_class = CandidatureListSerializer
-    permission_classes = [IsAdminOrPresident]
+    permission_classes = [HasSection(SECTIONS.APPLICATIONS)]
     pagination_class = None  # dataset trop petit pour paginer
     filterset_fields = ["status"]
     search_fields = ["first_name", "last_name", "email", "country", "profession"]
@@ -56,12 +56,12 @@ class CandidatureListView(generics.ListAPIView):
 
 class CandidatureDetailView(generics.RetrieveDestroyAPIView):
     serializer_class = CandidatureDetailSerializer
-    permission_classes = [IsAdminOrPresident]
+    permission_classes = [HasSection(SECTIONS.APPLICATIONS)]
     queryset = Candidature.objects.select_related("reviewed_by")
 
 
 class ReviewCandidatureView(APIView):
-    permission_classes = [IsAdminOrPresident]
+    permission_classes = [HasSection(SECTIONS.APPLICATIONS)]
 
     def post(self, request, pk):
         try:

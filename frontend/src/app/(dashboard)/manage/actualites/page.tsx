@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Heart, MessageCircle, Newspaper, Plus, Search } from "lucide-react";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { blogService } from "@/services/blog.service";
-import { isBureau } from "@/types/auth.types";
+import { hasSection } from "@/types/auth.types";
 import { useI18n } from "@/i18n/I18nProvider";
 import { cn } from "@/lib/utils";
 import { NetworkPattern } from "@/components/ui/NetworkPattern";
@@ -27,10 +27,10 @@ export default function ActualitesManagePage() {
   const { data, isLoading } = useQuery({
     queryKey: ["articles", "manage"],
     queryFn: () => blogService.manage.list().then((r) => r.data),
-    enabled: isBureau(user),
+    enabled: hasSection(user, "news"),
   });
 
-  if (!loadingUser && !isBureau(user)) return <p className="text-fg-muted">{t.manageNews.restricted}</p>;
+  if (!loadingUser && !hasSection(user, "news")) return <p className="text-fg-muted">{t.manageNews.restricted}</p>;
 
   const articles: ArticleAdmin[] = Array.isArray(data) ? data : data?.results ?? [];
   const byTab: Record<Tab, ArticleAdmin[]> = { published: [], scheduled: [], draft: [] };

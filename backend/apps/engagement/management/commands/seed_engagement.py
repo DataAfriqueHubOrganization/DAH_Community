@@ -19,9 +19,10 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
 
+from apps.common.demo import demo_password
+
 User = get_user_model()
 
-PASSWORD = "Dah@2024!"
 # Historique figé : de janvier à septembre 2026, quelle que soit la date d'exécution.
 HISTORY_START = date(2026, 1, 5)
 HISTORY_END = date(2026, 9, 28)
@@ -94,6 +95,8 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         from apps.departments.models import Department
 
+        self.password = demo_password()
+
         if not User.objects.filter(email="admin@dah.com").exists() or not Department.objects.exists():
             self.stdout.write("  → Données de base absentes : lancement de seed_dah...")
             call_command("seed_dah")
@@ -131,7 +134,7 @@ class Command(BaseCommand):
                 defaults=dict(first_name=first, last_name=last, role="membre", email_verified=True),
             )
             if created:
-                user.set_password(PASSWORD)
+                user.set_password(self.password)
                 user.save()
             MemberProfile.objects.get_or_create(
                 user=user,
@@ -181,7 +184,7 @@ class Command(BaseCommand):
             for member in members:
                 for n in range(ACTIVITY[member.email]):
                     validated_on = HISTORY_START + timedelta(days=self.rng.randint(0, (HISTORY_END - HISTORY_START).days))
-                    size = self.rng.choices(["small", "medium", "large"], weights=[3, 5, 2])[0]
+                    weight = self.rng.choices([1, 2, 3, 4, 5], weights=[2, 3, 5, 2, 1])[0]
                     on_time = self.rng.random() < 0.78
                     outstanding = self.rng.random() < 0.15
                     due = validated_on - timedelta(days=1)
@@ -193,7 +196,7 @@ class Command(BaseCommand):
                     task, _ = ProjectTask.objects.get_or_create(
                         project=project, title=title,
                         defaults=dict(
-                            description=DEMO_MARKER, assigned_to=member, size=size,
+                            description=DEMO_MARKER, assigned_to=member, weight=weight,
                             due_date=due, status="done", submitted_at=_aware(submitted_on, 9),
                         ),
                     )
@@ -229,18 +232,18 @@ class Command(BaseCommand):
             if not others:
                 continue
             specs = [
-                ("Finaliser la documentation du sprint", "submitted", 2, "medium", "Lien vers la doc : drive/sprint-12"),
-                ("Préparer la présentation du mois", "submitted", -1, "small", ""),
-                ("Refaire le schéma d'architecture", "in_progress", 5, "large", None),
-                ("Mettre à jour le tableau de suivi", "in_progress", -4, "small", None),
-                ("Rédiger le compte rendu de la séance", "todo", 10, "small", None),
+                ("Finaliser la documentation du sprint", "submitted", 2, 3, "Lien vers la doc : drive/sprint-12"),
+                ("Préparer la présentation du mois", "submitted", -1, 1, ""),
+                ("Refaire le schéma d'architecture", "in_progress", 5, 5, None),
+                ("Mettre à jour le tableau de suivi", "in_progress", -4, 1, None),
+                ("Rédiger le compte rendu de la séance", "todo", 10, 1, None),
             ]
-            for i, (title, status, due_in, size, note) in enumerate(specs):
+            for i, (title, status, due_in, weight, note) in enumerate(specs):
                 member = others[i % len(others)]
                 task, created = ProjectTask.objects.get_or_create(
                     project=project, title=f"{title} — {department.name}",
                     defaults=dict(
-                        description=LIVE_MARKER, assigned_to=member, size=size,
+                        description=LIVE_MARKER, assigned_to=member, weight=weight,
                         due_date=self.today + timedelta(days=due_in), status=status,
                     ),
                 )

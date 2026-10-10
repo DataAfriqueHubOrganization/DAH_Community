@@ -7,15 +7,36 @@ from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
+from apps.common.demo import DEMO_DOMAIN, demo_password
+
 User = get_user_model()
 
 
 class Command(BaseCommand):
     help = "Seed the database with demonstration data for DAH"
 
-    def handle(self, *args, **options):
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--users-only", action="store_true",
+            help="Crée seulement les comptes de démo, sans événements, articles, départements…",
+        )
+        parser.add_argument(
+            "--reset-passwords", action="store_true",
+            help="Remet SEED_PASSWORD sur tous les comptes de démo (@dah.com) existants.",
+        )
+
+    def handle(self, *args, users_only=False, reset_passwords=False, **options):
+        self.password = demo_password()
         self.stdout.write("🌱 Début du seed DAH...")
         self._create_users()
+        # Pré-production : remise forcée du mot de passe des comptes de démo, faite
+        # une fois sur Render (octobre 2026). Décommenter pour la refaire au build.
+        # reset_passwords = True
+        if reset_passwords:
+            self._reset_passwords()
+        if users_only:
+            self.stdout.write(self.style.SUCCESS("✅ Comptes de démo prêts."))
+            return
         self._create_events()
         self._create_profiles()
         self._create_memberships()
@@ -23,6 +44,13 @@ class Command(BaseCommand):
         self._create_projects()
         self._create_articles()
         self.stdout.write(self.style.SUCCESS("✅ Seed terminé avec succès!"))
+
+    def _reset_passwords(self):
+        demo = User.objects.filter(email__iendswith=DEMO_DOMAIN)
+        for user in demo:
+            user.set_password(self.password)
+            user.save(update_fields=["password"])
+        self.stdout.write(f"  → Mot de passe remis sur {demo.count()} compte(s) de démo.")
 
     def _create_users(self):
         self.stdout.write("  → Création des utilisateurs...")
@@ -60,7 +88,7 @@ class Command(BaseCommand):
                 defaults={**d, "email_verified": True},
             )
             if created:
-                user.set_password("Dah@2024!")
+                user.set_password(self.password)
                 user.is_staff = is_staff
                 user.is_superuser = is_superuser
                 user.save()

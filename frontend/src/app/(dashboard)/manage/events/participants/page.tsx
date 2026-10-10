@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Check, Download, Search, ShieldAlert, Users, X } from "lucide-react";
 import { eventsService } from "@/services/events.service";
 import { useCurrentUser } from "@/hooks/useAuth";
-import { isBureau } from "@/types/auth.types";
+import { hasSection } from "@/types/auth.types";
 import { useI18n } from "@/i18n/I18nProvider";
 import { countryLabel } from "@/lib/countries";
 import { cn } from "@/lib/utils";
@@ -51,7 +51,7 @@ export default function AllParticipantsPage() {
   const { t, intl, fmt, locale } = useI18n();
   const x = t.allParticipants;
   const { data: user, isLoading: loadingUser } = useCurrentUser();
-  const canView = isBureau(user);
+  const canView = hasSection(user, "events");
 
   const [mode, setMode] = useState<Mode>("period");
   const [preset, setPreset] = useState<Preset | null>("year");

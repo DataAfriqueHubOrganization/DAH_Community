@@ -7,7 +7,7 @@ from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
 from apps.common.background import fire_and_forget
-from apps.common.permissions import is_bureau
+from apps.common.permissions import SECTIONS, has_section
 
 FREQUENCY_DELTAS = {
     "weekly": timedelta(days=7),
@@ -18,12 +18,24 @@ MAX_OCCURRENCES = 52
 
 
 def can_manage_department(user, department) -> bool:
-    """Admin/Bureau gèrent tous les départements ; le lead/co-lead ne gère que
-    le sien (membres, annonces, séances, tâches) — jamais son nom/description/
-    lead/co-lead, réservés à Admin/Bureau (voir get_permissions de la vue)."""
-    if is_bureau(user):
+    """La section Départements gère tous les départements ; le lead/co-lead ne gère
+    que le sien (membres, annonces, séances, tâches) — jamais son nom/description/
+    lead/co-lead, réservés à la section (voir get_permissions de la vue)."""
+    if has_section(user, SECTIONS.DEPARTMENTS):
         return True
     return department.lead_id == user.id or department.co_lead_id == user.id
+
+
+def can_manage_projects(user, department) -> bool:
+    """Créer les projets d'un département, y créer et affecter les tâches : ceux qui
+    gèrent le département, et les gestionnaires de projets désignés par le
+    responsable — tant qu'ils font partie du département."""
+    if department is None or not user or not user.is_authenticated:
+        return False
+    if can_manage_department(user, department):
+        return True
+    return (department.project_managers.filter(pk=user.pk).exists()
+            and user.id in get_department_member_ids(department))
 
 
 def is_current_department_member(user, department) -> bool:
@@ -269,14 +281,14 @@ def send_session_reminder(session) -> None:
 
 
 def create_task(
-    department, created_by, title, description="", assigned_to=None, due_date=None, status="todo", size="medium",
+    department, created_by, title, description="", assigned_to=None, due_date=None, status="todo", weight=3,
 ) -> "DepartmentTask":
     from .models import DepartmentTask
     from .tasks import send_task_assigned_email
 
     task = DepartmentTask.objects.create(
         department=department, created_by=created_by, title=title, description=description,
-        assigned_to=assigned_to, due_date=due_date, status=status, size=size,
+        assigned_to=assigned_to, due_date=due_date, status=status, weight=weight,
     )
     if assigned_to:
         fire_and_forget(

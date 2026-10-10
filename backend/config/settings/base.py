@@ -31,6 +31,7 @@ THIRD_PARTY_APPS = [
     "drf_spectacular",
     "django_celery_beat",
     "django_extensions",
+    "cloudinary",
 ]
 
 LOCAL_APPS = [
@@ -48,6 +49,7 @@ LOCAL_APPS = [
     "apps.blog",
     "apps.projects",
     "apps.engagement",
+    "apps.mailing",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -126,8 +128,26 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = config("MEDIA_ROOT", default=str(BASE_DIR / "media"))
 
-# Documents sensibles (CV, preuves de paiement, justificatifs) : hors de
-# MEDIA_ROOT, jamais servis directement — uniquement par lien signé.
+# Stockage des fichiers envoyés : « local » (disque du serveur, production) ou
+# « cloudinary » (pré-production sur Render, sans disque persistant).
+# Voir apps.common.storage.
+MEDIA_STORAGE = config("MEDIA_STORAGE", default="local")
+STORAGES = {
+    "default": {
+        "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage"
+        if MEDIA_STORAGE == "cloudinary" else "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+}
+# Identifiants Cloudinary (MEDIA_STORAGE=cloudinary uniquement).
+CLOUDINARY_STORAGE = {
+    "CLOUD_NAME": config("CLOUDINARY_CLOUD_NAME", default=""),
+    "API_KEY": config("CLOUDINARY_API_KEY", default=""),
+    "API_SECRET": config("CLOUDINARY_API_SECRET", default=""),
+}
+
+# Documents sensibles (CV, preuves de paiement, justificatifs) en mode local :
+# hors de MEDIA_ROOT, jamais servis directement — uniquement par lien signé.
 PRIVATE_MEDIA_ROOT = config("PRIVATE_MEDIA_ROOT", default=str(BASE_DIR / "private_media"))
 PRIVATE_MEDIA_URL_MAX_AGE = config("PRIVATE_MEDIA_URL_MAX_AGE", default=60 * 60 * 12, cast=int)  # 12 h
 # Avec nginx : préfixe d'un emplacement « internal » pointant sur PRIVATE_MEDIA_ROOT
@@ -171,6 +191,7 @@ REST_FRAMEWORK = {
         "participant_lookup": "60/hour",  # pré-remplissage (aspiration de données)
         "comment": "30/hour",
         "declaration": "20/hour",
+        "member_email": "30/hour",      # emails de l'administration aux membres
     },
     # Derrière le proxy de Render : l'IP du client est lue dans X-Forwarded-For
     # (sinon tout le monde partagerait l'IP du proxy). Surchargé en prod.
@@ -237,6 +258,18 @@ EMAIL_TIMEOUT = config("EMAIL_TIMEOUT", default=10, cast=int)
 # utilisée par apps.common.email.send_transactional_email, qui passe par l'API HTTP
 # de Brevo au lieu du SMTP brut (port 587), peu fiable en sortie depuis Render.
 BREVO_API_KEY = config("BREVO_API_KEY", default="")
+
+# Pré-production : tous les emails sont détournés vers ces adresses (séparées par
+# des virgules), avec le vrai destinataire dans l'objet — jamais vers les membres.
+EMAIL_REDIRECT_TO = [a.strip() for a in config("EMAIL_REDIRECT_TO", default="").split(",") if a.strip()]
+# false : aucun email envoyé (seulement journalisé).
+EMAIL_ENABLED = config("EMAIL_ENABLED", default=True, cast=bool)
+# Emails des comptes de démo (@dah.com, adresses fictives) détournés vers ces
+# adresses (séparées par des virgules) ; vide = ignorés. Utile en pré-production.
+DEMO_EMAIL_REDIRECT_TO = [a.strip() for a in config("DEMO_EMAIL_REDIRECT_TO", default="").split(",") if a.strip()]
+# Quota quotidien d'emails de l'hébergeur d'envoi (Brevo gratuit : 300 / jour),
+# partagé par tous les envois — vérifié avant un email aux membres.
+EMAIL_DAILY_QUOTA = config("EMAIL_DAILY_QUOTA", default=300, cast=int)
 
 # ─── Sécurité headers ────────────────────────────────────────────
 SECURE_BROWSER_XSS_FILTER = True

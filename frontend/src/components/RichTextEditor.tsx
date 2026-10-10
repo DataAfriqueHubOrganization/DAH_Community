@@ -22,7 +22,7 @@ export function toHtml(value: string): string {
 /** Éditeur de texte riche (Tiptap) : titres, gras, italique, listes, citation,
  *  lien, image. Produit du HTML, affiché avec la classe `rich-content`. */
 export function RichTextEditor({
-  value, onChange, placeholder, variant = "boxed", minHeight = 220, label,
+  value, onChange, placeholder, variant = "boxed", minHeight = 220, label, onEditor,
 }: {
   value: string;
   onChange: (html: string) => void;
@@ -31,6 +31,8 @@ export function RichTextEditor({
   variant?: "boxed" | "document";
   minHeight?: number;
   label?: string;
+  /** Accès à l'éditeur (insertion de texte depuis un bouton extérieur). */
+  onEditor?: (editor: Editor | null) => void;
 }) {
   const editor = useEditor({
     immediatelyRender: false, // rendu côté client uniquement (Next.js)
@@ -52,6 +54,8 @@ export function RichTextEditor({
     },
     onUpdate: ({ editor }) => onChange(editor.isEmpty ? "" : editor.getHTML()),
   });
+
+  useEffect(() => { onEditor?.(editor); }, [editor, onEditor]);
 
   // Contenu chargé après coup (édition d'un élément existant).
   useEffect(() => {

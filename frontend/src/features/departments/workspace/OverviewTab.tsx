@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { AlarmClock, BellRing, CheckCircle2, ClipboardCheck, ListChecks, Trophy, Users } from "lucide-react";
+import { BellRing, CheckCircle2, Trophy } from "lucide-react";
 import { engagementService } from "@/services/engagement.service";
 import { useI18n } from "@/i18n/I18nProvider";
 import { cn } from "@/lib/utils";
@@ -15,18 +15,17 @@ import { CheckInDrawer } from "./CheckInDrawer";
 import { summarize } from "./CheckInsTab";
 import { Avatar, GroupTitle, isLate, type WorkspaceTab } from "./shared";
 
-const INBOX_LIMIT = 4;
+const INBOX_LIMIT = 6;
 
 export function OverviewTab({
-  departmentId, memberCount, tasks, checkins, ranking, currentUserId, onNavigate, onTasksChanged,
+  departmentId, tasks, checkins, ranking, currentUserId, onNavigate, onTasksChanged,
 }: {
   departmentId: number;
-  memberCount: number;
   tasks: ProjectTask[];
   checkins: CheckInManager[];
   ranking: RankingRow[];
   currentUserId: number | undefined;
-  onNavigate: (tab: WorkspaceTab) => void;
+  onNavigate: (tab: WorkspaceTab, view?: "checkins") => void;
   onTasksChanged: () => void;
 }) {
   const { t, intl, fmt } = useI18n();
@@ -63,20 +62,6 @@ export function OverviewTab({
 
   return (
     <div className="space-y-5">
-      {/* Indicateurs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <Kpi icon={<Users size={18} />} label={w.kpiMembers} value={String(memberCount)} onClick={() => onNavigate("team")} />
-        <Kpi icon={<ListChecks size={18} />} label={w.kpiToValidate} value={String(toValidate.length)}
-          tone={toValidate.length > 0 ? "orange" : "default"} onClick={() => onNavigate("projects")} />
-        <Kpi icon={<AlarmClock size={18} />} label={w.kpiLate} value={String(late.length)}
-          tone={late.length > 0 ? "red" : "default"} onClick={() => onNavigate("projects")} />
-        <Kpi icon={<ClipboardCheck size={18} />}
-          label={latestMonth ? w.kpiCheckins(monthLabel) : t.checkins.title}
-          value={latestMonth ? w.kpiFilled(monthSummary.filled, monthSummary.total) : "—"}
-          sub={latestMonth ? undefined : w.noCheckinLaunched}
-          onClick={() => onNavigate("checkins")} />
-      </div>
-
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-5 items-start">
         {/* À traiter */}
         <section className="bg-surface rounded-2xl border border-line-soft">
@@ -117,7 +102,7 @@ export function OverviewTab({
 
               {toConfirm.length > 0 && (
                 <InboxGroup title={w.checkinsToConfirm} count={toConfirm.length} tone="orange"
-                  more={toConfirm.length > INBOX_LIMIT ? () => onNavigate("checkins") : undefined}>
+                  more={toConfirm.length > INBOX_LIMIT ? () => onNavigate("team", "checkins") : undefined}>
                   {toConfirm.slice(0, INBOX_LIMIT).map((c) => (
                     <div key={c.id} className="flex items-center gap-3 px-5 py-3 border-t border-line-soft">
                       <Avatar name={c.member_name} size={30} />
@@ -177,7 +162,7 @@ export function OverviewTab({
                       <BellRing size={14} /> {w.remind(monthSummary.pending)}
                     </button>
                   )}
-                  <button onClick={() => onNavigate("checkins")} className="h-9 px-3 text-xs font-semibold text-brand-blue hover:underline">
+                  <button onClick={() => onNavigate("team", "checkins")} className="h-9 px-3 text-xs font-semibold text-brand-blue hover:underline">
                     {t.checkins.title} →
                   </button>
                 </div>
@@ -185,7 +170,7 @@ export function OverviewTab({
             ) : (
               <div className="mt-3 text-sm text-fg-muted space-y-3">
                 <p>{w.noCheckinLaunched}</p>
-                <button onClick={() => onNavigate("checkins")} className="text-xs font-semibold text-brand-blue hover:underline">{w.launchForMonth} →</button>
+                <button onClick={() => onNavigate("team", "checkins")} className="text-xs font-semibold text-brand-blue hover:underline">{w.launchForMonth} →</button>
               </div>
             )}
           </section>
@@ -215,24 +200,6 @@ export function OverviewTab({
 
       {drawerId !== null && <CheckInDrawer queue={toConfirm} startId={drawerId} onClose={() => setDrawerId(null)} />}
     </div>
-  );
-}
-
-function Kpi({
-  icon, label, value, sub, tone = "default", onClick,
-}: {
-  icon: React.ReactNode; label: string; value: string; sub?: string; tone?: "default" | "orange" | "red"; onClick: () => void;
-}) {
-  return (
-    <button onClick={onClick} className="text-left bg-surface rounded-2xl border border-line-soft p-4 hover:shadow-md transition-shadow">
-      <span className={cn("inline-flex w-9 h-9 rounded-xl items-center justify-center",
-        tone === "orange" ? "bg-brand-orange/15 text-orange-700 dark:text-orange-300"
-          : tone === "red" ? "bg-red-50 text-red-600 dark:bg-red-500/15"
-            : "bg-brand-blue/10 text-brand-blue")}>{icon}</span>
-      <p className="mt-3 font-display text-2xl font-extrabold text-fg">{value}</p>
-      <p className="text-xs text-fg-muted mt-0.5">{label}</p>
-      {sub && <p className="text-[11px] text-fg-subtle">{sub}</p>}
-    </button>
   );
 }
 

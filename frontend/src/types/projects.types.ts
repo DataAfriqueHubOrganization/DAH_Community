@@ -30,7 +30,8 @@ export interface ProjectWritePayload {
 export type ProjectTaskStatus = "todo" | "in_progress" | "submitted" | "done" | "blocked";
 /** Statuts modifiables librement ; les autres passent par soumettre / valider. */
 export type FreeTaskStatus = "todo" | "in_progress" | "blocked";
-export type TaskSize = "small" | "medium" | "large";
+/** Points d'une tâche, choisis par le responsable (1 à 5). */
+export type TaskWeight = 1 | 2 | 3 | 4 | 5;
 
 export interface ProjectTask {
   id: number;
@@ -43,7 +44,7 @@ export interface ProjectTask {
   due_date: string | null;
   status: ProjectTaskStatus;
   status_display: string;
-  size: TaskSize;
+  weight: TaskWeight;
   submitted_at: string | null;
   submission_note: string;
   return_reason: string;
@@ -60,5 +61,5 @@ export interface ProjectTaskWritePayload {
   assigned_to?: number | null;
   due_date?: string | null;
   status?: FreeTaskStatus;
-  size?: TaskSize;
+  weight?: TaskWeight;
 }

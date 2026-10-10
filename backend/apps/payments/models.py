@@ -51,8 +51,8 @@ def _attachment_storage():
 
 def _proof_storage():
     """Captures des preuves de paiement : documents privés."""
-    from apps.common.storage import private_storage
-    return private_storage()
+    from apps.common.storage import private_image_storage
+    return private_image_storage()
 
 
 class Contribution(TimestampMixin):

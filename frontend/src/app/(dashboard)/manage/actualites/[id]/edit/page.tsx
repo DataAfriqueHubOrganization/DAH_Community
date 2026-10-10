@@ -4,7 +4,7 @@ import { use } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { blogService } from "@/services/blog.service";
 import { useCurrentUser } from "@/hooks/useAuth";
-import { isBureau } from "@/types/auth.types";
+import { hasSection } from "@/types/auth.types";
 import { useI18n } from "@/i18n/I18nProvider";
 import { ArticleEditor } from "@/features/news/ArticleEditor";
 
@@ -15,7 +15,7 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
   const { data: article, isLoading, isError } = useQuery({
     queryKey: ["article-admin", id],
     queryFn: () => blogService.manage.get(Number(id)).then((r) => r.data),
-    enabled: isBureau(user),
+    enabled: hasSection(user, "news"),
   });
 
   if (loadingUser || isLoading) {
@@ -26,7 +26,7 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
       </div>
     );
   }
-  if (!isBureau(user)) return <p className="text-fg-muted">{t.manageNews.restricted}</p>;
+  if (!hasSection(user, "news")) return <p className="text-fg-muted">{t.manageNews.restricted}</p>;
   if (isError || !article) return <p className="text-fg-muted">{t.common.error}</p>;
   return <ArticleEditor key={article.id} article={article} />;
 }

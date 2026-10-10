@@ -29,20 +29,15 @@ def _credentials_email(user, temp_password: str, *, subject: str, title: str, in
 
 @shared_task(bind=True, max_retries=3)
 def send_candidature_received_notification(self, candidature_pk: int):
+    from apps.accounts.models import SECTIONS, users_with_section
     from .models import Candidature
-    from django.contrib.auth import get_user_model
-    User = get_user_model()
 
     try:
         c = Candidature.objects.get(pk=candidature_pk)
     except Candidature.DoesNotExist:
         return
 
-    from django.db.models import Q
-    recipients = list(
-        User.objects.filter(Q(role="admin") | Q(poste="president"), is_active=True)
-        .values_list("email", flat=True)
-    )
+    recipients = list(users_with_section(SECTIONS.APPLICATIONS).values_list("email", flat=True))
     if not recipients:
         return
 

@@ -4,11 +4,13 @@ Règles (validées avec le bureau) :
 - Une tâche rapporte des points uniquement quand le responsable la valide, et une
   seule fois (contrainte d'unicité sur PointEntry), même si elle est renvoyée puis
   resoumise plusieurs fois.
-- Barème : petite 5, moyenne 10, grande 20 ; +20 % si soumise avant l'échéance,
-  −25 % si soumise en retard ; +25 % si « travail remarquable ». La ponctualité
-  se mesure à la date de SOUMISSION, pas de validation.
+- Barème : de 1 à 5 points, choisis par le responsable selon l'effort ; +1 si
+  soumise avant l'échéance, −1 si soumise en retard, +1 si « travail
+  remarquable » ; jamais moins de 1. La ponctualité se mesure à la date de
+  SOUMISSION, pas de validation.
 - Point d'étape (mensuel) : seuls les scores finaux du responsable comptent ;
-  points = moyenne des 5 scores (1 à 5) × 4, soit 20 points au maximum.
+  points = moyenne des 5 scores (1 à 5), arrondie, soit 5 points au maximum —
+  un repère d'implication, volontairement léger face aux tâches.
 - Points d'un mois = tâches SOUMISES dans le mois (et validées) + point d'étape
   DE ce mois (même confirmé plus tard) + ajustements du bureau.
 """
@@ -22,17 +24,17 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 
 from apps.common.background import fire_and_forget
 from apps.common.mixins import ReviewableTaskMixin
-from apps.common.permissions import is_bureau
+from apps.common.permissions import SECTIONS, has_section
 from apps.departments.services import (
     can_manage_department, get_department_dict, get_department_member_ids,
 )
 
 from .models import Award, CheckIn, PointEntry
 
-SIZE_POINTS = {"small": 5, "medium": 10, "large": 20}
-ON_TIME_BONUS = Decimal("1.20")
-LATE_PENALTY = Decimal("0.75")
-OUTSTANDING_BONUS = Decimal("1.25")
+CHECKIN_MAX_POINTS = 5  # moyenne des scores du point d'étape (1 à 5)
+ON_TIME_BONUS = 1       # rendue avant l'échéance
+LATE_PENALTY = 1        # rendue en retard
+OUTSTANDING_BONUS = 1   # « travail remarquable »
 
 
 def _round(value: Decimal) -> int:
@@ -60,24 +62,24 @@ def _task_fk(task) -> dict:
 
 
 def can_validate_task(user, task) -> bool:
-    """Responsable (lead/co-lead) du département de la tâche, ou bureau — jamais
+    """Responsable (lead/co-lead) du département de la tâche, ou section Départements — jamais
     l'assigné lui-même : personne ne valide sa propre tâche."""
     if task.assigned_to_id == user.id:
         return False
     department = task_department(task)
-    return is_bureau(user) or bool(department and can_manage_department(user, department))
+    return has_section(user, SECTIONS.DEPARTMENTS) or bool(department and can_manage_department(user, department))
 
 
 def compute_task_points(task, outstanding: bool) -> tuple[int, bool | None]:
     """(points, à_temps) — à_temps vaut None quand la tâche n'a pas d'échéance."""
-    points = Decimal(SIZE_POINTS.get(task.size, SIZE_POINTS["medium"]))
+    points = task.weight or 3
     on_time = None
     if task.due_date and task.submitted_at:
         on_time = timezone.localdate(task.submitted_at) <= task.due_date
-        points *= ON_TIME_BONUS if on_time else LATE_PENALTY
+        points += ON_TIME_BONUS if on_time else -LATE_PENALTY
     if outstanding:
-        points *= OUTSTANDING_BONUS
-    return _round(points), on_time
+        points += OUTSTANDING_BONUS
+    return max(points, 1), on_time
 
 
 def check_free_status_change(task, new_status: str) -> None:
@@ -201,15 +203,16 @@ def entries_in(start: date, end: date):
 # ── Classement ────────────────────────────────────────────────────────────
 
 def ranking_scopes(user) -> dict:
-    """Ce qu'un utilisateur peut consulter : classement global (bureau) et/ou
+    """Ce qu'un utilisateur peut consulter : classement global (section Classement) et/ou
     départements dont il est responsable. Un simple membre n'a accès à rien."""
     from apps.departments.models import Department
 
-    if is_bureau(user):
+    community = has_section(user, SECTIONS.RANKING)
+    if community:
         departments = Department.objects.order_by("name")
     else:
         departments = Department.objects.filter(Q(lead=user) | Q(co_lead=user)).order_by("name")
-    return {"global": is_bureau(user), "departments": list(departments.values("id", "name"))}
+    return {"global": community, "departments": list(departments.values("id", "name"))}
 
 
 def build_ranking(start: date, end: date, department=None) -> list[dict]:
@@ -316,8 +319,8 @@ def my_points(user, period: str, ref: date) -> dict:
 
 
 def adjust_points(user, points: int, reason: str, by, department=None) -> PointEntry:
-    if not is_bureau(by):
-        raise PermissionDenied("Seul le bureau peut ajuster des points.")
+    if not has_section(by, SECTIONS.RANKING):
+        raise PermissionDenied("Réservé à la section Classement.")
     if not reason.strip():
         raise ValidationError({"reason": "Le motif est obligatoire."})
     if points == 0:
@@ -348,8 +351,9 @@ def validate_scores(scores: dict) -> dict:
 
 
 def checkin_points(final_scores: dict) -> int:
+    """Moyenne des scores finaux (1 à 5) : CHECKIN_MAX_POINTS au maximum."""
     mean = Decimal(sum(final_scores.values())) / Decimal(len(final_scores))
-    return _round(mean * 4)
+    return _round(mean * CHECKIN_MAX_POINTS / 5)
 
 
 MONTHS_FR = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet",
@@ -499,8 +503,8 @@ def award_period_start(kind: str, ref: date) -> date:
 
 
 def designate_award(user, kind: str, ref: date, by, note: str = "") -> Award:
-    if not is_bureau(by):
-        raise PermissionDenied("Seul le bureau peut désigner le membre du mois ou de l'année.")
+    if not has_section(by, SECTIONS.RANKING):
+        raise PermissionDenied("Réservé à la section Classement.")
     if kind not in dict(Award.KIND_CHOICES):
         raise ValidationError({"kind": "Type de distinction inconnu."})
     period_start = award_period_start(kind, ref)

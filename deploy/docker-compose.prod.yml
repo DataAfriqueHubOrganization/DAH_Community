@@ -31,6 +31,7 @@ services:
       ENV: prod
       DB_HOST: db
       DB_PORT: "5432"
+      MEDIA_STORAGE: local
       MEDIA_ROOT: /app/media
       PRIVATE_MEDIA_ROOT: /app/private_media
       PRIVATE_MEDIA_ACCEL_REDIRECT: /protected/

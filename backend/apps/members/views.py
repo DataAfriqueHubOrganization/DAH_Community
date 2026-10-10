@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter
 
-from apps.common.permissions import IsAdminOrBureau
+from apps.common.permissions import SECTIONS, HasSection
 from .models import MemberProfile, MemberExperience, MemberCertification, SocialLink
 from .serializers import (
     MemberProfileSerializer, PublicMemberProfileSerializer,
@@ -34,7 +34,7 @@ def _filter_by_department(queryset, department_id):
 class MemberListView(generics.ListAPIView):
     """Liste des membres — admin et bureau uniquement."""
     serializer_class = MemberListSerializer
-    permission_classes = [IsAuthenticated, IsAdminOrBureau]
+    permission_classes = [IsAuthenticated, HasSection(SECTIONS.MEMBERS)]
     filter_backends = [DjangoFilterBackend, SearchFilter]
     search_fields = ["user__first_name", "user__last_name", "skills"]
     filterset_fields = ["user__role"]
@@ -61,9 +61,8 @@ class PublicMemberListView(generics.ListAPIView):
 
     def get_queryset(self):
         qs = (
-            MemberProfile.objects
-            .filter(is_public=True)
-            .exclude(user__role__in=["visiteur", "admin"])
+            MemberProfile.public()
+            .exclude(user__role="admin")
             .select_related("user")
             .prefetch_related("experiences")
             .order_by("user__first_name")
@@ -78,7 +77,7 @@ class PublicProfileView(generics.RetrieveAPIView):
     lookup_field = "slug"
 
     def get_queryset(self):
-        return MemberProfile.objects.filter(is_public=True).select_related("user").prefetch_related("experiences", "certifications", "social_links")
+        return MemberProfile.public().select_related("user").prefetch_related("experiences", "certifications", "social_links")
 
 
 class MemberExperienceViewSet(viewsets.ModelViewSet):

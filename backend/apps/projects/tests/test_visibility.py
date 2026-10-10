@@ -65,7 +65,8 @@ class TestProjectVisibility:
         assert titles(client_for(lead_b).get(URL)) == {"Projet B"}
 
     def test_bureau_voit_tout(self, setup):
-        president = make_user("president@dah.test", role="membre", poste="president")
+        president = make_user("president@dah.test", role="membre", poste="president",
+                              sections=["events", "members", "departments", "news", "ranking"])
         assert titles(client_for(president).get(URL)) == {"Projet A", "Projet B"}
 
     def test_porteur_garde_acces_a_son_projet(self, setup):

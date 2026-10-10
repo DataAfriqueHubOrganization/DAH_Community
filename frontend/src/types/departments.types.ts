@@ -19,11 +19,17 @@ export interface Department {
   member_count: number;
   can_manage: boolean;
   is_member: boolean;
+  /** Ce qui demande une action (liste des départements). */
+  activity?: { active_projects: number; to_validate: number; late: number };
   created_at: string;
 }
 
 export interface DepartmentDetail extends Department {
   memberships: DepartmentMembership[];
+  /** Gestionnaires de projets désignés par le responsable. */
+  project_managers: { id: number; full_name: string }[];
+  /** L'utilisateur peut créer des projets et y affecter des tâches. */
+  can_manage_projects: boolean;
 }
 
 export interface DepartmentWritePayload {

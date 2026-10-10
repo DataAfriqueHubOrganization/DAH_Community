@@ -9,7 +9,8 @@ User = get_user_model()
 
 @pytest.fixture
 def bureau(db):
-    user = User.objects.create_user(email="pdt@dah.test", password="x", first_name="P", last_name="", role="membre", poste="president")
+    user = User.objects.create_user(email="pdt@dah.test", password="x", first_name="P", last_name="", role="membre", poste="president",
+                                    sections=["events", "members", "departments", "news", "ranking"])
     client = APIClient()
     client.force_authenticate(user)
     return client

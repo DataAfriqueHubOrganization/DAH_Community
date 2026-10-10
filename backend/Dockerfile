@@ -24,7 +24,5 @@ RUN SECRET_KEY=build-time-placeholder-key python manage.py collectstatic --noinp
 
 EXPOSE 8000
 
-# Migrations + fichiers statiques au démarrage, puis Gunicorn.
-CMD ["sh", "-c", "python manage.py migrate --noinput && python manage.py collectstatic --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 60 --access-logfile -"]
-
-CMD ["sh", "-c", "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --timeout 60"]
+# Migrations au démarrage (fichiers statiques déjà collectés au build), puis Gunicorn.
+CMD ["sh", "-c", "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 60 --access-logfile -"]

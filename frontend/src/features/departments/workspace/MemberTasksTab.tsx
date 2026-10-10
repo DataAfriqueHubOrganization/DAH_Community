@@ -9,6 +9,7 @@ import { engagementService } from "@/services/engagement.service";
 import { useI18n } from "@/i18n/I18nProvider";
 import { cn } from "@/lib/utils";
 import { TaskReviewControls } from "@/features/tasks/TaskReviewControls";
+import { TaskDescription } from "@/features/tasks/TaskDescription";
 import { checkinPeriod, periodTitle } from "@/features/engagement/period";
 import type { DepartmentDetail } from "@/types/departments.types";
 import type { Project, ProjectTask } from "@/types/projects.types";
@@ -198,8 +199,9 @@ function MemberTaskRow({ task, onChanged }: { task: ProjectTask; onChanged: () =
         <p className="text-xs text-fg-muted mt-0.5">
           {task.project_title}
           {task.due_date && <> · <span className={late ? "font-semibold text-red-600" : ""}>{w.dueOn(fmt.date(task.due_date))}</span></>}
-          {` · ${t.tasks.size[task.size]}`}
+          {` · ${t.tasks.weightShort(task.weight)}`}
         </p>
+        <TaskDescription description={task.description} />
       </div>
       <TaskReviewControls task={task} canValidate={false} isAssignee onChanged={onChanged} />
     </div>

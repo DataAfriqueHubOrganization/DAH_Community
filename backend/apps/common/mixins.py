@@ -1,3 +1,4 @@
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 
@@ -21,13 +22,13 @@ class ReviewableTaskMixin(models.Model):
     # et « Validée » ne s'obtiennent que par les actions submit / validate.
     FREE_STATUSES = ("todo", "in_progress", "blocked")
 
-    SIZE_CHOICES = [
-        ("small", "Petite"),
-        ("medium", "Moyenne"),
-        ("large", "Grande"),
-    ]
+    # Points de la tâche, choisis par le responsable selon l'effort (1 à 5).
+    WEIGHT_MIN, WEIGHT_MAX = 1, 5
 
-    size = models.CharField(max_length=10, choices=SIZE_CHOICES, default="medium", verbose_name="Envergure")
+    weight = models.PositiveSmallIntegerField(
+        default=3, verbose_name="Points de la tâche",
+        validators=[MinValueValidator(WEIGHT_MIN), MaxValueValidator(WEIGHT_MAX)],
+    )
     submitted_at = models.DateTimeField(null=True, blank=True, verbose_name="Soumise le")
     submission_note = models.TextField(blank=True, verbose_name="Note de soumission")
     return_reason = models.TextField(blank=True, verbose_name="Motif du renvoi")

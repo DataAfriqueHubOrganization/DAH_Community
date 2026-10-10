@@ -60,6 +60,9 @@ Cela crée 10 utilisateurs, leurs profils, des événements et
 │ felix@dah.com     │ Candidat       │ Dah@2024!    │
 └───────────────────┴────────────────┴──────────────┘
 
+En local uniquement. Sur un serveur (pré-production), les mêmes comptes utilisent
+le mot de passe `SEED_PASSWORD` défini chez l'hébergeur (voir deploy/PREPROD.md).
+
 ---
 6. URLs utiles
 

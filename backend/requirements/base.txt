@@ -11,6 +11,8 @@ dj-database-url==2.3.0
 whitenoise==6.8.2
 requests==2.34.2
 Pillow>=10.0.0
+django-cloudinary-storage==0.3.0
+cloudinary==1.45.0
 python-decouple==3.8
 nh3==0.3.7
 django-extensions==3.2.3

@@ -2,19 +2,27 @@ from django.db.models import Q
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound, PermissionDenied
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
-from apps.common.permissions import IsOwnerOrAdmin, is_bureau
-from apps.departments.services import get_user_department_ids
+from apps.common.permissions import SECTIONS, has_section
+from apps.departments.services import can_manage_projects, get_user_department_ids
 from apps.engagement.serializers import ReturnTaskSerializer, SubmitTaskSerializer, ValidateTaskSerializer
 from apps.engagement import services as engagement
 from .models import Project, ProjectTask
+from .notifications import notify_task_assigned
 from .serializers import (
     ProjectSerializer, ProjectWriteSerializer,
     ProjectTaskSerializer, ProjectTaskWriteSerializer, ProjectTaskStatusUpdateSerializer,
 )
+
+
+class CanManageProject(BasePermission):
+    """Propriétaire du projet, ou qui gère les projets de son département
+    (responsable/adjoint, gestionnaire de projets, section Départements)."""
+    def has_object_permission(self, request, view, obj):
+        return obj.owner_id == request.user.id or can_manage_projects(request.user, obj.department)
 
 
 class ProjectViewSet(ModelViewSet):
@@ -30,7 +38,7 @@ class ProjectViewSet(ModelViewSet):
     def get_queryset(self):
         qs = super().get_queryset()
         user = self.request.user
-        if not is_bureau(user):
+        if not has_section(user, SECTIONS.DEPARTMENTS):
             qs = qs.filter(
                 Q(department_id__in=get_user_department_ids(user))
                 | Q(owner=user)
@@ -48,14 +56,14 @@ class ProjectViewSet(ModelViewSet):
 
     def get_permissions(self):
         if self.action in ["update", "partial_update", "destroy"]:
-            return [IsAuthenticated(), IsOwnerOrAdmin()]
+            return [IsAuthenticated(), CanManageProject()]
         return [IsAuthenticated()]
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
 
     def _can_manage_project(self, project) -> bool:
-        return is_bureau(self.request.user) or project.owner_id == self.request.user.id
+        return project.owner_id == self.request.user.id or can_manage_projects(self.request.user, project.department)
 
     # ── Toutes les tâches d'un département (ses membres, son responsable, le bureau)
     @action(detail=False, methods=["get"], url_path="department-tasks")
@@ -105,6 +113,7 @@ class ProjectViewSet(ModelViewSet):
         serializer = ProjectTaskWriteSerializer(data=request.data, context={"request": request, "project": project})
         serializer.is_valid(raise_exception=True)
         task = serializer.save(project=project)
+        notify_task_assigned(task, by=request.user)
         return Response(ProjectTaskSerializer(task).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["patch", "delete"], url_path="tasks/(?P<task_id>[^/.]+)")
@@ -128,7 +137,10 @@ class ProjectViewSet(ModelViewSet):
                 task, data=request.data, partial=True, context={"request": request, "project": project},
             )
             serializer.is_valid(raise_exception=True)
+            previous_assignee = task.assigned_to_id
             serializer.save()
+            if task.assigned_to_id != previous_assignee:
+                notify_task_assigned(task, by=request.user)
         elif task.assigned_to_id == request.user.id:
             serializer = ProjectTaskStatusUpdateSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)

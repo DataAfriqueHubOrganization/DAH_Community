@@ -1,5 +1,7 @@
 # Déploiement sur un serveur (Contabo)
 
+> Production. La pré-production (Render + Vercel, branche `deploy`) est décrite dans PREPROD.md.
+
 Tout tourne dans Docker sur un seul serveur, derrière un seul domaine :
 
 ```
@@ -11,7 +13,8 @@ Internet ──HTTPS──> nginx ──┬── /api, /admin, /static ──> 
 ```
 
 Les fichiers envoyés (avatars, couvertures, CV, preuves de paiement, justificatifs)
-sont stockés sur le disque du serveur, dans des volumes Docker persistants. Les
+sont stockés sur le disque du serveur, dans des volumes Docker persistants
+(`MEDIA_STORAGE=local`, posé par docker-compose.prod.yml). Les
 documents sensibles sont dans un dossier séparé, jamais accessible directement.
 
 ---
@@ -74,31 +77,40 @@ Raccourci utilisé dans la suite :
 alias dah='docker compose -f /opt/dah/deploy/docker-compose.prod.yml --env-file /opt/dah/deploy/.env.prod'
 ```
 
-## 5. Reprendre les données de Render
+## 5. Base de données (propre à Contabo)
 
-1. Render → base PostgreSQL → **External Database URL** (copier).
-2. Sur le serveur :
+La production sur Contabo a **sa propre base**, indépendante de celle de Render :
+on n'importe rien depuis Render et on n'envoie rien vers Render. Les deux
+environnements ne partagent ni base, ni fichiers, ni `SECRET_KEY`.
+
+Au premier démarrage, la base est vide (les tables sont créées automatiquement).
+Créer le premier administrateur :
 
 ```bash
-cd /opt/dah/deploy
-docker run --rm postgres:16-alpine pg_dump "URL_EXTERNE_RENDER" --format=custom > render.dump
-dah exec -T db pg_restore -U dah -d dah_db --clean --if-exists --no-owner < render.dump
-dah restart backend                     # applique les migrations
-dah exec backend python manage.py cleanup_media --dry-run
-dah exec backend python manage.py cleanup_media
-rm render.dump
+dah exec backend python manage.py createsuperuser
 ```
 
-`cleanup_media` vide les références aux anciens fichiers Cloudinary (abandonnés) :
-le site affiche l'image par défaut, et chacun peut renvoyer son avatar, son CV…
+> Ne jamais lancer de commande de seed (`seed_dah`, `seed_engagement`,
+> `seed_treasury`) en production : elles créent des comptes de démonstration.
 
-Sans reprise de données : créer le premier administrateur avec
-`dah exec backend python manage.py createsuperuser`.
+## 5 bis. Annuaire public des membres
+
+Les profils sont masqués par défaut : chacun choisit d'apparaître sur le site
+(Mon profil → « Apparaître dans l'annuaire public »). Pour inviter les membres
+à faire ce choix — **en production uniquement**, une seule fois par membre :
+
+```bash
+dah exec backend python manage.py invite_public_profiles --dry-run   # qui sera invité
+dah exec backend python manage.py invite_public_profiles
+```
+
+La commande respecte le quota d'emails du jour : s'il reste des membres à inviter,
+la relancer le lendemain (aucun doublon).
 
 ## 6. Bascule
 
 - Vérifier le site : `https://dataafriquehub.org`, connexion, une page de l'espace membre.
-- Arrêter le service Render et le projet Vercel (une seule production à la fois).
+- Render et Vercel deviennent la **pré-production** (branche `deploy`), avec leurs propres données : voir PREPROD.md.
 - Les emails pointent vers `FRONTEND_URL` : vérifier qu'il vaut bien le nouveau domaine.
 
 ## 7. Sauvegardes (indispensable)

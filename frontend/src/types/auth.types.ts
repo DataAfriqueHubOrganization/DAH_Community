@@ -5,6 +5,15 @@ export type Poste =
   | "secretaire_general" | "secretaire_general_adj"
   | "tresorier" | "tresorier_adj";
 
+/** Sections de gestion : l'admin les a toutes, les autres celles qu'il leur accorde. */
+export type Section =
+  | "events" | "members" | "departments" | "news" | "emails"
+  | "treasury" | "ranking" | "applications";
+
+export const SECTIONS: Section[] = [
+  "events", "members", "departments", "news", "emails", "treasury", "ranking", "applications",
+];
+
 export interface UserDepartment {
   id: number;
   name: string;
@@ -23,6 +32,10 @@ export interface User {
   role: Role;
   poste: Poste | null;
   department: UserDepartment | null;
+  /** Sections ouvertes à l'utilisateur (calculées par le serveur ; toutes pour l'admin). */
+  sections: Section[];
+  /** Rôles dans les départements. */
+  capabilities?: { leads_department: boolean; manages_projects: boolean };
   email_verified: boolean;
   created_at: string;
 }
@@ -53,16 +66,11 @@ export const POSTES: Poste[] = [
   "tresorier", "tresorier_adj",
 ];
 
-/** Un membre du bureau est quiconque a un poste (Président, VP, ...) ou est admin. */
-export function isBureau(user: Pick<User, "role" | "poste"> | null | undefined): boolean {
+/** Accès à une section de gestion (accordée dans Gestion des accès ; l'admin a tout).
+ *  Le serveur fait la même vérification : ceci ne sert qu'à l'affichage. */
+export function hasSection(user: Pick<User, "role" | "sections"> | null | undefined, section: Section): boolean {
   if (!user) return false;
-  return user.poste !== null || user.role === "admin";
-}
-
-/** Trésorerie : trésorier, trésorier adjoint ou admin. */
-export function isTreasurer(user: Pick<User, "role" | "poste"> | null | undefined): boolean {
-  if (!user) return false;
-  return user.role === "admin" || user.poste === "tresorier" || user.poste === "tresorier_adj";
+  return user.role === "admin" || (user.sections ?? []).includes(section);
 }
 
 /** Soumis à cotisation : membres, responsables et membres du bureau. */

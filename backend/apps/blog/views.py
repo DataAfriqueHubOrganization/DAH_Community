@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
 
-from apps.common.permissions import IsAdminOrBureau, is_bureau
+from apps.common.permissions import SECTIONS, HasSection, has_section
 from apps.common.throttling import WRITE_THROTTLES
 from .models import Article, ArticleCategory, ArticleComment, ArticleLike
 from .serializers import (
@@ -41,10 +41,10 @@ class ArticleDetailView(generics.RetrieveAPIView):
 
 
 class ArticleCategoryListView(generics.ListCreateAPIView):
-    """Catégories : liste et création depuis l'éditeur d'article (bureau)."""
+    """Catégories : liste et création depuis l'éditeur d'article (section Actualités)."""
     queryset = ArticleCategory.objects.order_by("name")
     serializer_class = ArticleCategorySerializer
-    permission_classes = [IsAuthenticated, IsAdminOrBureau]
+    permission_classes = [IsAuthenticated, HasSection(SECTIONS.NEWS)]
     pagination_class = None
 
     def perform_create(self, serializer):
@@ -63,7 +63,7 @@ class ArticleAdminViewSet(ModelViewSet):
         .order_by("-created_at")
     )
     serializer_class = ArticleAdminSerializer
-    permission_classes = [IsAuthenticated, IsAdminOrBureau]
+    permission_classes = [IsAuthenticated, HasSection(SECTIONS.NEWS)]
 
     def perform_create(self, serializer):
         self._save_with_published_at(serializer, author=self.request.user)
@@ -115,7 +115,7 @@ class ArticleCommentDeleteView(generics.DestroyAPIView):
     def get_object(self):
         obj = get_object_or_404(self.get_queryset(), pk=self.kwargs["comment_id"])
         user = self.request.user
-        if not (user.id == obj.author_id or user.role == "admin" or is_bureau(user)):
+        if not (user.id == obj.author_id or has_section(user, SECTIONS.NEWS)):
             raise PermissionDenied("Vous ne pouvez supprimer que votre propre commentaire.")
         return obj
 

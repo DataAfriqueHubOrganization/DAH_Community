@@ -20,11 +20,15 @@ const inter = Inter({
   variable: "--font-inter",
 });
 
+// Pré-production (Render) : signalée à l'écran et exclue des moteurs de recherche.
+const IS_PREPROD = process.env.NEXT_PUBLIC_ENV === "preprod";
+
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getT();
   return {
     title: { default: "Data Afrique Hub", template: "%s | Data Afrique Hub" },
     description: t.meta.description,
+    ...(IS_PREPROD ? { robots: { index: false, follow: false } } : {}),
   };
 }
 
@@ -38,7 +42,21 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body className="font-sans min-h-full flex flex-col bg-background text-foreground">
         <Providers locale={locale}>{children}</Providers>
+        {IS_PREPROD && <PreprodBadge />}
       </body>
     </html>
+  );
+}
+
+async function PreprodBadge() {
+  const t = await getT();
+  return (
+    <div
+      role="note"
+      title={t.env.preprodHint}
+      className="fixed bottom-3 left-3 z-[60] rounded-full bg-brand-orange px-3 py-1.5 text-xs font-bold text-ink shadow-lg pointer-events-none"
+    >
+      {t.env.preprod}
+    </div>
   );
 }

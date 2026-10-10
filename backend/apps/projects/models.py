@@ -13,7 +13,7 @@ class Project(TimestampMixin):
     ]
 
     title = models.CharField(max_length=300)
-    description = models.TextField()
+    description = models.TextField(blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="idea")
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="owned_projects")
     members = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name="projects")

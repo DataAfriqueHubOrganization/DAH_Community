@@ -9,6 +9,7 @@ import { useI18n } from "@/i18n/I18nProvider";
 import { cn } from "@/lib/utils";
 import { MemberSearchSelect } from "@/components/MemberSearchSelect";
 import type { DepartmentDetail } from "@/types/departments.types";
+import { ProjectManagersCard } from "./ProjectManagersCard";
 import type { CheckInManager, CheckInStatus, RankingRow } from "@/types/engagement.types";
 import type { ProjectTask } from "@/types/projects.types";
 import { todayIso } from "@/features/engagement/period";
@@ -132,6 +133,7 @@ export function TeamTab({
 
   return (
     <div className="space-y-4">
+      {manager && <ProjectManagersCard department={department} />}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="inline-flex bg-surface-strong rounded-xl p-1 gap-1" role="tablist" aria-label={d.team}>
           {(["current", "former"] as const).filter((v) => v === "current" || manager).map((v) => (
